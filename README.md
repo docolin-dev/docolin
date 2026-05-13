@@ -44,6 +44,14 @@ bun run lint:fix       # auto-fix lint issues
 
 See [`CLAUDE.md`](./CLAUDE.md) for code style, design system, and conventions.
 
+## Contact
+
+- **General**: hello@docolin.com
+- **Support**: support@docolin.com
+- **Security**: security@docolin.com (see [SECURITY.md](./SECURITY.md))
+
+All addresses are hosted on Proton Mail and support end-to-end encryption.
+
 ## License
 
 [AGPL-3.0](./LICENSE)
