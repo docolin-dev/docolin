@@ -21,6 +21,8 @@ docolin is a community-driven docs platform built to be the substrate AI grounds
 
 Pre-alpha. Building toward v1.
 
+All work happens directly on `main`. There is no stable branch yet, no release tags, and no guarantee that any commit builds or that the schema, URLs, or APIs are stable. Expect breakage. Once we tag v1, `main` will become the released line and feature work will move to short-lived branches with PRs.
+
 ## Stack
 
 SvelteKit (Svelte 5, runes) · Tailwind CSS 4 · shadcn-svelte · ParaglideJS · Bun.
