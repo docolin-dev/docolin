@@ -16,6 +16,11 @@ Core ideas:
 - Git-source projects: point docolin at any git repo, sync on push, PRs and issues stay in the existing workflow
 - AI-native via MCP with attribution baked into every citation
 
+Design goals:
+
+- **Privacy-first.** docolin should be the docs platform people can trust, including users who don't want to be tracked. Collect the minimum needed, default to anonymous, opt-in third-party integrations, no fingerprinting. See 1.7 for what this means in code.
+- **Run lean.** Designed to run on free-tier infrastructure for as long as possible. It keeps the project sustainable for a solo maintainer and forces clean architecture. See 1.8 for what this means in code.
+
 Stack & conventions:
 
 - **Package manager:** Always use `bun` (not npm, pnpm, or yarn)
@@ -148,6 +153,31 @@ This applies especially to providing two different APIs or patterns to accomplis
 Keeping modules to a single responsibility makes the code easier to test, consume, and maintain. Ideally, individual files are 200-300 lines of code.
 
 As a rule of thumb, once a file draws near 400 lines (barring long constants or comments), start considering how to refactor into smaller pieces.
+
+### 1.7 Privacy and Security by Default [5/5]
+
+Treat every design decision as if a privacy-conscious user is reading the code.
+
+- Collect the minimum data needed to do the job. If a feature works without storing user data, don't store it.
+- Default to anonymous when authentication is optional.
+- Never log secrets, PII, or full request bodies. Redact tokens and identifiers in error reports.
+- Third-party integrations are opt-in for the user, not opt-out. No analytics that fingerprint, no third-party trackers, no surprise telemetry.
+- Prefer client-side processing when feasible. See also Run Lean.
+
+When privacy and another goal conflict, document the tradeoff in code or commit message, and default toward more private.
+
+### 1.8 Run Lean [4/5]
+
+Use as little server compute as possible.
+
+- Reads should hit static cached content, not backend compute. Cache aggressively at the edge.
+- Move work to the client where it's safe and doesn't hurt UX.
+- Avoid chatty round-trips. Prefer one thicker request over many small ones.
+- Don't add background jobs without a clear cost/value justification.
+- Pick libraries by bundle size and runtime cost, not just feature count.
+- Serverless writes are more expensive than reads. Design schemas accordingly.
+
+Compromises are fine when UX or correctness demands them. When you trade away resource efficiency, flag it in the commit message or a comment so we know what got compromised.
 
 ---
 
