@@ -103,19 +103,19 @@ Rules:
 
 Current top-level domains:
 
-| Domain | Scope |
-|---|---|
-| `os/` | Operating systems |
-| `hardware/` | Physical components |
-| `software/` | Applications and runtimes that don't fit elsewhere |
-| `data/` | Databases, queues, caches, storage formats |
-| `network/` | DNS, firewall, VPN, protocols, routing |
-| `security/` | Auth, encryption, hardening, secrets |
-| `cloud/` | Cloud providers and their services |
-| `devops/` | CI/CD, IaC, observability, orchestration |
-| `programming/` | Languages, frameworks, libraries, paradigms |
-| `tools/` | Developer tools that are not OS-bound |
-| `blog/` | Blog posts, organized as `blog/{handle}/{slug}` |
+| Domain         | Scope                                              |
+| -------------- | -------------------------------------------------- |
+| `os/`          | Operating systems                                  |
+| `hardware/`    | Physical components                                |
+| `software/`    | Applications and runtimes that don't fit elsewhere |
+| `data/`        | Databases, queues, caches, storage formats         |
+| `network/`     | DNS, firewall, VPN, protocols, routing             |
+| `security/`    | Auth, encryption, hardening, secrets               |
+| `cloud/`       | Cloud providers and their services                 |
+| `devops/`      | CI/CD, IaC, observability, orchestration           |
+| `programming/` | Languages, frameworks, libraries, paradigms        |
+| `tools/`       | Developer tools that are not OS-bound              |
+| `blog/`        | Blog posts, organized as `blog/{handle}/{slug}`    |
 
 These top-level domains are **reserved handle names**: no user or organization on docolin can claim a handle that collides with one of them. This is what lets URLs disambiguate kind paths from hard links (see [URLs](#urls) below).
 
@@ -226,12 +226,12 @@ How long the guide takes (reading plus doing). Shorthand: `15m`, `2h`, `30m-1h` 
 
 How current and reliable the content is.
 
-| Value | Meaning |
-|---|---|
-| `stable` | Content is current and verified. Default. |
-| `draft` | Work in progress, not ready for general readers. |
+| Value          | Meaning                                                      |
+| -------------- | ------------------------------------------------------------ |
+| `stable`       | Content is current and verified. Default.                    |
+| `draft`        | Work in progress, not ready for general readers.             |
 | `needs-update` | Known to be outdated for current versions, but still useful. |
-| `deprecated` | Superseded. Readers should be sent elsewhere. |
+| `deprecated`   | Superseded. Readers should be sent elsewhere.                |
 
 When `status: deprecated`, `superseded_by` is required.
 
