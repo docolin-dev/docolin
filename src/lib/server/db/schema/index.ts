@@ -8,4 +8,5 @@ export * from "./discussions";
 export * from "./moderation";
 export * from "./inbox";
 export * from "./media";
+export * from "./claims";
 export * from "./search-logs";
