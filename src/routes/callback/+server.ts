@@ -1,5 +1,6 @@
 import type { RequestHandler } from "./$types";
 import { authService, OAuthStateMismatchError, PKCECookieMissingError } from "$lib/server/auth";
+import { findUserByWorkosId } from "$lib/server/users";
 
 export const GET: RequestHandler = async ({ request, url }) => {
   const code = url.searchParams.get("code");
@@ -15,9 +16,16 @@ export const GET: RequestHandler = async ({ request, url }) => {
   try {
     const result = await authService.handleCallback(request, new Response(), { code, state });
 
+    // First-time visitors land on /onboarding so they pick a handle before
+    // anything else. Returning users go straight to wherever they came from.
+    const dbUser = await findUserByWorkosId(result.authResponse.user.id);
+    const location = dbUser
+      ? result.returnPathname
+      : `/onboarding?returnTo=${encodeURIComponent(result.returnPathname)}`;
+
     const response = new Response(null, {
       status: 302,
-      headers: { Location: result.returnPathname },
+      headers: { Location: location },
     });
 
     const setCookie = result.headers?.["Set-Cookie"] ?? result.headers?.["set-cookie"];

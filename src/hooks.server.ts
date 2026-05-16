@@ -1,6 +1,7 @@
 import type { Handle } from "@sveltejs/kit";
 import { sequence } from "@sveltejs/kit/hooks";
 import { authService } from "$lib/server/auth";
+import { findUserByWorkosId } from "$lib/server/users";
 import { paraglideMiddleware } from "$paraglide/server";
 
 // Paraglide reads the locale from the URL (default URL pattern: /de/* for DE,
@@ -18,6 +19,18 @@ const paraglideHandle: Handle = ({ event, resolve }) =>
 const authHandle: Handle = async ({ event, resolve }) => {
   const { auth, refreshedSessionData } = await authService.withAuth(event.request);
   event.locals.auth = auth;
+
+  // Resolve our own DB user/org on every authed request so every route can
+  // distinguish "WorkOS-authed only" from "fully onboarded" without its own
+  // DB query. One per-request select; cheap.
+  if (auth.user) {
+    const lookup = await findUserByWorkosId(auth.user.id);
+    event.locals.dbUser = lookup?.user ?? null;
+    event.locals.personalOrg = lookup?.personalOrg ?? null;
+  } else {
+    event.locals.dbUser = null;
+    event.locals.personalOrg = null;
+  }
 
   let response = await resolve(event);
 

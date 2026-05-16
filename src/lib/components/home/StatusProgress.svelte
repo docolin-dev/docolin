@@ -42,9 +42,11 @@
         href={localizeHref("/sponsor")}
         variant="outline"
         size="lg"
-        class="h-12 gap-2 px-5 text-base"
+        class="group/sponsor h-12 gap-2 px-5 text-base"
       >
-        <Heart class="size-4" />
+        <Heart
+          class="group-hover/sponsor:fill-primary group-hover/sponsor:text-primary size-4 transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover/sponsor:scale-125"
+        />
         {m.home_status_cta_sponsor()}
       </Button>
     </div>
