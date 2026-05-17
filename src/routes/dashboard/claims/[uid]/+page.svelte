@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { m } from "$paraglide/messages";
+  import { localizeHref } from "$paraglide/runtime";
   import { Button } from "$lib/components/ui/button";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
   import Copy from "@lucide/svelte/icons/copy";
@@ -120,7 +121,12 @@
   </div>
 
   <div class="mt-12">
-    <Button href="/dashboard" variant="ghost" size="lg" class="group h-11 gap-2 px-3 text-base">
+    <Button
+      href={localizeHref("/dashboard")}
+      variant="ghost"
+      size="lg"
+      class="group h-11 gap-2 px-3 text-base"
+    >
       <ArrowLeft class="size-4 transition-transform group-hover:-translate-x-0.5" />
       {m.dashboard_new_org_claim_filed_back()}
     </Button>

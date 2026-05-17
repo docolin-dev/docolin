@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import { m } from "$paraglide/messages";
+  import { localizeHref } from "$paraglide/runtime";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import HandlePicker from "$lib/components/HandlePicker.svelte";
@@ -204,7 +205,12 @@
             <ArrowRight class="size-4 transition-transform group-hover:translate-x-0.5" />
           {/if}
         </Button>
-        <Button href="/dashboard" variant="ghost" size="lg" class="h-11 px-5 text-base">
+        <Button
+          href={localizeHref("/dashboard")}
+          variant="ghost"
+          size="lg"
+          class="h-11 px-5 text-base"
+        >
           {m.dashboard_new_org_cancel()}
         </Button>
       </div>

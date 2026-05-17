@@ -1,5 +1,6 @@
 <script lang="ts">
   import { m } from "$paraglide/messages";
+  import { localizeHref } from "$paraglide/runtime";
   import { getLocale } from "$paraglide/runtime";
   import { Input } from "$lib/components/ui/input";
   import ArrowRight from "@lucide/svelte/icons/arrow-right";
@@ -90,7 +91,7 @@
       <div class="flex flex-col gap-4">
         {#each filtered as claim (claim.uid)}
           <a
-            href="/dashboard/admin/claims/{claim.uid}"
+            href={localizeHref(`/dashboard/admin/claims/${claim.uid}`)}
             class="bg-background border-foreground/15 hover:border-primary group flex flex-col gap-3 border p-5 transition-colors sm:p-6"
           >
             <!-- Row 1: slug + requester inline on the left, uid right.

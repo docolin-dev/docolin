@@ -3,6 +3,12 @@
 @import "shadcn-svelte/tailwind.css";
 @import "@fontsource-variable/geist";
 
+/* Smooth anchor navigation site-wide. Browsers auto-disable this under
+   prefers-reduced-motion, so no opt-out logic needed. */
+html {
+  scroll-behavior: smooth;
+}
+
 @custom-variant dark (&:is(.dark *));
 @plugin "@tailwindcss/forms";
 @plugin "@tailwindcss/typography";

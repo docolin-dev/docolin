@@ -1,10 +1,13 @@
 <script lang="ts">
   import { m } from "$paraglide/messages";
+  import { localizeHref } from "$paraglide/runtime";
   import { Button } from "$lib/components/ui/button";
+  import ArrowRight from "@lucide/svelte/icons/arrow-right";
   import Plus from "@lucide/svelte/icons/plus";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
+  const newProjectHref = $derived(localizeHref(`/dashboard/${data.org.slug}/projects/new`));
 
   function memberCountLabel(n: number): string {
     if (n === 1) return m.dashboard_org_meta_member_one();
@@ -44,6 +47,12 @@
       <h2 class="text-foreground text-xl font-semibold tracking-tight sm:text-2xl">
         {m.dashboard_org_projects_heading()}
       </h2>
+      {#if data.projects.length > 0}
+        <Button href={newProjectHref} size="sm" class="h-9 cursor-pointer gap-1.5 px-3">
+          <Plus class="size-4" />
+          {m.dashboard_org_projects_new()}
+        </Button>
+      {/if}
     </div>
 
     {#if data.projects.length === 0}
@@ -59,30 +68,44 @@
         <p class="text-muted-foreground mt-3 max-w-md leading-relaxed">
           {m.dashboard_org_projects_empty_body()}
         </p>
-        <Button disabled size="lg" class="mt-8 h-12 gap-2 px-5 text-base">
+        <Button
+          href={newProjectHref}
+          size="lg"
+          class="group mt-8 h-12 cursor-pointer gap-2 px-5 text-base"
+        >
           <Plus class="size-4" />
           {m.dashboard_org_projects_empty_action()}
         </Button>
-        <p class="text-muted-foreground/70 mt-3 font-mono text-xs">
-          {m.dashboard_org_projects_coming_next()}
-        </p>
       </div>
     {:else}
-      <div class="bg-border/60 grid grid-cols-1 gap-px sm:grid-cols-2 lg:grid-cols-3">
+      <!-- Project cards. Same hover language as org cards on /dashboard:
+           bordered, hover shifts border to primary, arrow slides primary. -->
+      <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {#each data.projects as project (project.id)}
           <a
-            href="/dashboard/{data.org.slug}/{project.slug}"
-            class="bg-background hover:bg-muted/30 flex flex-col gap-2 p-6 transition-colors"
+            href={localizeHref(`/dashboard/${data.org.slug}/${project.slug}`)}
+            class="bg-background border-foreground/15 hover:border-primary group flex flex-col border p-6 transition-colors"
           >
-            <span class="text-muted-foreground/80 truncate font-mono text-xs">{project.slug}</span>
+            <div class="mb-4 flex items-center justify-between gap-3">
+              <span class="text-muted-foreground truncate font-mono text-sm">
+                {project.slug}
+              </span>
+              <span
+                class="text-muted-foreground border-border inline-block shrink-0 border px-2 py-0.5 font-mono text-xs tracking-tight uppercase"
+              >
+                {project.sourceMode === "git"
+                  ? m.dashboard_org_project_source_git()
+                  : m.dashboard_org_project_source_native()}
+              </span>
+            </div>
             <h3 class="text-foreground text-lg font-medium tracking-tight">
               {project.displayName ?? project.slug}
             </h3>
-            <p class="text-muted-foreground/80 mt-1 font-mono text-[10px] tracking-tight">
-              {project.sourceMode === "git"
-                ? m.dashboard_org_project_source_git()
-                : m.dashboard_org_project_source_native()}
-            </p>
+            <div class="mt-auto flex items-center justify-end pt-6">
+              <ArrowRight
+                class="text-muted-foreground/50 group-hover:text-primary size-4 transition-all group-hover:translate-x-0.5"
+              />
+            </div>
           </a>
         {/each}
       </div>

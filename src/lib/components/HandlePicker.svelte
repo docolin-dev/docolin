@@ -70,7 +70,11 @@
 
   async function runCheck(input: string, controller: AbortController): Promise<void> {
     try {
-      const res = await fetch(`${checkUrl}?h=${encodeURIComponent(input)}`, {
+      // checkUrl may already carry query params (e.g. ?org=...) so pick the
+      // right separator before appending the handle param. Without this we'd
+      // emit `?org=foo?h=bar` and the server's h param ends up empty.
+      const sep = checkUrl.includes("?") ? "&" : "?";
+      const res = await fetch(`${checkUrl}${sep}h=${encodeURIComponent(input)}`, {
         signal: controller.signal,
       });
       if (!controller.signal.aborted && res.ok) {

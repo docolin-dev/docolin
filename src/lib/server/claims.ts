@@ -130,7 +130,7 @@ Reference: \`${claim.uid}\``,
               preview: `Another claimant was verified for this slug. You can pick a different one or appeal.`,
               bodyMarkdown: `Another claimant was verified for this slug first, which automatically cancels your claim.
 
-:::callout-info
+:::info
 Multiple users had pending claims for the same brand. We verified the other claimant first.
 :::
 
@@ -205,7 +205,7 @@ export async function cancelClaim({
       preview: `Reviewed and declined. Check the reason and recourse options.`,
       bodyMarkdown: `The review concluded with a decline.
 
-:::callout-warning
+:::warning
 **Reason from review**
 
 ${notes}

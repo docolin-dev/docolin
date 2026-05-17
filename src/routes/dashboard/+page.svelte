@@ -1,5 +1,6 @@
 <script lang="ts">
   import { m } from "$paraglide/messages";
+  import { localizeHref } from "$paraglide/runtime";
   import { Button } from "$lib/components/ui/button";
   import ArrowRight from "@lucide/svelte/icons/arrow-right";
   import Plus from "@lucide/svelte/icons/plus";
@@ -58,7 +59,7 @@
         {#if personalOrg}
           <div class="mt-6">
             <Button
-              href="/dashboard/{personalOrg.slug}"
+              href={localizeHref(`/dashboard/${personalOrg.slug}`)}
               size="lg"
               class="group h-11 gap-2 px-5 text-base"
             >
@@ -83,7 +84,7 @@
   <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
     {#each data.orgs as org (org.id)}
       <a
-        href="/dashboard/{org.slug}"
+        href={localizeHref(`/dashboard/${org.slug}`)}
         class="bg-background border-foreground/15 hover:border-primary group flex flex-col border p-6 transition-colors sm:p-7"
       >
         <div class="mb-4 flex items-center justify-between gap-3">
@@ -112,7 +113,7 @@
          differentiates "create" from "open." Hover matches the existing
          cards' border shift to keep one hover language across the grid. -->
     <a
-      href="/dashboard/orgs/new"
+      href={localizeHref("/dashboard/orgs/new")}
       class="bg-background border-foreground/30 hover:border-primary group flex flex-col items-center justify-center gap-3 border-2 border-dashed p-6 text-center transition-colors sm:p-7"
     >
       <span
@@ -143,7 +144,7 @@
       <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
         {#each data.pendingClaims as claim (claim.uid)}
           <a
-            href="/dashboard/claims/{claim.uid}"
+            href={localizeHref(`/dashboard/claims/${claim.uid}`)}
             class="bg-background border-foreground/15 hover:border-primary group flex flex-col border p-6 transition-colors sm:p-7"
           >
             <div class="mb-4 flex items-center justify-between gap-3">

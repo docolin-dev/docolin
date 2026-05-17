@@ -5,6 +5,7 @@ import { db } from "$lib/server/db";
 import { users } from "$lib/server/db/schema";
 import { checkHandleAvailability } from "$lib/reserved-handles";
 import { provisionUser } from "$lib/server/onboarding";
+import { localizeHref } from "$paraglide/runtime";
 
 const MAX_DISPLAY_NAME = 64;
 
@@ -43,10 +44,10 @@ function deriveDisplayName(
 
 export const load: PageServerLoad = ({ locals, url }) => {
   if (!locals.auth.user) {
-    redirect(302, `/signin?returnTo=/onboarding${url.search}`);
+    redirect(302, localizeHref(`/signin?returnTo=/onboarding${url.search}`));
   }
   if (locals.dbUser) {
-    redirect(302, url.searchParams.get("returnTo") ?? "/");
+    redirect(302, url.searchParams.get("returnTo") ?? localizeHref("/"));
   }
   return {
     suggestedHandle: deriveHandleFromEmail(locals.auth.user.email),
@@ -74,7 +75,7 @@ export const actions = {
     }
     if (locals.dbUser) {
       // Already onboarded; just bounce them to where they wanted to go.
-      redirect(303, url.searchParams.get("returnTo") ?? "/");
+      redirect(303, url.searchParams.get("returnTo") ?? localizeHref("/"));
     }
 
     const shapeCheck = checkHandleAvailability(handle);
@@ -109,6 +110,6 @@ export const actions = {
       return fail(500, { error: "provision_failed", handle, displayName: displayNameRaw });
     }
 
-    redirect(303, url.searchParams.get("returnTo") ?? "/dashboard");
+    redirect(303, url.searchParams.get("returnTo") ?? localizeHref("/dashboard"));
   },
 } satisfies Actions;

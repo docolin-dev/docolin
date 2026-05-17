@@ -1,7 +1,7 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import { m } from "$paraglide/messages";
-  import { getLocale } from "$paraglide/runtime";
+  import { getLocale, localizeHref } from "$paraglide/runtime";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import { ScrollArea } from "$lib/components/ui/scroll-area";
@@ -130,7 +130,10 @@
               ? "bg-primary/10 border-primary/40 hover:border-primary group/row flex items-center gap-3 border p-3 transition-colors sm:p-4"
               : "bg-background border-foreground/15 hover:border-primary group/row flex items-center gap-3 border p-3 transition-colors sm:p-4"}
           >
-            <a href="/dashboard/inbox/{msg.id}" class="flex min-w-0 flex-1 items-start gap-3">
+            <a
+              href={localizeHref(`/dashboard/inbox/${msg.id}`)}
+              class="flex min-w-0 flex-1 items-start gap-3"
+            >
               <Icon
                 class={isUnread
                   ? "text-primary mt-0.5 size-4 shrink-0"

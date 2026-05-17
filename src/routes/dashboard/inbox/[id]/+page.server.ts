@@ -4,6 +4,7 @@ import type { Actions, PageServerLoad } from "./$types";
 import { db } from "$lib/server/db";
 import { inboxMessages } from "$lib/server/db/schema";
 import { renderMarkdown } from "$lib/server/markdown";
+import { localizeHref } from "$paraglide/runtime";
 
 // Detail view of a single inbox message. Auto-marks read on load (opening
 // the page counts as reading). Mark-done / move-back-to-inbox are explicit
@@ -46,7 +47,7 @@ export const load: PageServerLoad = async ({ locals, params, setHeaders }) => {
       id: row.id,
       kind: row.kind,
       subject: row.subject,
-      bodyHtml: renderMarkdown(row.bodyMarkdown),
+      bodyHtml: await renderMarkdown(row.bodyMarkdown),
       linkUrl: row.linkUrl,
       doneAt: row.doneAt?.toISOString() ?? null,
       createdAt: row.createdAt.toISOString(),
@@ -61,7 +62,7 @@ export const actions = {
       .update(inboxMessages)
       .set({ doneAt: new Date() })
       .where(and(eq(inboxMessages.id, params.id), eq(inboxMessages.userId, locals.dbUser.id)));
-    redirect(303, "/dashboard/inbox");
+    redirect(303, localizeHref("/dashboard/inbox"));
   },
 
   markUndone: async ({ locals, params }) => {
@@ -70,6 +71,6 @@ export const actions = {
       .update(inboxMessages)
       .set({ doneAt: null })
       .where(and(eq(inboxMessages.id, params.id), eq(inboxMessages.userId, locals.dbUser.id)));
-    redirect(303, "/dashboard/inbox/done");
+    redirect(303, localizeHref("/dashboard/inbox/done"));
   },
 } satisfies Actions;

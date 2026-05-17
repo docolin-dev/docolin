@@ -15,8 +15,13 @@ export const gitSources = pgTable(
     provider: text("provider").notNull().$type<"github" | "gitlab" | "gitea">(),
     repoUrl: text("repo_url").notNull(),
     defaultBranch: text("default_branch").notNull().default("main"),
+    // Optional subdirectory inside the repo where docs live (e.g. "docs/").
+    // Null = repo root. Surfaced as a form field on project create.
+    subpath: text("subpath"),
     // Stored hashed; raw secret never round-trips through the database.
-    webhookSecretHash: text("webhook_secret_hash").notNull(),
+    // Nullable: projects without a configured webhook rely on polling only.
+    // The webhook is an optional power-user opt-in for instant updates on top.
+    webhookSecretHash: text("webhook_secret_hash"),
     lastSyncedCommit: text("last_synced_commit"),
     lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
     syncStatus: text("sync_status").notNull().default("idle").$type<"idle" | "syncing" | "error">(),

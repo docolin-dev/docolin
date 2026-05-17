@@ -34,6 +34,7 @@ Stack & conventions:
 - **Analytics:** None.
 - **Punctuation:** Never use em dashes (—) or double hyphens (--). Use commas, periods, or restructure the sentence instead.
 - **Linting:** Never trust inline IDE diagnostics/squiggles. Always verify by running `bun run check`, which runs Prettier, ESLint, and svelte-check.
+- **Test runner:** `bun test` (built-in, no extra dependency). Co-locate `*.test.ts` files next to the source they cover.
 - **Formatting:** Run `bun run format` to auto-format all files before committing.
 - **Commits:** Always use [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix: ...`, `chore: ...`, `docs: ...`), matching the existing git history.
 
@@ -278,6 +279,27 @@ Use the frontend framework's standard practices. Some specifics:
 
 - Follow whatever patterns are already established in the codebase
 - Don't introduce a new pattern when an equivalent one already exists
+
+### 2.7 Testing (default: the project's existing test runner) [3/5]
+
+If the project has a test runner set up, use it. Follow its conventions for file location, naming, and assertion style.
+
+**If no test runner exists:** ask before adding one. Don't introduce a testing framework as a side effect of writing one test.
+
+**What to test:**
+
+- Important behavior that's easy to test: parsers, format converters, validators, pure data transforms.
+- Non-obvious edge cases (off-by-one, boundary conditions, error paths).
+- Contracts consumers rely on (public API shapes, file formats, schemas).
+
+**What NOT to test:**
+
+- Trivial getters/setters and pass-through wrappers.
+- Framework or library code (don't test that the framework works).
+- Implementation details that would change with normal refactors.
+- The same thing in five places.
+
+Each test exists for a specific reason. Quality over quantity: a few sharp tests beat a hundred shallow ones. Coverage is not the goal; confidence in the parts that need it is.
 
 ---
 

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { fail, redirect } from "@sveltejs/kit";
+import { localizeHref } from "$paraglide/runtime";
 import { eq } from "drizzle-orm";
 import type { Actions, PageServerLoad } from "./$types";
 import { db } from "$lib/server/db";
@@ -63,7 +64,7 @@ export const actions = {
             details: claimDetails,
           })
           .returning();
-        redirect(303, `/dashboard/claims/${inserted.uid}`);
+        redirect(303, localizeHref(`/dashboard/claims/${inserted.uid}`));
       } catch (err) {
         // Re-throw redirect; only DB errors land here.
         if (err && typeof err === "object" && "status" in err && "location" in err) {
@@ -105,6 +106,6 @@ export const actions = {
       return fail(500, { error: "provision_failed", handle: slug, displayName: displayNameRaw });
     }
 
-    redirect(303, `/dashboard/${slug}`);
+    redirect(303, localizeHref(`/dashboard/${slug}`));
   },
 } satisfies Actions;

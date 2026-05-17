@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import { m } from "$paraglide/messages";
+  import { localizeHref } from "$paraglide/runtime";
   import { getLocale } from "$paraglide/runtime";
   import { Button } from "$lib/components/ui/button";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
@@ -224,7 +225,7 @@
 
   <div class="mt-16">
     <Button
-      href="/dashboard/admin/claims"
+      href={localizeHref("/dashboard/admin/claims")}
       variant="ghost"
       size="lg"
       class="group h-11 gap-2 px-3 text-base"

@@ -1,0 +1,4 @@
+# Scope `bun test` to the project's own src/ tree so vendored repos under
+# tmp/ (lix and friends) don't get pulled into the test run.
+[test]
+root = "./src"

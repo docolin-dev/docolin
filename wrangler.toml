@@ -1,0 +1,17 @@
+# Cloudflare config for the docolin app. Used by adapter-cloudflare during
+# `vite dev` (via getPlatformProxy) and by `wrangler pages deploy` for
+# deployment. Bindings declared here surface as `event.platform.env.*`
+# in SvelteKit server code.
+
+name = "docolin"
+compatibility_date = "2026-05-17"
+pages_build_output_dir = ".svelte-kit/cloudflare"
+
+# Media bucket: sync engine archives doco images here (<=50MB each), served
+# publicly via media.docolin.com (prod) or media-dev.docolin.com (dev).
+# bucket_name applies to production deployments; preview_bucket_name applies
+# to local `vite dev` and preview branch deploys.
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "docolin-media"
+preview_bucket_name = "docolin-media-dev"

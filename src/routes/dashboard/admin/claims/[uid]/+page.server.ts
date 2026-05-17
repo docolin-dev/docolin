@@ -1,5 +1,6 @@
 import { error, fail, redirect } from "@sveltejs/kit";
 import { and, eq, ne } from "drizzle-orm";
+import { localizeHref } from "$paraglide/runtime";
 import type { Actions, PageServerLoad } from "./$types";
 import { db } from "$lib/server/db";
 import { claimRequests, users } from "$lib/server/db/schema";
@@ -78,7 +79,7 @@ export const actions = {
       notes,
     });
     if (!result.ok) return fail(400, { error: result.reason });
-    redirect(303, "/dashboard/admin/claims");
+    redirect(303, localizeHref("/dashboard/admin/claims"));
   },
 
   cancel: async ({ params, request, locals }) => {
@@ -94,6 +95,6 @@ export const actions = {
       notes,
     });
     if (!result.ok) return fail(400, { error: result.reason });
-    redirect(303, "/dashboard/admin/claims");
+    redirect(303, localizeHref("/dashboard/admin/claims"));
   },
 } satisfies Actions;

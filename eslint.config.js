@@ -85,6 +85,10 @@ export default ts.config(
       "src/paraglide/",
       "tmp/",
       "scripts/",
+      // Standalone workers (cron, etc.) have their own runtime context
+      // (CF Workers globals like ScheduledEvent) and don't share the main
+      // app's tsconfig project. Deployed via `wrangler deploy` separately.
+      "workers/",
     ],
   },
 );

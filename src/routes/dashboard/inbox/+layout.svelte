@@ -2,6 +2,7 @@
   import type { Snippet } from "svelte";
   import { page } from "$app/state";
   import { m } from "$paraglide/messages";
+  import { localizeHref } from "$paraglide/runtime";
   import Inbox from "@lucide/svelte/icons/inbox";
   import CheckCheck from "@lucide/svelte/icons/check-check";
 
@@ -18,7 +19,7 @@
   <aside class="shrink-0 sm:w-44">
     <nav class="flex flex-row gap-1 sm:flex-col">
       <a
-        href="/dashboard/inbox"
+        href={localizeHref("/dashboard/inbox")}
         class={isInbox
           ? "bg-muted text-foreground flex items-center gap-2 px-3 py-2 text-sm font-medium"
           : "text-muted-foreground hover:text-foreground hover:bg-muted/50 flex items-center gap-2 px-3 py-2 text-sm transition-colors"}
@@ -30,7 +31,7 @@
         {/if}
       </a>
       <a
-        href="/dashboard/inbox/done"
+        href={localizeHref("/dashboard/inbox/done")}
         class={isDone
           ? "bg-muted text-foreground flex items-center gap-2 px-3 py-2 text-sm font-medium"
           : "text-muted-foreground hover:text-foreground hover:bg-muted/50 flex items-center gap-2 px-3 py-2 text-sm transition-colors"}

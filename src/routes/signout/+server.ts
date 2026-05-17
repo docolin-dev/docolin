@@ -1,10 +1,11 @@
 import { redirect } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { authService } from "$lib/server/auth";
+import { localizeHref } from "$paraglide/runtime";
 
 export const GET: RequestHandler = async ({ locals, url }) => {
   if (!locals.auth.user) {
-    redirect(302, "/");
+    redirect(302, localizeHref("/"));
   }
 
   const returnTo = new URL("/", url.origin).toString();

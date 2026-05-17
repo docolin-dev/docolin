@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { m } from "$paraglide/messages";
+  import { localizeHref } from "$paraglide/runtime";
   import { Button } from "$lib/components/ui/button";
   import Bell from "@lucide/svelte/icons/bell";
 
@@ -12,7 +13,7 @@
 
 {#if page.data.dbUser}
   <Button
-    href="/dashboard/inbox"
+    href={localizeHref("/dashboard/inbox")}
     variant="ghost"
     size="sm"
     class="relative h-9 w-9 p-0"

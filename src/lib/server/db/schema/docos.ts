@@ -33,6 +33,11 @@ export const docos = pgTable(
     }),
     pathInSource: text("path_in_source"),
     latestPublishedVersionId: uuid("latest_published_version_id"),
+    // Set when a synced file is removed from the source repo. Version rows
+    // stay; the renderer surfaces this as a "removed from source" badge but
+    // the doco URL still resolves. Cleared when the file reappears at the
+    // same path in a later commit (un-delete).
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
@@ -42,6 +47,11 @@ export const docos = pgTable(
     uniqueIndex("docos_git_source_path_unique")
       .on(t.gitSourceId, t.pathInSource)
       .where(sql`${t.gitSourceId} IS NOT NULL AND ${t.pathInSource} IS NOT NULL`),
+    // Partial index: live docos are the hot path. Deleted docos are rare and
+    // skipped on most queries.
+    index("docos_deleted_at_idx")
+      .on(t.deletedAt)
+      .where(sql`${t.deletedAt} IS NOT NULL`),
   ],
 );
 
@@ -56,8 +66,15 @@ export const versions = pgTable(
       .notNull()
       .references(() => docos.id, { onDelete: "cascade" }),
     versionNumber: integer("version_number").notNull(),
-
-    // Frontmatter, hoisted to columns.
+    // Full git commit SHA the content was synced from. Stored as the source
+    // of truth for "which revision is this?", displayed as a short prefix
+    // when no tag is present. Nullable for pre-existing rows; new versions
+    // written by the sync layer always carry it.
+    commitSha: text("commit_sha"),
+    // Git tag pointing at commitSha, if any (preferred display). The first
+    // matching tag from /repos/{owner}/{repo}/tags wins when several point
+    // at the same commit.
+    versionTag: text("version_tag"),
     kind: ltree("kind").notNull(),
     type: text("type").notNull().$type<"tutorial" | "how-to" | "reference" | "explanation">(),
     title: text("title").notNull(),
@@ -71,17 +88,30 @@ export const versions = pgTable(
       .default("stable")
       .$type<"draft" | "stable" | "needs-update" | "deprecated">(),
     language: text("language").notNull().default("en"),
-    difficulty: text("difficulty").$type<"beginner" | "intermediate" | "advanced">(),
+    difficulty: text("difficulty").$type<"beginner" | "intermediate" | "advanced" | "expert">(),
+    timeEstimateMinMinutes: integer("time_estimate_min_minutes"),
+    timeEstimateMaxMinutes: integer("time_estimate_max_minutes"),
     aliases: text("aliases")
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
     prevLink: text("prev_link"),
     nextLink: text("next_link"),
+    supersededBy: text("superseded_by"),
     references: text("references")
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
+    // Author attribution list. Each entry is either { userId: uuid } for docolin
+    // users (handle resolved at parse time) or { name, username?, url? } for external
+    // attribution. See docs/frontmatter-format.md `authors` field.
+    authors: jsonb("authors")
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    // Resolved sitemap for this version: either the per-doco override from
+    // frontmatter, or the project-wide docolin/sitemap.yaml at sync time.
+    // Recursive { title, url?, children? } shape with url xor children per entry.
+    sitemap: jsonb("sitemap"),
     frontmatterExtra: jsonb("frontmatter_extra")
       .notNull()
       .default(sql`'{}'::jsonb`),
@@ -109,6 +139,7 @@ export const versions = pgTable(
   },
   (t) => [
     uniqueIndex("versions_doco_version_unique").on(t.docoId, t.versionNumber),
+    index("versions_commit_sha_idx").on(t.commitSha),
     index("versions_doco_idx").on(t.docoId),
     index("versions_kind_gist").using("gist", t.kind),
     index("versions_status_idx").on(t.status),
@@ -125,11 +156,15 @@ export const versions = pgTable(
     ),
     check(
       "versions_difficulty_check",
-      sql`${t.difficulty} IS NULL OR ${t.difficulty} IN ('beginner', 'intermediate', 'advanced')`,
+      sql`${t.difficulty} IS NULL OR ${t.difficulty} IN ('beginner', 'intermediate', 'advanced', 'expert')`,
     ),
     check(
       "versions_body_format_check",
       sql`${t.bodyFormat} IN ('commonmark', 'asciidoc', 'rst', 'mdx')`,
+    ),
+    check(
+      "versions_time_estimate_range_check",
+      sql`${t.timeEstimateMinMinutes} IS NULL OR ${t.timeEstimateMaxMinutes} IS NULL OR ${t.timeEstimateMaxMinutes} >= ${t.timeEstimateMinMinutes}`,
     ),
   ],
 );
@@ -154,7 +189,15 @@ export const latestVersions = pgMaterializedView("latest_versions", {
   status: text("status").notNull(),
   language: text("language").notNull(),
   difficulty: text("difficulty"),
+  timeEstimateMinMinutes: integer("time_estimate_min_minutes"),
+  timeEstimateMaxMinutes: integer("time_estimate_max_minutes"),
   aliases: text("aliases").array().notNull(),
+  prevLink: text("prev_link"),
+  nextLink: text("next_link"),
+  supersededBy: text("superseded_by"),
+  references: text("references").array().notNull(),
+  authors: jsonb("authors").notNull(),
+  sitemap: jsonb("sitemap"),
   bodyText: text("body_text").notNull(),
   bodyFormat: text("body_format").notNull(),
   upVotesCache: integer("up_votes_cache").notNull(),
@@ -175,7 +218,15 @@ export const latestVersions = pgMaterializedView("latest_versions", {
       v.status,
       v.language,
       v.difficulty,
+      v.time_estimate_min_minutes,
+      v.time_estimate_max_minutes,
       v.aliases,
+      v.prev_link,
+      v.next_link,
+      v.superseded_by,
+      v.references,
+      v.authors,
+      v.sitemap,
       v.body_text,
       v.body_format,
       v.up_votes_cache,

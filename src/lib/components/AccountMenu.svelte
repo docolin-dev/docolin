@@ -43,7 +43,7 @@
       {#if dbUser.isPlatformAdmin}
         <DropdownMenu.Item>
           {#snippet child({ props })}
-            <a href="/dashboard/admin/claims" {...props}>
+            <a href={localizeHref("/dashboard/admin/claims")} {...props}>
               {m.nav_admin()}
             </a>
           {/snippet}
@@ -52,7 +52,7 @@
       <DropdownMenu.Separator />
       <DropdownMenu.Item>
         {#snippet child({ props })}
-          <a href="/signout" {...props}>
+          <a href={localizeHref("/signout")} {...props}>
             {m.nav_sign_out()}
           </a>
         {/snippet}
