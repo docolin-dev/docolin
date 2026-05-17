@@ -1,0 +1,11 @@
+# docolin's own docs sidebar. Synced alongside docs/ when the docolin-dev/docolin
+# project pulls from this repo. Same shape as the per-doco `sitemap` frontmatter:
+# recursive { title, url?, children? } with url xor children per entry.
+
+sitemap:
+  - title: Reference
+    children:
+      - title: Frontmatter format
+        url: /docolin/docolin/frontmatter-format
+      - title: Moderation policy
+        url: /docolin/docolin/moderation-policy

@@ -49,6 +49,10 @@ docolin:
 
 Migrating from another platform (Jekyll, Hugo, Astro, etc.)? Your existing top-level fields stay where they are. You only need to add a `docolin:` block.
 
+:::tip
+docolin is additive on top of whatever frontmatter you already use. You don't have to flatten or rename anything, just add the `docolin:` namespace alongside.
+:::
+
 ## Universal fields
 
 ### `title` (required)
@@ -65,17 +69,24 @@ Original publication date in `YYYY-MM-DD` form. Defaults to the file's first git
 
 ### `authors` (required)
 
-List of contributors. Each entry is either:
+List of contributors. Each entry is one of two shapes:
 
-- `{ id: <docolin-user> }` for contributors with a docolin account, or
-- `{ name: <string>, url: <optional-string> }` for external contributors.
+- `{ handle: <docolin-handle> }` for contributors with a docolin account
+- `{ name: <string>, username?: <string>, url?: <string> }` for external contributors
 
 ```yaml
 authors:
-  - id: someuser
+  - handle: someuser
   - name: Alice Contributor
-    url: https://alicecontributor.com
+    username: alice
+    url: https://github.com/alice
 ```
+
+Each entry must have exactly one of `handle` or `name`.
+
+docolin resolves `handle` entries to the user's internal account id at parse time. Handles don't normally change, but storing the id means credit stays pinned to the right person if a handle is ever administratively migrated. External entries are stored exactly as written; docolin does not auto-match them to docolin accounts.
+
+Authors are written by hand, not extracted from git commit metadata. Source repos that want updated credit edit the frontmatter directly.
 
 Attribution flows through to AI citations. When an MCP-grounded answer cites your guide, the listed authors get credit.
 
@@ -117,7 +128,9 @@ Current top-level domains:
 | `tools/`       | Developer tools that are not OS-bound              |
 | `blog/`        | Blog posts, organized as `blog/{handle}/{slug}`    |
 
-These top-level domains are **reserved handle names**: no user or organization on docolin can claim a handle that collides with one of them. This is what lets URLs disambiguate kind paths from hard links (see [URLs](#urls) below).
+:::warning
+The top-level domains above are **reserved handle names**. No user or organization on docolin can claim a handle that collides with one of them. This is what lets URLs disambiguate kind paths from hard links (see [URLs](#urls) below).
+:::
 
 Soft links in the body resolve against this field. If a guide writes `{{kind: network/firewall/setup}}`, the resolver picks the best-matching guide with that kind for the reader's setup.
 
@@ -200,7 +213,9 @@ Each entry is a fact, not a filter. The platform interprets these facts dependin
 - **Browse pages**: rendered as informational labels next to the guide.
 - **Explicit reader filters**: when a reader actively filters the UI ("only show Postgres 14+ guides"), `applies_to` is the field that filter reads.
 
-A guide is **never hidden automatically** based on `applies_to`. It only disappears when the reader explicitly filters it out.
+:::info
+A guide is **never hidden automatically** based on `applies_to`. It only disappears when the reader explicitly filters it out. So overly-specific `applies_to` lists cost you reach, not visibility.
+:::
 
 What strings are valid depends on the kind subtree. The kinds registry defines the vocabulary for each domain (`postgres`, `python`, `ubuntu`, `systemd`, `wayland`, etc.).
 
@@ -220,7 +235,9 @@ Subjective, but useful as a binary "is this for me right now?" signal, especiall
 
 ### `time_estimate` (optional)
 
-How long the guide takes (reading plus doing). Shorthand: `15m`, `2h`, `30m-1h` for a range. Author-provided, not derived from word count, since "doing time" depends on the task.
+How long the guide takes (reading plus doing). Shorthand: `15m`, `2h`, `1h30m` for single values; `30m-1h` for a range. Author-provided, not derived from word count, since "doing time" depends on the task.
+
+Internally the value is parsed and stored as a minutes range (min and max). A single value sets `min == max`. The original author-written form is preserved for display.
 
 ### `status` (required, defaults to `stable`)
 
@@ -233,17 +250,37 @@ How current and reliable the content is.
 | `needs-update` | Known to be outdated for current versions, but still useful. |
 | `deprecated`   | Superseded. Readers should be sent elsewhere.                |
 
-When `status: deprecated`, `superseded_by` is required.
+:::danger
+When `status: deprecated`, `superseded_by` is required. The validator rejects the file otherwise, so deprecated guides always have a forward-pointer for readers and AI citations.
+:::
 
 The platform weights status when ranking and when citing through MCP. A `needs-update` guide ranks lower than a `stable` guide on the same topic.
 
 ### `superseded_by` (required when `status: deprecated`)
 
-A `kind` reference to the guide that replaces this one. The platform redirects readers and updates citations.
+A link to the guide that replaces this one. The platform shows readers a "superseded by" pointer and updates citations.
+
+Accepts any link form: soft URL (by kind), hard URL (by org/project), relative path, or external URL. The platform disambiguates soft from hard by whether the first segment is a reserved top-level kind domain.
 
 ```yaml
+# Soft URL by kind (resolves to the best match for the reader):
 status: deprecated
-superseded_by: data/postgres/replication/setup
+superseded_by: /data/postgres/replication/setup
+```
+
+```yaml
+# Hard URL to a specific guide in another project:
+superseded_by: /someorg/postgres-docs/replication/setup
+```
+
+```yaml
+# Relative path within the same project:
+superseded_by: ./replication-v2.md
+```
+
+```yaml
+# External URL when the successor lives outside docolin:
+superseded_by: https://wiki.postgresql.org/wiki/Streaming_Replication
 ```
 
 ### `aliases` (optional)
@@ -278,11 +315,9 @@ Order matters by convention: list the most authoritative source first. A referen
 
 ### `prev` and `next` (optional)
 
-Hard links to other guides, rendered at the bottom of the page. Useful for multi-part series, learning paths, or just nudging readers toward the next thing.
+Links to other guides, rendered at the bottom of the page. Useful for multi-part series, learning paths, or just nudging readers toward the next thing.
 
-These are hard links, not kind references: they always point at the same specific guide, regardless of the reader's setup.
-
-Two ways to write them:
+Accepts any link form. docolin does not enforce hard or soft: pick whatever points where you want readers to land.
 
 ```yaml
 # Relative file path in the same project (most common):
@@ -291,9 +326,44 @@ next: ./failover.md
 ```
 
 ```yaml
-# Full hard reference across projects:
+# Hard URL across projects:
 next: /cloudflare/cloudflare-docs/replication/failover
 ```
+
+```yaml
+# Soft URL by kind (resolves to the best match for the reader):
+next: /data/postgres/replication/failover
+```
+
+### `sitemap` (optional)
+
+Per-doco override of the project's global sitemap. When present, this doco renders with the declared sitemap instead of `docolin/sitemap.yaml`. See [Project-level configuration](#project-level-configuration) for the global form.
+
+Entries are recursive groups or links. Each entry has a `title`, plus **either** a `url` (making it a link) **or** `children` (making it a group). Never both.
+
+```yaml
+docolin:
+  # ...
+  sitemap:
+    - title: Setup
+      children:
+        - title: Install
+          url: ./install.md
+        - title: Configure
+          url: ./configure.md
+    - title: Reference
+      children:
+        - title: CLI options
+          url: ./cli-reference.md
+        - title: Module parameters
+          url: /hardware/gpu/nvidia/driver-reference
+    - title: Options
+      url: ./options.md
+```
+
+`url` accepts any link form: relative path, hard URL on docolin, soft URL by kind, or external URL. `title` is always required.
+
+Use this when the doco needs different navigation than the rest of the project. For typical cases, define the sitemap once at the project level instead.
 
 ## Worked examples
 
@@ -305,7 +375,7 @@ title: Set up Postgres streaming replication
 description: Configure a primary and a hot-standby Postgres node for read scaling and failover with zero downtime.
 date: 2026-05-12
 authors:
-  - id: someuser
+  - handle: someuser
 
 docolin:
   schema_version: 1
@@ -340,7 +410,7 @@ title: Why we picked Cloudflare R2 over S3
 description: Our reasoning, the costs, and what we'd do differently.
 date: 2026-04-02
 authors:
-  - id: someuser
+  - handle: someuser
 
 docolin:
   schema_version: 1
@@ -367,7 +437,7 @@ title: NVIDIA proprietary driver: kernel module reference
 description: Module parameters, log locations, and runtime tunables for the NVIDIA proprietary driver.
 date: 2026-03-18
 authors:
-  - id: someuser
+  - handle: someuser
 
 docolin:
   schema_version: 1
@@ -456,7 +526,7 @@ title: NVIDIA driver install
 description: Install the proprietary Nvidia driver.
 date: 2026-05-12
 authors:
-  - id: someuser
+  - handle: someuser
 
 docolin:
   schema_version: 1
@@ -487,6 +557,34 @@ A guide is valid when:
 - `prev` and `next` resolve to existing guides (by file path within the project or by full hard reference).
 
 The validator runs at publish time. Invalid guides are rejected with a specific message about what failed.
+
+## The global sitemap file
+
+The sidebar navigation rendered alongside every doco in a project lives in `docolin/sitemap.yaml` at the **repo root**, alongside files like `README.md` and `package.json`. It sits at the root regardless of where your docs subpath is, since `docolin/` is project-level config rather than docs-level content. One project, one file.
+
+Same shape as the per-doco `sitemap` field: recursive `{title, url?, children?}` groups, with `url` and `children` mutually exclusive per entry.
+
+```yaml
+sitemap:
+  - title: Getting started
+    children:
+      - title: Install
+        url: ./install.md
+      - title: First project
+        url: ./first-project.md
+  - title: Guides
+    children:
+      - title: Authentication
+        url: ./auth.md
+      - title: Deployment
+        url: ./deploy.md
+  - title: Reference
+    url: ./reference.md
+```
+
+Any doco can override this for itself by setting its own `sitemap` in frontmatter.
+
+**An empty file is meaningful.** An empty `docolin/sitemap.yaml` (or one with `sitemap: []`) explicitly opts the project out of having any sidebar. A missing file is different: docolin may later fall back to auto-detecting a sidebar from common documentation platforms (Docusaurus, MkDocs, VitePress, etc.) when that feature lands. Until then, missing and empty both render with no sidebar.
 
 ## What's intentionally not here
 
