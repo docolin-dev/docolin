@@ -35,6 +35,7 @@ export const load: PageServerLoad = async ({ locals }) => {
     .select({
       uid: claimRequests.uid,
       slug: claimRequests.requestedSlug,
+      displayName: claimRequests.requestedDisplayName,
       createdAt: claimRequests.createdAt,
     })
     .from(claimRequests)
@@ -52,6 +53,7 @@ export const load: PageServerLoad = async ({ locals }) => {
     pendingClaims: pendingClaims.map((c) => ({
       uid: c.uid,
       slug: c.slug,
+      displayName: c.displayName,
       createdAt: c.createdAt.toISOString(),
     })),
   };

@@ -2,6 +2,7 @@
   import { page } from "$app/state";
   import { localizeHref } from "$paraglide/runtime";
   import AccountMenu from "$lib/components/AccountMenu.svelte";
+  import InboxBell from "$lib/components/InboxBell.svelte";
   import LanguageSwitcher from "$lib/components/LanguageSwitcher.svelte";
 
   // Breadcrumb-style top bar for /dashboard/* routes. Different chrome from
@@ -82,6 +83,7 @@
       <div class="hidden sm:block">
         <LanguageSwitcher />
       </div>
+      <InboxBell />
       <AccountMenu />
     </div>
   </nav>

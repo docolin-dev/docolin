@@ -23,6 +23,7 @@ declare global {
         displayName: string | null;
         isPlatformAdmin: boolean;
       } | null;
+      inboxUnreadCount: number;
     }
     // interface PageState {}
     // interface Platform {}

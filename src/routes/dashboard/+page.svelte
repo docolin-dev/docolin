@@ -155,8 +155,11 @@
               </span>
             </div>
             <h3 class="text-foreground text-xl font-medium tracking-tight">
-              {claim.slug}
+              {claim.displayName ?? claim.slug}
             </h3>
+            {#if claim.displayName}
+              <span class="text-muted-foreground mt-1 font-mono text-sm">{claim.slug}</span>
+            {/if}
             <div
               class="text-muted-foreground mt-auto flex items-center justify-between gap-3 pt-6 text-sm"
             >

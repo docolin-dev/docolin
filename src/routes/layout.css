@@ -148,10 +148,14 @@
     background: rgb(0 0 0 / 0.2);
     border: 3px solid transparent;
     background-clip: padding-box;
+    /* Hard corners per the locked theme. Default browser rounding doesn't
+     * match the rest of the app. */
+    border-radius: 0;
   }
   ::-webkit-scrollbar-thumb:hover {
     background: rgb(0 0 0 / 0.35);
     background-clip: padding-box;
+    border-radius: 0;
   }
   ::-webkit-scrollbar-corner {
     background: transparent;

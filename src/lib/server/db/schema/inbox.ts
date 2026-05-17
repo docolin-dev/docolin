@@ -12,6 +12,13 @@ export const inboxMessages = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    // Single-line title shown in the list row. Distinct from bodyMarkdown so
+    // the list/preview/detail split works like an email client.
+    subject: text("subject").notNull().default(""),
+    // Short one-line summary shown in the list row beneath the subject.
+    // Authored explicitly (not derived from bodyMarkdown) so directive
+    // syntax and long-form content never bleed into the list view.
+    preview: text("preview").notNull().default(""),
     kind: text("kind")
       .notNull()
       .$type<
@@ -33,6 +40,11 @@ export const inboxMessages = pgTable(
     linkUrl: text("link_url"),
     relatedRecordId: uuid("related_record_id"),
     readAt: timestamp("read_at", { withTimezone: true }),
+    // Set when the user marks the message done. Done messages move to a
+    // separate bucket so the inbox feels like an actionable queue rather
+    // than an accumulating log. State is derived: read_at + done_at jointly
+    // determine which bucket a row lives in.
+    doneAt: timestamp("done_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [

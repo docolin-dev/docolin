@@ -5,6 +5,7 @@
   import { Button } from "$lib/components/ui/button";
   import AccountMenu from "$lib/components/AccountMenu.svelte";
   import Github from "$lib/components/icons/Github.svelte";
+  import InboxBell from "$lib/components/InboxBell.svelte";
   import LanguageSwitcher from "$lib/components/LanguageSwitcher.svelte";
   import { SITE_REPO, SITE_REPO_OWNER, SITE_REPO_NAME } from "$lib/site";
 
@@ -156,6 +157,7 @@
         <div class="hidden sm:block">
           <LanguageSwitcher />
         </div>
+        <InboxBell />
         <AccountMenu />
       </div>
     </nav>

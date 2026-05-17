@@ -59,6 +59,9 @@
     "@neondatabase/serverless": "^1.1.0",
     "@workos/authkit-session": "^0.5.1",
     "drizzle-orm": "^0.45.2",
+    "isomorphic-dompurify": "^3.13.0",
+    "marked": "^18.0.3",
+    "marked-directive": "^1.0.7",
     "ws": "^8.20.1"
   }
 }

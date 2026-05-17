@@ -87,25 +87,60 @@ export async function approveClaim({
         )
         .returning({
           id: claimRequests.id,
+          uid: claimRequests.uid,
           userId: claimRequests.requestedByUserId,
         });
 
       await tx.insert(inboxMessages).values({
         userId: claim.requestedByUserId,
         kind: "claim_approved",
-        bodyMarkdown: `Your claim for **${claim.requestedSlug}** was approved. The org is live at [/dashboard/${claim.requestedSlug}](/dashboard/${claim.requestedSlug}).`,
+        subject: `Your claim for ${claim.requestedSlug} was approved`,
+        preview: `Your org is live. Open it to set up details and create your first project.`,
+        bodyMarkdown: `Your org is now live and ready to use.
+
+:::btn
+[Open the org](/dashboard/${claim.requestedSlug})
+:::
+
+**What's next**
+
+- Set the org display name and description in settings
+- Invite teammates as members
+- Create your first project to start publishing docs
+
+Reference: \`${claim.uid}\``,
         linkUrl: `/dashboard/${claim.requestedSlug}`,
         relatedRecordId: claim.id,
       });
 
       if (cancelled.length > 0) {
         await tx.insert(inboxMessages).values(
-          cancelled.map((sib) => ({
-            userId: sib.userId,
-            kind: "claim_cancelled" as const,
-            bodyMarkdown: `Your claim for **${claim.requestedSlug}** was cancelled because another claimant was verified for this slug.`,
-            relatedRecordId: sib.id,
-          })),
+          cancelled.map((sib) => {
+            const supportSubject = encodeURIComponent(
+              `[claim-dispute] ${claim.requestedSlug} (${sib.uid})`,
+            );
+            const supportBody = encodeURIComponent(
+              `Hi docolin team,\n\nI'd like to follow up on my cancelled claim for the slug "${claim.requestedSlug}".\n\nReference id: ${sib.uid}\n\n[Explain why you believe the wrong claimant was approved, and what authority you have over this brand]\n\nThanks`,
+            );
+            const supportMailto = `mailto:support@docolin.dev?subject=${supportSubject}&body=${supportBody}`;
+            return {
+              userId: sib.userId,
+              kind: "claim_cancelled" as const,
+              subject: `Your claim for ${claim.requestedSlug} was cancelled`,
+              preview: `Another claimant was verified for this slug. You can pick a different one or appeal.`,
+              bodyMarkdown: `Another claimant was verified for this slug first, which automatically cancels your claim.
+
+:::callout-info
+Multiple users had pending claims for the same brand. We verified the other claimant first.
+:::
+
+**What you can do**
+
+- [File a different slug](/dashboard/orgs/new) for your org
+- Email [support@docolin.dev](${supportMailto}) if you believe the wrong claimant was approved`,
+              relatedRecordId: sib.id,
+            };
+          }),
         );
       }
 
@@ -155,10 +190,31 @@ export async function cancelClaim({
       })
       .where(eq(claimRequests.id, claim.id));
 
+    const supportSubject = encodeURIComponent(
+      `[claim-dispute] ${claim.requestedSlug} (${claim.uid})`,
+    );
+    const supportBody = encodeURIComponent(
+      `Hi docolin team,\n\nI'd like to appeal the decision on my claim for "${claim.requestedSlug}".\n\nReference id: ${claim.uid}\n\n[Explain why you believe this was a misunderstanding, and what authority you have over this brand]\n\nThanks`,
+    );
+    const supportMailto = `mailto:support@docolin.dev?subject=${supportSubject}&body=${supportBody}`;
+
     await tx.insert(inboxMessages).values({
       userId: claim.requestedByUserId,
       kind: "claim_cancelled",
-      bodyMarkdown: `Your claim for **${claim.requestedSlug}** was declined.\n\n${notes}`,
+      subject: `Your claim for ${claim.requestedSlug} was declined`,
+      preview: `Reviewed and declined. Check the reason and recourse options.`,
+      bodyMarkdown: `The review concluded with a decline.
+
+:::callout-warning
+**Reason from review**
+
+${notes}
+:::
+
+**What you can do**
+
+- [File a different slug](/dashboard/orgs/new) for your org
+- Email [support@docolin.dev](${supportMailto}) with reference \`${claim.uid}\` if this was a misunderstanding`,
       relatedRecordId: claim.id,
     });
 
