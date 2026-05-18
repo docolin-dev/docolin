@@ -8,9 +8,11 @@ import { inboxMessages } from "$lib/server/db/schema";
 // inbox?bucket=inbox so the page HTML stays the same for every reader.
 // The markDone form action stays here because SvelteKit form actions need
 // a server-rendered context.
-export const load: PageServerLoad = ({ setHeaders }) => {
+export const load: PageServerLoad = ({ setHeaders, isDataRequest }) => {
   setHeaders({
-    "cache-control": "public, max-age=300, s-maxage=2592000, stale-while-revalidate=604800",
+    "cache-control": isDataRequest
+      ? "private, no-store"
+      : "public, max-age=300, s-maxage=2592000, stale-while-revalidate=604800",
   });
   return {};
 };

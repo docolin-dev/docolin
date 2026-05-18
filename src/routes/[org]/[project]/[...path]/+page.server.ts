@@ -32,10 +32,19 @@ import { pathFromSourcePath, rebuildPathInSource } from "$lib/doco-urls";
 //     sync (see $lib/sync/cache-purge) accelerates the happy path so the next
 //     reader hits a fresh function invocation right after publish. SWR is the
 //     safety net for purge failures.
+//
+// CRITICAL: these caches are applied to the HTML response only. SvelteKit's
+// client-side nav fetches a separate __data.json for every navigation; we
+// MUST keep that request uncached. Otherwise the browser cache holds the
+// data forever (immutable) and SvelteKit can't get fresh data on subsequent
+// version switches, the page locks on whatever version was first served.
+// `event.isDataRequest` lets us distinguish the two response types from the
+// same load function and apply the right header to each.
 const CACHE_VERSIONED = "public, max-age=31536000, immutable";
 const CACHE_LATEST = "public, max-age=0, s-maxage=86400, stale-while-revalidate=604800";
+const CACHE_DATA_REQUEST = "private, no-store";
 
-export const load: PageServerLoad = async ({ params, setHeaders }) => {
+export const load: PageServerLoad = async ({ params, setHeaders, isDataRequest }) => {
   // Find project + source for the (org, project) URL pair. Native projects
   // have no git_source row, handled as 404 for v1 since native rendering
   // isn't built yet.
@@ -48,6 +57,11 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
       projectDisplayName: projects.displayName,
       gitSourceId: gitSources.id,
       subpath: gitSources.subpath,
+      // Needed by the viewer to build the "Edit on GitHub" and "Discussions"
+      // links. Both are git-host conventions, so they only render for
+      // git-backed projects; for native (when it ships) these will be null.
+      repoUrl: gitSources.repoUrl,
+      defaultBranch: gitSources.defaultBranch,
     })
     .from(projects)
     .innerJoin(orgs, eq(orgs.id, projects.ownerOrgId))
@@ -64,7 +78,11 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
   const expectedPathInSource = rebuildPathInSource(pathPart, proj.subpath);
 
   setHeaders({
-    "cache-control": versionRef === null ? CACHE_LATEST : CACHE_VERSIONED,
+    "cache-control": isDataRequest
+      ? CACHE_DATA_REQUEST
+      : versionRef === null
+        ? CACHE_LATEST
+        : CACHE_VERSIONED,
   });
 
   // Resolve the doco identity row up front so the version filter can scope
@@ -189,6 +207,15 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
       slug: proj.projectSlug,
       displayName: proj.projectDisplayName,
     },
+    // Source coordinates needed by the viewer to build the "Edit on GitHub"
+    // affordance. Discussions URL is a docolin route, not a git host one, so
+    // it doesn't need anything from here. pathInSource on doco below carries
+    // the file path for the GitHub editor.
+    gitSource: {
+      repoUrl: proj.repoUrl,
+      defaultBranch: proj.defaultBranch,
+    },
+    pathInSource: doco.pathInSource,
     doco: {
       id: doco.docoId,
       title: doco.title,

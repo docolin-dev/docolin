@@ -6,9 +6,11 @@ import { inboxMessages } from "$lib/server/db/schema";
 
 // Shell for the done bucket. Messages load client-side from /api/dashboard/
 // inbox?bucket=done. markUndone action stays here for the per-row form.
-export const load: PageServerLoad = ({ setHeaders }) => {
+export const load: PageServerLoad = ({ setHeaders, isDataRequest }) => {
   setHeaders({
-    "cache-control": "public, max-age=300, s-maxage=2592000, stale-while-revalidate=604800",
+    "cache-control": isDataRequest
+      ? "private, no-store"
+      : "public, max-age=300, s-maxage=2592000, stale-while-revalidate=604800",
   });
   return {};
 };

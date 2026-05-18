@@ -10,9 +10,11 @@ import { syncProject } from "$lib/sync/run";
 // HTML is shareable across all readers (one cache entry per project URL).
 // The resync form action stays here because SvelteKit form actions require
 // a server-rendered context to wire up.
-export const load: PageServerLoad = ({ setHeaders }) => {
+export const load: PageServerLoad = ({ setHeaders, isDataRequest }) => {
   setHeaders({
-    "cache-control": "public, max-age=300, s-maxage=2592000, stale-while-revalidate=604800",
+    "cache-control": isDataRequest
+      ? "private, no-store"
+      : "public, max-age=300, s-maxage=2592000, stale-while-revalidate=604800",
   });
   return {};
 };

@@ -16,6 +16,7 @@
   import { Button } from "$lib/components/ui/button/index.js";
   import { buildPerFilePrompt, buildAllErrorsPrompt, type PromptIssue } from "$lib/sync/ai-prompt";
   import { pathFromSourcePath } from "$lib/doco-urls";
+  import { githubEditUrl } from "$lib/git/github-url";
 
   // URL-derived identity for the immediate-render header.
   const orgSlug = $derived(page.params.org ?? "");
@@ -154,12 +155,6 @@
     if (versionTag !== null) return versionTag;
     if (commitSha !== null) return commitSha.slice(0, 7);
     return `v${String(versionNumber)}`;
-  }
-
-  function githubEditUrl(repoUrl: string, branch: string, path: string): string {
-    const base = repoUrl.endsWith("/") ? repoUrl.slice(0, -1) : repoUrl;
-    const encodedPath = path.split("/").map(encodeURIComponent).join("/");
-    return `${base}/edit/${encodeURIComponent(branch)}/${encodedPath}`;
   }
 
   function docoUrl(pathInSource: string, subpath: string | null): string {

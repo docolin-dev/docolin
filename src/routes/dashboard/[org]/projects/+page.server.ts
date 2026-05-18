@@ -7,9 +7,11 @@ import { localizeHref } from "$paraglide/runtime";
 // here to the org page so the clickable crumb doesn't 404.
 //
 // Same redirect target for every reader of a given org slug, so cache long.
-export const load: PageServerLoad = ({ params, setHeaders }) => {
+export const load: PageServerLoad = ({ params, setHeaders, isDataRequest }) => {
   setHeaders({
-    "cache-control": "public, max-age=86400, s-maxage=2592000",
+    "cache-control": isDataRequest
+      ? "private, no-store"
+      : "public, max-age=86400, s-maxage=2592000",
   });
   redirect(302, localizeHref(`/dashboard/${params.org}`));
 };

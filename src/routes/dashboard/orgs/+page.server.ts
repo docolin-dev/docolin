@@ -8,9 +8,11 @@ import { localizeHref } from "$paraglide/runtime";
 //
 // The redirect target is the same for every reader, so cache long at the
 // edge to avoid spending a function invocation on this pure bouncer.
-export const load: PageServerLoad = ({ setHeaders }) => {
+export const load: PageServerLoad = ({ setHeaders, isDataRequest }) => {
   setHeaders({
-    "cache-control": "public, max-age=86400, s-maxage=2592000",
+    "cache-control": isDataRequest
+      ? "private, no-store"
+      : "public, max-age=86400, s-maxage=2592000",
   });
   redirect(302, localizeHref("/dashboard"));
 };

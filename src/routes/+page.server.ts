@@ -8,9 +8,11 @@ import type { PageServerLoad } from "./$types";
 // Browser caches modestly (5 min) so authors editing this surface see their
 // own change soon after a deploy without a hard refresh; the edge tier carries
 // the real cache weight.
-export const load: PageServerLoad = ({ setHeaders }) => {
+export const load: PageServerLoad = ({ setHeaders, isDataRequest }) => {
   setHeaders({
-    "cache-control": "public, max-age=300, s-maxage=2592000, stale-while-revalidate=604800",
+    "cache-control": isDataRequest
+      ? "private, no-store"
+      : "public, max-age=300, s-maxage=2592000, stale-while-revalidate=604800",
   });
   return {};
 };

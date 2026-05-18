@@ -13,9 +13,11 @@ const MAX_DISPLAY_NAME = 64;
 // Edge-cacheable shell. The form is static (the user's handle, if needed for
 // any UI affordance, is available via the client-side session store), and
 // the create action runs server-side on submit.
-export const load: PageServerLoad = ({ setHeaders }) => {
+export const load: PageServerLoad = ({ setHeaders, isDataRequest }) => {
   setHeaders({
-    "cache-control": "public, max-age=300, s-maxage=2592000, stale-while-revalidate=604800",
+    "cache-control": isDataRequest
+      ? "private, no-store"
+      : "public, max-age=300, s-maxage=2592000, stale-while-revalidate=604800",
   });
   return {};
 };

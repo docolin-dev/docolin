@@ -15,9 +15,11 @@ const MAX_SUBPATH = 200;
 // Edge-cacheable shell. Membership is re-verified inside the create action
 // (defense in depth); the page UI uses the org slug from the URL params and
 // doesn't need server-loaded org info. One cached HTML per org slug.
-export const load: PageServerLoad = ({ setHeaders }) => {
+export const load: PageServerLoad = ({ setHeaders, isDataRequest }) => {
   setHeaders({
-    "cache-control": "public, max-age=300, s-maxage=2592000, stale-while-revalidate=604800",
+    "cache-control": isDataRequest
+      ? "private, no-store"
+      : "public, max-age=300, s-maxage=2592000, stale-while-revalidate=604800",
   });
   return {};
 };

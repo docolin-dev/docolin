@@ -8,9 +8,11 @@ import { localizeHref } from "$paraglide/runtime";
 // Shell for the message detail. Body + read-marker side effect both move to
 // /api/dashboard/inbox/[id]. Mark-done / move-back-to-inbox actions stay
 // here so the inline buttons keep working with use:enhance.
-export const load: PageServerLoad = ({ setHeaders }) => {
+export const load: PageServerLoad = ({ setHeaders, isDataRequest }) => {
   setHeaders({
-    "cache-control": "public, max-age=300, s-maxage=2592000, stale-while-revalidate=604800",
+    "cache-control": isDataRequest
+      ? "private, no-store"
+      : "public, max-age=300, s-maxage=2592000, stale-while-revalidate=604800",
   });
   return {};
 };

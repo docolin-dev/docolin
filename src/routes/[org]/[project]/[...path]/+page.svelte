@@ -9,11 +9,31 @@
   import Copy from "@lucide/svelte/icons/copy";
   import Check from "@lucide/svelte/icons/check";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
+  import MessagesSquare from "@lucide/svelte/icons/messages-square";
+  import Pencil from "@lucide/svelte/icons/pencil";
   import DocoViewerNavbar from "$lib/components/DocoViewerNavbar.svelte";
+  import { githubEditUrl } from "$lib/git/github-url";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
   const doco = $derived(data.doco);
+
+  // Discussions live under the doco URL as a sub-route (per-doco thread list).
+  // The route doesn't exist yet; the buttons are forward-compatible link
+  // affordances that will resolve once the discussions list page ships.
+  const discussionsHref = $derived(
+    localizeHref(`/${data.org.slug}/${data.project.slug}/${doco.pathFromProjectRoot}/discussions`),
+  );
+  // "Edit on GitHub" only exists for git-backed projects; native projects
+  // (when shipped) have no source URL to send the user to. The viewer's
+  // server load is currently git-only so gitSource.repoUrl is always
+  // populated; pathInSource is nullable per the docos schema (soft-deleted
+  // docos clear it), so guard against that.
+  const editHref = $derived(
+    data.pathInSource !== null
+      ? githubEditUrl(data.gitSource.repoUrl, data.gitSource.defaultBranch, data.pathInSource)
+      : null,
+  );
 
   // Sitemap is stored as unknown jsonb; narrow defensively for rendering.
   interface SitemapNode {
@@ -99,9 +119,13 @@
   // so we only pin during *real* navigations, not the initial mount.
   let firstSpyRun = true;
   $effect(() => {
-    // Re-run when the loaded doco changes; old article's heading nodes are
-    // gone from the DOM by the time this effect re-fires.
+    // Re-run when EITHER the loaded doco OR its version changes. doco.id stays
+    // constant across versions of the same doco (it's the doco identity), so
+    // tracking only id misses dropdown-driven version switches; the body's
+    // heading nodes get replaced but the observer keeps watching the dead ones.
+    // Touching versionNumber re-fires the effect on every version transition.
     void doco.id;
+    void doco.versionNumber;
     if (!firstSpyRun) {
       // SvelteKit auto-scrolls to top on navigation; pin to no-section so
       // the scroll-through IO fires don't flap H3 lists open en route.
@@ -431,27 +455,54 @@
            where comparison is the use case), no separate "Updated X" line
            (the version's age is the only updated time we have). -->
       <header class="mb-10">
-        <!-- Title row: title (left) + copy markdown action (top-right). -->
+        <!-- Title row: title (left) + action cluster (top-right).
+             Discussions is the prominent affordance (outlined, primary-tinted)
+             since reader engagement is a first-class goal for a docs platform.
+             Copy markdown shrinks to icon-only with a tooltip so the title row
+             doesn't get crowded; the action is still discoverable via hover. -->
         <div class="flex items-start justify-between gap-4">
           <h1
             class="text-foreground text-3xl font-semibold tracking-tight text-balance sm:text-4xl"
           >
             {doco.title}
           </h1>
-          <button
-            type="button"
-            onclick={() => void copyMarkdown()}
-            class="border-foreground/15 hover:border-foreground/40 text-muted-foreground hover:text-foreground mt-1 inline-flex shrink-0 cursor-pointer items-center gap-1.5 border px-2.5 py-1 text-xs transition-colors"
-            aria-label={m.doco_copy_markdown_aria()}
-          >
-            {#if copiedMarkdown}
-              <Check class="size-3.5" />
-              {m.doco_copy_markdown_done()}
-            {:else}
-              <Copy class="size-3.5" />
-              {m.doco_copy_markdown()}
+          <div class="mt-1 flex shrink-0 items-center gap-2">
+            <a
+              href={discussionsHref}
+              class="border-primary/40 bg-primary/5 text-foreground hover:border-primary hover:bg-primary/10 inline-flex items-center gap-1.5 border px-3 py-1.5 text-xs font-medium transition-colors"
+            >
+              <MessagesSquare class="size-3.5" />
+              {m.doco_discussions_button()}
+            </a>
+            <button
+              type="button"
+              onclick={() => void copyMarkdown()}
+              class="border-foreground/15 hover:border-foreground/40 text-muted-foreground hover:text-foreground inline-flex cursor-pointer items-center justify-center border p-1.5 transition-colors"
+              aria-label={m.doco_copy_markdown_aria()}
+              title={copiedMarkdown ? m.doco_copy_markdown_done() : m.doco_copy_markdown()}
+            >
+              {#if copiedMarkdown}
+                <Check class="size-3.5" />
+              {:else}
+                <Copy class="size-3.5" />
+              {/if}
+            </button>
+            {#if editHref}
+              <!-- Icon-only edit affordance. Lower attention than copy markdown
+                   (smaller audience of would-be editors), pencil icon is the
+                   standard pattern; the tooltip carries the full label. -->
+              <a
+                href={editHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="border-foreground/15 hover:border-foreground/40 text-muted-foreground hover:text-foreground inline-flex items-center justify-center border p-1.5 transition-colors"
+                aria-label={m.doco_edit_on_github()}
+                title={m.doco_edit_on_github()}
+              >
+                <Pencil class="size-3.5" />
+              </a>
             {/if}
-          </button>
+          </div>
         </div>
 
         {#if doco.description}
@@ -540,11 +591,12 @@
                 role="listbox"
               >
                 {#each doco.versions as v (v.versionNumber)}
+                  {@const href = localizeHref(
+                    `/${data.org.slug}/${data.project.slug}/${doco.pathFromProjectRoot}@${v.commitSha ?? String(v.versionNumber)}`,
+                  )}
                   <li>
                     <a
-                      href={localizeHref(
-                        `/${data.org.slug}/${data.project.slug}/${doco.pathFromProjectRoot}@${v.commitSha ?? String(v.versionNumber)}`,
-                      )}
+                      {href}
                       onclick={() => (versionMenuOpen = false)}
                       class="hover:bg-muted/50 grid grid-cols-[auto_1fr_auto] items-center gap-3 px-3 py-2 transition-colors"
                       class:bg-muted={v.versionNumber === doco.versionNumber}
@@ -599,6 +651,30 @@
         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
         {@html doco.bodyHtml}
       </div>
+
+      <!-- End-of-article engagement zone. The Discussions CTA mirrors the
+           top-header button, positioned where the eye lands after finishing
+           the body. Edit lives at the top (next to Copy markdown) as an
+           icon-only affordance for the contributor minority. -->
+      <aside
+        class="border-primary/40 bg-primary/5 mt-12 flex flex-col gap-3 border border-l-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+      >
+        <div class="min-w-0">
+          <p class="text-foreground text-base font-medium">
+            {m.doco_discussions_cta_title()}
+          </p>
+          <p class="text-muted-foreground mt-1 text-sm leading-relaxed">
+            {m.doco_discussions_cta_body()}
+          </p>
+        </div>
+        <a
+          href={discussionsHref}
+          class="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors"
+        >
+          <MessagesSquare class="size-4" />
+          {m.doco_discussions_cta_action()}
+        </a>
+      </aside>
 
       {#if doco.prevNav !== null || doco.nextNav !== null}
         <footer class="mt-12 grid gap-4 text-sm md:grid-cols-2">
