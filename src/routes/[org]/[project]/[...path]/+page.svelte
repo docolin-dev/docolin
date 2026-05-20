@@ -11,19 +11,42 @@
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import MessagesSquare from "@lucide/svelte/icons/messages-square";
   import Pencil from "@lucide/svelte/icons/pencil";
+  import Ellipsis from "@lucide/svelte/icons/ellipsis";
+  import Flag from "@lucide/svelte/icons/flag";
+  import Trash2 from "@lucide/svelte/icons/trash-2";
   import DocoViewerNavbar from "$lib/components/DocoViewerNavbar.svelte";
+  import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
   import { githubEditUrl } from "$lib/git/github-url";
+  import { session } from "$lib/client/session.svelte";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
   const doco = $derived(data.doco);
 
   // Discussions live under the doco URL as a sub-route (per-doco thread list).
-  // The route doesn't exist yet; the buttons are forward-compatible link
-  // affordances that will resolve once the discussions list page ships.
   const discussionsHref = $derived(
     localizeHref(`/${data.org.slug}/${data.project.slug}/${doco.pathFromProjectRoot}/discussions`),
   );
+
+  // Moderation actions menu (signed-in only). Reporting is open to any signed-in
+  // user; "request deletion" of this version is moderator-only, gated by a
+  // per-doco capabilities fetch (the viewer HTML is cached and reader-agnostic).
+  const signedIn = $derived(session.value.dbUser !== null);
+  let canModerate = $state(false);
+  let capsForDocoId = "";
+  $effect(() => {
+    const id = doco.id;
+    if (!session.loaded || session.value.dbUser === null || capsForDocoId === id) return;
+    capsForDocoId = id;
+    canModerate = false;
+    void (async () => {
+      const res = await fetch(`/api/docos/${id}/capabilities`, { credentials: "same-origin" });
+      if (res.ok && doco.id === id) {
+        const caps = (await res.json()) as { canModerate: boolean };
+        canModerate = caps.canModerate;
+      }
+    })();
+  });
   // "Edit on GitHub" only exists for git-backed projects; native projects
   // (when shipped) have no source URL to send the user to. The viewer's
   // server load is currently git-only so gitSource.repoUrl is always
@@ -467,6 +490,42 @@
             {doco.title}
           </h1>
           <div class="mt-1 flex shrink-0 items-center gap-2">
+            {#if signedIn}
+              <!-- Moderation actions menu, signed-in only. Report (any user)
+                   routes to admins; Request deletion (moderators) is the
+                   version deletion-request flow. Disabled placeholders until
+                   those flows are wired. -->
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger>
+                  {#snippet child({ props })}
+                    <button
+                      {...props}
+                      class="text-muted-foreground hover:text-foreground inline-flex cursor-pointer items-center justify-center p-1.5 transition-colors"
+                      aria-label={m.doco_actions_more()}
+                      title={m.doco_actions_more()}
+                    >
+                      <Ellipsis class="size-3.5" />
+                    </button>
+                  {/snippet}
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Content
+                  align="end"
+                  class="min-w-48 whitespace-nowrap"
+                  preventScroll={false}
+                >
+                  <DropdownMenu.Item disabled>
+                    <Flag class="size-4" />
+                    {m.doco_report()}
+                  </DropdownMenu.Item>
+                  {#if canModerate}
+                    <DropdownMenu.Item disabled variant="destructive">
+                      <Trash2 class="size-4" />
+                      {m.doco_request_deletion()}
+                    </DropdownMenu.Item>
+                  {/if}
+                </DropdownMenu.Content>
+              </DropdownMenu.Root>
+            {/if}
             <a
               href={discussionsHref}
               class="border-primary/40 bg-primary/5 text-foreground hover:border-primary hover:bg-primary/10 inline-flex items-center gap-1.5 border px-3 py-1.5 text-xs font-medium transition-colors"

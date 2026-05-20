@@ -223,7 +223,11 @@
               </button>
             {/snippet}
           </DropdownMenu.Trigger>
-          <DropdownMenu.Content align="end" class="min-w-44 whitespace-nowrap">
+          <DropdownMenu.Content
+            align="end"
+            class="min-w-44 whitespace-nowrap"
+            preventScroll={false}
+          >
             {#if p.canEdit}
               <DropdownMenu.Item onSelect={p.onEdit}>
                 <Pencil class="size-4" />
