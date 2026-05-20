@@ -14,6 +14,7 @@
     "cron:dev": "wrangler dev -c workers/cron/wrangler.toml --test-scheduled",
     "prepare": "svelte-kit sync || echo ''",
     "check": "bun run format:check && bun run lint && bun run check:dashes && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check:fast": "prettier --check --cache . && eslint --cache . && bun run check:dashes",
     "check:dashes": "bun scripts/check-no-dashes.ts",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "test": "bun test",

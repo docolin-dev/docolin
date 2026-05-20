@@ -25,6 +25,9 @@ vite.config.ts.timestamp-*
 # Generated
 src/paraglide
 
+# Lint/format caches (check:fast)
+.eslintcache
+
 # Ide
 .idea
 
