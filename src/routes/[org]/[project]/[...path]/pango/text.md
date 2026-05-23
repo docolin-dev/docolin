@@ -37,3 +37,10 @@ Today's training plan:
 > Scales on, snout up, and never look down.
 >
 > > (He looked down. He rolled into a ball. He was fine.)
+
+## Inline icons
+
+Drop any [Lucide](https://lucide.dev/icons) icon inline with `:name:` (kebab names
+work too). Climb :mountain: to the top, fuel up on :drumstick:, then read the
+:book-open:. A stray colon or a time like 3:30 is left alone, and `:rocket:` in
+code stays literal.

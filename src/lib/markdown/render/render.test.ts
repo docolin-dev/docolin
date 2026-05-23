@@ -302,3 +302,21 @@ describe("content tabs", () => {
     expect(html).toContain("deep tab");
   });
 });
+
+describe("icon shortcodes", () => {
+  it("expands :name: to an inline Lucide icon", async () => {
+    const html = await render("Launch :rocket: now.\n");
+    expect(html).toContain("<svg");
+    expect(html).not.toContain(":rocket:");
+  });
+
+  it("leaves non-icon colon text alone", async () => {
+    const html = await render("Meet at 3:30, and :notanicon: stays.\n");
+    expect(html).toContain("3:30");
+    expect(html).toContain(":notanicon:");
+  });
+
+  it("does not expand a shortcode inside inline code", async () => {
+    expect(await render("Write `:rocket:` literally.\n")).toContain(":rocket:");
+  });
+});

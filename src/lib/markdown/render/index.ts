@@ -13,6 +13,7 @@ import { remarkDocomd, remarkAttrList, remarkTabGroup } from "$lib/markdown/doco
 import { slugify } from "$lib/slug";
 import { admonitionHandler } from "./admonition.ts";
 import { tabbedSetHandler } from "./tabs.ts";
+import { rehypeIconShortcodes } from "./icon-shortcode.ts";
 import { remarkCode, codeHandler, type Highlight } from "./code.ts";
 
 // docolin's markdown renderer, built on remark/rehype + the docomd syntax. The
@@ -207,6 +208,7 @@ export function createMarkdownRenderer(highlight: Highlight): (source: string) =
     .use(rehypeButtons)
     .use(rehypeExternalLinks)
     .use(rehypeTaskLists)
+    .use(rehypeIconShortcodes)
     .use(rehypeStringify);
 
   return async (source: string): Promise<string> => {
