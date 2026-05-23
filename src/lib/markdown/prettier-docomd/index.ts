@@ -7,7 +7,14 @@ import { gfm } from "micromark-extension-gfm";
 import { gfmFromMarkdown, gfmToMarkdown } from "mdast-util-gfm";
 import { frontmatter } from "micromark-extension-frontmatter";
 import { frontmatterFromMarkdown, frontmatterToMarkdown } from "mdast-util-frontmatter";
-import { admonitionSyntax, admonitionFromMarkdown, admonitionToMarkdown } from "../docomd/index.ts";
+import {
+  admonitionSyntax,
+  admonitionFromMarkdown,
+  admonitionToMarkdown,
+  tabSyntax,
+  tabFromMarkdown,
+  tabToMarkdown,
+} from "../docomd/index.ts";
 
 // prettier-plugin-docomd: teaches Prettier to format docomd markdown. Prettier's
 // built-in markdown formatter flattens indentation-significant admonitions
@@ -32,11 +39,12 @@ export const parsers: Record<string, Parser<Nodes>> = {
     astFormat: AST_FORMAT,
     parse(text: string): Nodes {
       return fromMarkdown(text, {
-        extensions: [frontmatter(["yaml"]), gfm(), admonitionSyntax],
+        extensions: [frontmatter(["yaml"]), gfm(), admonitionSyntax, tabSyntax],
         mdastExtensions: [
           frontmatterFromMarkdown(["yaml"]),
           gfmFromMarkdown(),
           admonitionFromMarkdown(),
+          tabFromMarkdown(),
         ],
       });
     },
@@ -52,7 +60,12 @@ export const printers: Record<string, Printer<Nodes>> = {
       const node = path.node;
       if (node.type !== "root") return "";
       return toMarkdown(node, {
-        extensions: [frontmatterToMarkdown(["yaml"]), gfmToMarkdown(), admonitionToMarkdown()],
+        extensions: [
+          frontmatterToMarkdown(["yaml"]),
+          gfmToMarkdown(),
+          admonitionToMarkdown(),
+          tabToMarkdown(),
+        ],
         bullet: "-",
         emphasis: "_",
         rule: "-",

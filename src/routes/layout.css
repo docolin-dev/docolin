@@ -339,4 +339,96 @@ html {
   .code-block[data-copied] .code-check-icon {
     display: inline-flex;
   }
+
+  /* Content tabs (docomd). A hidden radio group drives everything via :checked, so
+   * the right panel is painted from the first frame (no flash) and switching needs
+   * no JS, even after a client-side navigation. The radios are visually hidden but
+   * stay focusable (so keyboard arrow-key switching works); their focus ring is
+   * shown on the matching label. Color/border are owned here, not via utilities, so
+   * the active rules win (utilities beat @layer base regardless of specificity). */
+  .tabbed-radio {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .tabbed-tab {
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    color: var(--muted-foreground);
+    transition:
+      color 150ms,
+      border-color 150ms;
+  }
+  .tabbed-tab:hover {
+    color: var(--foreground);
+  }
+  /* Each radio sits right before its panel, so this one rule switches panels for
+   * any number of tabs (content never breaks on tab count). */
+  .tabbed-block {
+    display: none;
+  }
+  .tabbed-radio:checked + .tabbed-block {
+    display: block;
+    padding-top: 0.75rem;
+  }
+  /* The active underline + keyboard focus ring are mapped per index with :has and
+   * capped at 8 (purely cosmetic; the panels above are uncapped). */
+  .tabbed-set:has(> .tabbed-radio:nth-of-type(1):checked)
+    > .tabbed-labels
+    > .tabbed-tab:nth-child(1),
+  .tabbed-set:has(> .tabbed-radio:nth-of-type(2):checked)
+    > .tabbed-labels
+    > .tabbed-tab:nth-child(2),
+  .tabbed-set:has(> .tabbed-radio:nth-of-type(3):checked)
+    > .tabbed-labels
+    > .tabbed-tab:nth-child(3),
+  .tabbed-set:has(> .tabbed-radio:nth-of-type(4):checked)
+    > .tabbed-labels
+    > .tabbed-tab:nth-child(4),
+  .tabbed-set:has(> .tabbed-radio:nth-of-type(5):checked)
+    > .tabbed-labels
+    > .tabbed-tab:nth-child(5),
+  .tabbed-set:has(> .tabbed-radio:nth-of-type(6):checked)
+    > .tabbed-labels
+    > .tabbed-tab:nth-child(6),
+  .tabbed-set:has(> .tabbed-radio:nth-of-type(7):checked)
+    > .tabbed-labels
+    > .tabbed-tab:nth-child(7),
+  .tabbed-set:has(> .tabbed-radio:nth-of-type(8):checked)
+    > .tabbed-labels
+    > .tabbed-tab:nth-child(8) {
+    border-bottom-color: var(--primary);
+    color: var(--foreground);
+  }
+  .tabbed-set:has(> .tabbed-radio:nth-of-type(1):focus-visible)
+    > .tabbed-labels
+    > .tabbed-tab:nth-child(1),
+  .tabbed-set:has(> .tabbed-radio:nth-of-type(2):focus-visible)
+    > .tabbed-labels
+    > .tabbed-tab:nth-child(2),
+  .tabbed-set:has(> .tabbed-radio:nth-of-type(3):focus-visible)
+    > .tabbed-labels
+    > .tabbed-tab:nth-child(3),
+  .tabbed-set:has(> .tabbed-radio:nth-of-type(4):focus-visible)
+    > .tabbed-labels
+    > .tabbed-tab:nth-child(4),
+  .tabbed-set:has(> .tabbed-radio:nth-of-type(5):focus-visible)
+    > .tabbed-labels
+    > .tabbed-tab:nth-child(5),
+  .tabbed-set:has(> .tabbed-radio:nth-of-type(6):focus-visible)
+    > .tabbed-labels
+    > .tabbed-tab:nth-child(6),
+  .tabbed-set:has(> .tabbed-radio:nth-of-type(7):focus-visible)
+    > .tabbed-labels
+    > .tabbed-tab:nth-child(7),
+  .tabbed-set:has(> .tabbed-radio:nth-of-type(8):focus-visible)
+    > .tabbed-labels
+    > .tabbed-tab:nth-child(8) {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+  }
 }

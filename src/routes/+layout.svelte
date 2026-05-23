@@ -2,12 +2,14 @@
   import "./layout.css";
   import type { Snippet } from "svelte";
   import { onMount } from "svelte";
+  import { afterNavigate } from "$app/navigation";
   import { page } from "$app/state";
   import { baseLocale, deLocalizeUrl, localizeUrl, locales } from "$paraglide/runtime";
   import { SITE_URL } from "$lib/site";
   import { refreshSession } from "$lib/client/session.svelte";
   import { setupCodeCopy } from "$lib/markdown/copy-code";
   import { setupCodeLineSelect } from "$lib/markdown/code-lines";
+  import { setupContentTabs, applyTabPreference } from "$lib/markdown/content-tabs";
   // ?url asks Vite for the asset's final hashed URL string. The latin range
   // covers EN + DE traffic (umlauts and ß live in U+0000-00FF); the ext and
   // cyrillic ranges fetch lazily on demand. Preloading only the latin file
@@ -15,6 +17,13 @@
   import geistLatinUrl from "@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url";
 
   let { children }: { children: Snippet } = $props();
+
+  // Reapply the reader's stored content-tab choice after the initial load and
+  // every client navigation. Switching itself is CSS, so this only restores the
+  // remembered tab on freshly rendered pages.
+  afterNavigate(() => {
+    applyTabPreference();
+  });
 
   // Session lives client-side so public HTML can be edge-cached without
   // baking a reader's identity into the response. Kick off the first fetch
@@ -30,10 +39,12 @@
     // (doco, discussion, preview).
     const teardownCodeCopy = setupCodeCopy();
     const teardownCodeLines = setupCodeLineSelect();
+    const teardownTabs = setupContentTabs();
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       teardownCodeCopy();
       teardownCodeLines();
+      teardownTabs();
     };
   });
 

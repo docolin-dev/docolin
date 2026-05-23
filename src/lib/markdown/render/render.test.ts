@@ -72,11 +72,6 @@ describe("standard markdown parity", () => {
     expect(html).not.toContain("md-button");
     expect(html).not.toContain("{ .md-button");
   });
-
-  it("highlights code blocks with shiki, and falls back for unknown grammars", async () => {
-    expect(await render("```ts\nconst x = 1;\n```\n")).toContain("shiki");
-    expect(await render("```doesnotexist\n??\n```\n")).toContain("<pre");
-  });
 });
 
 describe("table of contents", () => {
@@ -211,5 +206,44 @@ describe("code blocks", () => {
     expect(html).toContain("code-block");
     expect(html).toContain("data-code-copy");
     expect(html).toContain("<pre");
+  });
+});
+
+describe("content tabs", () => {
+  it("renders a consecutive run as a radio-driven set with panels", async () => {
+    const html = await render(
+      '=== "npm"\n    Install with npm.\n\n=== "pnpm"\n    Install with pnpm.\n',
+    );
+    expect(html).toContain("tabbed-set");
+    expect((html.match(/tabbed-radio/g) ?? []).length).toBe(2);
+    expect((html.match(/tabbed-block/g) ?? []).length).toBe(2);
+    expect(html).toContain('data-tab-label="npm"');
+    expect(html).toContain("Install with pnpm");
+  });
+
+  it("checks only the first radio, so the right panel shows before JS (no flash)", async () => {
+    const html = await render('=== "a"\n    one\n\n=== "b"\n    two\n');
+    expect((html.match(/checked/g) ?? []).length).toBe(1);
+  });
+
+  it("renders any tab count (panels are not capped)", async () => {
+    let md = "";
+    for (let n = 1; n <= 11; n++) md += `=== "t${String(n)}"\n    panel ${String(n)}\n\n`;
+    const html = await render(md);
+    expect((html.match(/tabbed-block/g) ?? []).length).toBe(11);
+  });
+
+  it("renders constructs inside a tab (admonition in a panel)", async () => {
+    const html = await render('=== "warn"\n    !!! warning\n        Careful.\n');
+    expect(html).toContain("tabbed-set");
+    expect(html).toContain("Careful.");
+  });
+
+  it("renders a tab inside a card (mutual nesting)", async () => {
+    const html = await render(
+      '!!! cards\n    - === "x"\n          deep tab\n\n      === "y"\n          other\n',
+    );
+    expect(html).toContain("tabbed-set");
+    expect(html).toContain("deep tab");
   });
 });

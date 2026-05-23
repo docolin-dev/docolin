@@ -8,6 +8,8 @@ import {
 import { gfm } from "micromark-extension-gfm";
 import { gfmFromMarkdown } from "mdast-util-gfm";
 import { admonitionSyntax } from "./admonition-syntax.ts";
+import { tabSyntax } from "./tab-syntax.ts";
+import { tabFromMarkdown } from "./tab-mdast.ts";
 import { dedentBody, parseAdmonitionMeta } from "./parse.ts";
 
 // mdast node for an admonition. The body is re-parsed as standalone markdown, so
@@ -85,14 +87,17 @@ function exitMeta(this: CompileContext, token: Token): void {
 function exitAdmonition(this: CompileContext, token: Token): void {
   const node = this.stack[this.stack.length - 1];
   if (node.type === "admonition") {
-    // Re-parse the dedented body as standalone markdown. GFM and the admonition
-    // syntax itself are included so tables, task lists, and nested admonitions
-    // work inside a callout. (When extracted to a package, the reparse extension
-    // set becomes injectable; GFM is hardcoded here for the app's needs.)
+    // Re-parse the dedented body as standalone markdown. GFM, the admonition
+    // syntax, and the tab syntax are included so tables, task lists, nested
+    // admonitions, and content tabs all work inside a callout/card. The
+    // tab <-> admonition import cycle is safe: both extensions are hoisted
+    // function declarations only called here at runtime. (When extracted to a
+    // package, the reparse extension set becomes injectable; the set is hardcoded
+    // here for the app's needs.)
     const body = dedentBody(this.sliceSerialize(token));
     const tree = fromMarkdown(body, {
-      extensions: [gfm(), admonitionSyntax],
-      mdastExtensions: [gfmFromMarkdown(), admonitionFromMarkdown()],
+      extensions: [gfm(), admonitionSyntax, tabSyntax],
+      mdastExtensions: [gfmFromMarkdown(), admonitionFromMarkdown(), tabFromMarkdown()],
     });
     node.children = tree.children as (BlockContent | DefinitionContent)[];
   }

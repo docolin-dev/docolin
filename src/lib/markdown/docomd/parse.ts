@@ -51,6 +51,17 @@ export function admonitionTitle(meta: { atype: string; title: string }): string 
   return meta.atype[0].toUpperCase() + meta.atype.slice(1);
 }
 
+/** Parses a content tab opener's meta (the part after `===`): the quoted label,
+ *  e.g. `"Tab label"`. Falls back to the trimmed text if no quotes are present. */
+export function parseTabLabel(meta: string): string {
+  const trimmed = meta.trim();
+  const firstQuote = trimmed.indexOf('"');
+  if (firstQuote === -1) return trimmed;
+  const secondQuote = trimmed.indexOf('"', firstQuote + 1);
+  if (secondQuote === -1) return trimmed;
+  return trimmed.slice(firstQuote + 1, secondQuote);
+}
+
 /**
  * Given the raw source span of an admonition (opener line + indented body),
  * drops the opener line and removes one level of body indentation (4 spaces or a

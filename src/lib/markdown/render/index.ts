@@ -9,9 +9,10 @@ import { toString as mdastToString } from "mdast-util-to-string";
 import DOMPurify from "isomorphic-dompurify";
 import type { Root as HastRoot, Element } from "hast";
 import type { Root as MdastRoot } from "mdast";
-import { remarkDocomd, remarkAttrList } from "$lib/markdown/docomd";
+import { remarkDocomd, remarkAttrList, remarkTabGroup } from "$lib/markdown/docomd";
 import { slugify } from "$lib/slug";
 import { admonitionHandler } from "./admonition.ts";
+import { tabbedSetHandler } from "./tabs.ts";
 import { remarkCode, codeHandler, type Highlight } from "./code.ts";
 
 // docolin's markdown renderer, built on remark/rehype + the docomd syntax. The
@@ -25,9 +26,21 @@ import { remarkCode, codeHandler, type Highlight } from "./code.ts";
 // cache key); no DB backfill needed.
 export const RENDERER_VERSION = "1";
 
-// `name` is for exclusive-open accordions (<details name>); `open` for the
-// collapsible state; the rest carry classes/anchors/shiki styles/link rels.
-const SANITIZE_ADD_ATTR = ["class", "target", "rel", "id", "style", "open", "name"];
+// `name`/`type`/`checked`/`for` drive the content-tab radio group; `name` is also
+// the exclusive-open accordion key (<details name>); `open` the collapsible state;
+// the rest carry classes/anchors/shiki styles/link rels.
+const SANITIZE_ADD_ATTR = [
+  "class",
+  "target",
+  "rel",
+  "id",
+  "style",
+  "open",
+  "name",
+  "type",
+  "checked",
+  "for",
+];
 
 /** Sanitizes rendered HTML. One step shared by every render path. */
 export function sanitizeHtml(raw: string): string {
@@ -180,10 +193,17 @@ export function createMarkdownRenderer(highlight: Highlight): (source: string) =
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkDocomd)
+    .use(remarkTabGroup)
     .use(remarkAttrList)
     .use(remarkHeadingIds)
     .use(remarkCode, highlight)
-    .use(remarkRehype, { handlers: { admonition: admonitionHandler, code: codeHandler } })
+    .use(remarkRehype, {
+      handlers: {
+        admonition: admonitionHandler,
+        code: codeHandler,
+        docoTabbedSet: tabbedSetHandler,
+      },
+    })
     .use(rehypeButtons)
     .use(rehypeExternalLinks)
     .use(rehypeTaskLists)
