@@ -229,4 +229,114 @@ html {
       height: auto;
     }
   }
+
+  /* Code blocks (docomd). The wrapper carries `not-prose`, so it opts out of
+   * @tailwindcss/typography and these styles own the look. shiki provides the
+   * inline background and token colors; the header bar is utility-classed in the
+   * rendered markup. */
+  .code-block pre {
+    margin: 0;
+    overflow: visible;
+    padding: 0.75rem 1rem;
+    font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+  .code-block code {
+    font-family: inherit;
+  }
+  /* Every line is block-level so it can be a CSS :target and a click target. The
+   * negative inline margin (cancelled by equal padding) bleeds the line box across
+   * the pre's padding, so a line's highlight + left accent bar reach the block
+   * edges instead of starting inside the text. min-height keeps blank lines one row
+   * tall; scroll-margin keeps a jumped-to line clear of a sticky header. */
+  .code-block .line {
+    display: block;
+    min-height: 1lh;
+    scroll-margin-top: 5rem;
+    margin-inline: -1rem;
+    padding-inline: 1rem;
+  }
+  /* Line numbers only when the author asked for them, drawn with a CSS counter so
+   * they are never selected or copied. */
+  .code-block.code-linenums code {
+    counter-reset: docoline;
+  }
+  .code-block.code-linenums .line {
+    position: relative;
+    counter-increment: docoline;
+    padding-left: 3rem;
+  }
+  .code-block.code-linenums .line::before {
+    content: counter(docoline);
+    position: absolute;
+    left: 0.5rem;
+    width: 1.75rem;
+    text-align: right;
+    color: var(--muted-foreground);
+    opacity: 0.55;
+  }
+  /* Selection mode (toggled by the header button): lines invite a click and
+   * preview on hover. Disabling text selection keeps a click from starting a drag
+   * selection instead of picking the line. */
+  .code-block[data-selecting] .line {
+    cursor: pointer;
+    user-select: none;
+  }
+  /* The select button's color is owned here (not via text-* utilities) so the
+   * selection-mode override below actually wins; a utility would beat an @layer
+   * base rule regardless of specificity. */
+  .code-select {
+    color: var(--muted-foreground);
+    transition: color 150ms;
+  }
+  .code-select:hover {
+    color: var(--foreground);
+  }
+  .code-block[data-selecting] .code-select {
+    color: var(--primary);
+  }
+  /* Line highlight intensity. "brighter" = 24% primary, "darker" = 34%. In light
+   * mode a selected line and a hover preview are brighter (24%); a selected line
+   * that is also hovered drops to darker (34%) for click feedback. Dark mode
+   * inverts it (normal 34%, the hovered-while-selected case 24%). The rust accent
+   * bar marks genuinely selected / highlighted lines, not a plain hover. The
+   * combined (selected + hovered) selector is most specific, so it wins. */
+  .code-block[data-selecting] .line:hover,
+  .code-block .line-highlight,
+  .code-block .line:target,
+  .code-block .line.line-selected {
+    background: color-mix(in oklch, var(--primary) 24%, transparent);
+  }
+  .code-block .line-highlight,
+  .code-block .line:target,
+  .code-block .line.line-selected {
+    box-shadow: inset 2px 0 0 var(--primary);
+  }
+  .code-block[data-selecting] .line-highlight:hover,
+  .code-block[data-selecting] .line:target:hover,
+  .code-block[data-selecting] .line.line-selected:hover {
+    background: color-mix(in oklch, var(--primary) 34%, transparent);
+  }
+  .dark .code-block[data-selecting] .line:hover,
+  .dark .code-block .line-highlight,
+  .dark .code-block .line:target,
+  .dark .code-block .line.line-selected {
+    background: color-mix(in oklch, var(--primary) 34%, transparent);
+  }
+  .dark .code-block[data-selecting] .line-highlight:hover,
+  .dark .code-block[data-selecting] .line:target:hover,
+  .dark .code-block[data-selecting] .line.line-selected:hover {
+    background: color-mix(in oklch, var(--primary) 24%, transparent);
+  }
+  /* Copy-button icon swap, toggled by the client setting data-copied. */
+  .code-check-icon {
+    display: none;
+  }
+  .code-block[data-copied] .code-copy-icon {
+    display: none;
+  }
+  .code-block[data-copied] .code-check-icon {
+    display: inline-flex;
+  }
 }

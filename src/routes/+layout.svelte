@@ -6,6 +6,8 @@
   import { baseLocale, deLocalizeUrl, localizeUrl, locales } from "$paraglide/runtime";
   import { SITE_URL } from "$lib/site";
   import { refreshSession } from "$lib/client/session.svelte";
+  import { setupCodeCopy } from "$lib/markdown/copy-code";
+  import { setupCodeLineSelect } from "$lib/markdown/code-lines";
   // ?url asks Vite for the asset's final hashed URL string. The latin range
   // covers EN + DE traffic (umlauts and ß live in U+0000-00FF); the ext and
   // cyrillic ranges fetch lazily on demand. Preloading only the latin file
@@ -24,8 +26,14 @@
       if (document.visibilityState === "visible") void refreshSession();
     };
     document.addEventListener("visibilitychange", onVisibility);
+    // Wire copy buttons and shareable line selection in any rendered code block
+    // (doco, discussion, preview).
+    const teardownCodeCopy = setupCodeCopy();
+    const teardownCodeLines = setupCodeLineSelect();
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
+      teardownCodeCopy();
+      teardownCodeLines();
     };
   });
 

@@ -6,7 +6,12 @@ description: Inline code and fenced blocks across languages, plus the no-languag
 Every good jungle gym ships with code. Inline first: `const grip = "firm"`, then
 the real bars in a few languages.
 
-```ts
+Every block has shareable lines: click the select button in a block's top-right,
+then click lines to highlight them (shift-click for a range). The selection lives in
+the URL, so the link reopens lit. The block below opts into always-on numbers and an
+author highlight (`title="..." linenums="1" hl_lines="7"`):
+
+```ts title="feed-pango.ts" linenums="1" hl_lines="7"
 interface Pangolin {
   name: string;
   scales: number;

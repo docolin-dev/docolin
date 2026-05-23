@@ -168,3 +168,48 @@ describe("nesting (playground edge cases)", () => {
     expect(html).toContain("answer");
   });
 });
+
+describe("code blocks", () => {
+  it("wraps code in a header bar with a select button and a copy button", async () => {
+    const html = await render("```ts\nconst x = 1;\n```\n");
+    expect(html).toContain("code-block");
+    expect(html).toContain("code-header");
+    expect(html).toContain("data-code-select");
+    expect(html).toContain("data-code-copy");
+    expect(html).toContain("shiki");
+  });
+
+  it("gives every block shareable line ids, even unnumbered", async () => {
+    const html = await render("```ts\nconst x = 1;\nconst y = 2;\n```\n");
+    expect(html).toContain('id="__codeline-0-1"');
+    expect(html).toContain('id="__codeline-0-2"');
+    // Numbered display is opt-in: a plain block does not get the always-on class.
+    expect(html).not.toContain("code-linenums");
+  });
+
+  it("indexes line ids by fence order across blocks", async () => {
+    const html = await render("```ts\na\n```\n\n```ts\nb\n```\n");
+    expect(html).toContain('id="__codeline-0-1"');
+    expect(html).toContain('id="__codeline-1-1"');
+  });
+
+  it("shows the filename from title=", async () => {
+    expect(await render('```ts title="hooks.server.ts"\nx\n```\n')).toContain("hooks.server.ts");
+  });
+
+  it("marks highlighted lines from hl_lines", async () => {
+    const html = await render('```ts hl_lines="2"\nconst x = 1;\nconst y = 2;\n```\n');
+    expect(html).toContain("line-highlight");
+  });
+
+  it("enables always-on line numbers from linenums", async () => {
+    expect(await render('```ts linenums="1"\nx\n```\n')).toContain("code-linenums");
+  });
+
+  it("falls back for unknown grammars but still wraps with a copy button", async () => {
+    const html = await render("```doesnotexist\n??\n```\n");
+    expect(html).toContain("code-block");
+    expect(html).toContain("data-code-copy");
+    expect(html).toContain("<pre");
+  });
+});

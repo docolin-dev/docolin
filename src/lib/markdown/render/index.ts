@@ -12,6 +12,7 @@ import type { Root as MdastRoot } from "mdast";
 import { remarkDocomd, remarkAttrList } from "$lib/markdown/docomd";
 import { slugify } from "$lib/slug";
 import { admonitionHandler } from "./admonition.ts";
+import { remarkCode, codeHandler, type Highlight } from "./code.ts";
 
 // docolin's markdown renderer, built on remark/rehype + the docomd syntax. The
 // pipeline is isomorphic; only the shiki highlighter differs (static on the
@@ -19,9 +20,6 @@ import { admonitionHandler } from "./admonition.ts";
 // same DOMPurify config the marked renderer used, so the security surface is
 // unchanged. Raw HTML in markdown is dropped (remark-rehype default), which is
 // safer and fine for community docs.
-
-/** Highlights a code block to a hast root (its first child is the <pre>). */
-export type Highlight = (code: string, lang: string) => Promise<HastRoot>;
 
 // Bump to invalidate every cached rendered page on the next read (it changes the
 // cache key); no DB backfill needed.
@@ -176,52 +174,6 @@ function rehypeButtons() {
   };
 }
 
-function codeLang(code: Element): string {
-  const cls = code.properties.className;
-  if (Array.isArray(cls)) {
-    for (const name of cls) {
-      if (typeof name === "string" && name.startsWith("language-")) {
-        return name.slice("language-".length);
-      }
-    }
-  }
-  return "text";
-}
-
-function codeText(code: Element): string {
-  let out = "";
-  for (const child of code.children) {
-    if (child.type === "text") out += child.value;
-  }
-  return out;
-}
-
-// hast: replace each fenced code block with shiki's highlighted output. On an
-// unknown grammar shiki throws, so we leave the plain <pre><code> in place.
-function rehypeShiki(highlight: Highlight) {
-  return async (tree: HastRoot): Promise<undefined> => {
-    const jobs: Promise<void>[] = [];
-    visit(tree, "element", (node, index, parent) => {
-      if (node.tagName !== "pre" || parent === undefined || index === undefined) return;
-      const code = node.children[0];
-      if (code.type !== "element" || code.tagName !== "code") return;
-      const text = codeText(code);
-      const lang = codeLang(code);
-      jobs.push(
-        highlight(text, lang).then(
-          (root) => {
-            const pre = root.children[0];
-            if (pre.type === "element") parent.children[index] = pre;
-          },
-          () => undefined,
-        ),
-      );
-    });
-    await Promise.all(jobs);
-    return undefined;
-  };
-}
-
 /** Builds a render function bound to a shiki highlighter. */
 export function createMarkdownRenderer(highlight: Highlight): (source: string) => Promise<string> {
   const processor = unified()
@@ -230,11 +182,11 @@ export function createMarkdownRenderer(highlight: Highlight): (source: string) =
     .use(remarkDocomd)
     .use(remarkAttrList)
     .use(remarkHeadingIds)
-    .use(remarkRehype, { handlers: { admonition: admonitionHandler } })
+    .use(remarkCode, highlight)
+    .use(remarkRehype, { handlers: { admonition: admonitionHandler, code: codeHandler } })
     .use(rehypeButtons)
     .use(rehypeExternalLinks)
     .use(rehypeTaskLists)
-    .use(rehypeShiki, highlight)
     .use(rehypeStringify);
 
   return async (source: string): Promise<string> => {

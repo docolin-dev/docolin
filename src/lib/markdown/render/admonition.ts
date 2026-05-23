@@ -1,9 +1,9 @@
-import { h, s } from "hastscript";
+import { h } from "hastscript";
 import type { Element, ElementContent } from "hast";
 import type { ListItem } from "mdast";
 import type { State } from "mdast-util-to-hast";
-import { ChevronDown, Info, Lightbulb, OctagonAlert, Pencil, TriangleAlert } from "lucide";
 import { admonitionTitle, type Admonition } from "$lib/markdown/docomd";
+import { iconHast, type IconName } from "./icons.ts";
 
 // docolin's design layer for admonitions: turns a docomd `admonition` mdast node
 // into the styled hast (Tailwind classes + Lucide icons) the doco viewer renders.
@@ -15,43 +15,6 @@ import { admonitionTitle, type Admonition } from "$lib/markdown/docomd";
 // Five callout types plus three list-wrapping constructs: steps (a numbered
 // vertical stepper), cards (a responsive grid), and accordion (grouped
 // exclusive-open <details>).
-
-// lucide doesn't export its IconNode type by a stable name, so derive it.
-type LucideIcon = typeof Info;
-
-const ICONS = {
-  pencil: Pencil,
-  info: Info,
-  lightbulb: Lightbulb,
-  "triangle-alert": TriangleAlert,
-  "octagon-alert": OctagonAlert,
-  "chevron-down": ChevronDown,
-} satisfies Record<string, LucideIcon>;
-
-type IconName = keyof typeof ICONS;
-
-// Builds a Lucide icon as hast (svg element), mirroring Lucide's default
-// attributes so it matches the @lucide/svelte components used elsewhere.
-function iconHast(name: IconName, className: string): Element {
-  const children = ICONS[name].map(([tag, attrs]) =>
-    s(tag, attrs as Record<string, string | number>),
-  );
-  return s(
-    "svg",
-    {
-      xmlns: "http://www.w3.org/2000/svg",
-      viewBox: "0 0 24 24",
-      fill: "none",
-      stroke: "currentColor",
-      strokeWidth: 2,
-      strokeLinecap: "round",
-      strokeLinejoin: "round",
-      class: className,
-      "aria-hidden": "true",
-    },
-    children,
-  );
-}
 
 const BODY_RESET = ["[&>*:first-child]:mt-0", "[&>*:last-child]:mb-0"];
 
