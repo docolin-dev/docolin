@@ -431,4 +431,13 @@ html {
     outline: 2px solid var(--primary);
     outline-offset: -2px;
   }
+
+  /* Clickable cards (docomd). A card that leads with a link gets `.card-link` on
+   * that link; its ::before overlay stretches across the relatively-positioned
+   * card, so a click anywhere on the card follows the link, with no nested <a>. */
+  .card-link::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
 }

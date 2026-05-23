@@ -4,6 +4,7 @@ import type { ListItem } from "mdast";
 import type { State } from "mdast-util-to-hast";
 import { admonitionTitle, type Admonition } from "$lib/markdown/docomd";
 import { iconHast, type IconName } from "./icons.ts";
+import { renderCards } from "./cards.ts";
 
 // docolin's design layer for admonitions: turns a docomd `admonition` mdast node
 // into the styled hast (Tailwind classes + Lucide icons) the doco viewer renders.
@@ -16,7 +17,7 @@ import { iconHast, type IconName } from "./icons.ts";
 // vertical stepper), cards (a responsive grid), and accordion (grouped
 // exclusive-open <details>).
 
-const BODY_RESET = ["[&>*:first-child]:mt-0", "[&>*:last-child]:mb-0"];
+export const BODY_RESET = ["[&>*:first-child]:mt-0", "[&>*:last-child]:mb-0"];
 
 // First list in the body. steps/cards/accordion each wrap a markdown list; this
 // pulls its items. Returns [] if the body is not a list (graceful degrade).
@@ -29,7 +30,7 @@ function bodyListItems(node: Admonition): ListItem[] {
 
 // ---------- Callouts + collapsibles ----------
 
-interface AdmonitionConfig {
+export interface AdmonitionConfig {
   icon: IconName;
   border: string;
   header: string;
@@ -38,8 +39,9 @@ interface AdmonitionConfig {
 }
 
 // Type set + light-only palette (warning/tip use raw Tailwind status scales since
-// the theme has no token for them; dark mode is a separate workstream).
-const CALLOUTS: Record<string, AdmonitionConfig> = {
+// the theme has no token for them; dark mode is a separate workstream). Shared with
+// the card renderer for typed cards (`{ type=... }`).
+export const CALLOUTS: Record<string, AdmonitionConfig> = {
   note: {
     icon: "pencil",
     border: "border-foreground/20",
@@ -75,10 +77,17 @@ const CALLOUTS: Record<string, AdmonitionConfig> = {
     body: "bg-destructive/5",
     text: "text-destructive",
   },
+  check: {
+    icon: "check",
+    border: "border-emerald-500/40",
+    header: "bg-emerald-100",
+    body: "bg-emerald-50",
+    text: "text-emerald-900",
+  },
 };
 
 // Unknown types (typos) fall back to a neutral box, so mistakes stay visible.
-const NEUTRAL = CALLOUTS.note;
+export const NEUTRAL = CALLOUTS.note;
 
 function renderCallout(state: State, node: Admonition): Element {
   const cfg = CALLOUTS[node.atype] ?? NEUTRAL;
@@ -187,36 +196,6 @@ function renderSteps(state: State, node: Admonition): Element {
       ? [h("p", { class: ["mb-4", "font-semibold", "text-foreground"] }, node.title)]
       : [];
   return h("div", { class: ["my-4"] }, [...heading, ...steps]);
-}
-
-// ---------- Cards ----------
-
-const COLS_CLASSES: Record<number, string[]> = {
-  1: ["grid-cols-1"],
-  2: ["grid-cols-1", "sm:grid-cols-2"],
-  3: ["grid-cols-1", "sm:grid-cols-2", "lg:grid-cols-3"],
-  4: ["grid-cols-1", "sm:grid-cols-2", "lg:grid-cols-4"],
-};
-// Default: as many ~15rem columns as fit, so authors rarely need `cols`.
-const COLS_AUTO = ["grid-cols-[repeat(auto-fit,minmax(15rem,1fr))]"];
-
-function parseCols(attrs: string): number | null {
-  for (const token of attrs.split(" ")) {
-    if (token.startsWith("cols=")) {
-      const value = Number(token.slice("cols=".length));
-      if (Number.isInteger(value) && value >= 1 && value <= 4) return value;
-    }
-  }
-  return null;
-}
-
-function renderCards(state: State, node: Admonition): Element {
-  const cols = parseCols(node.attrs);
-  const grid = cols === null ? COLS_AUTO : COLS_CLASSES[cols];
-  const cards = bodyListItems(node).map((item) =>
-    h("div", { class: ["border", "p-6", ...BODY_RESET] }, state.all(item)),
-  );
-  return h("div", { class: ["my-4", "grid", "gap-4", ...grid] }, cards);
 }
 
 // ---------- Accordion ----------

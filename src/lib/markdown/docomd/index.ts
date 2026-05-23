@@ -15,7 +15,8 @@ import { tabFromMarkdown, type DocoTab, type DocoTabbedSet } from "./tab-mdast.t
 // (buttons) and remarkTabGroup (grouping consecutive tabs into sets).
 
 export type { Admonition, DocoTab, DocoTabbedSet };
-export { parseAdmonitionMeta, admonitionTitle, parseTabLabel } from "./parse.ts";
+export type { DocoAttrs } from "./parse.ts";
+export { parseAdmonitionMeta, admonitionTitle, parseTabLabel, parseAttrs } from "./parse.ts";
 export { admonitionSyntax } from "./admonition-syntax.ts";
 export { admonitionFromMarkdown } from "./admonition-mdast.ts";
 export { admonitionToMarkdown } from "./admonition-to-markdown.ts";

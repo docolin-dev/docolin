@@ -102,6 +102,61 @@ describe("list-wrapping constructs", () => {
     expect(html).toContain('href="/a"');
   });
 
+  it("makes a link-led card a clickable title block plus a muted description", async () => {
+    const html = await render("!!! cards\n    - [Open](/x) details here\n");
+    expect(html).toContain("card-link"); // stretched, whole card is the hit area
+    expect(html).toContain("relative"); // card is the positioning context
+    expect(html).toContain('href="/x"');
+    expect(html).toContain(">Open<"); // title text (its own block)
+    expect(html).toContain("text-muted-foreground"); // description block
+    expect(html).toContain("details here");
+  });
+
+  it("leaves a card without a leading link non-clickable", async () => {
+    expect(await render("!!! cards\n    - just text, no link\n")).not.toContain("card-link");
+  });
+
+  it("renders an icon from { icon=name } (any Lucide name)", async () => {
+    const html = await render("!!! cards\n    - [Go](/g){ icon=rocket }\n      desc\n");
+    expect(html).toContain("<svg");
+    expect(html).toContain('href="/g"');
+  });
+
+  it("themes a card from { type=... } with the callout palette + default icon", async () => {
+    const html = await render("!!! cards\n    - [Warn](/w){ type=warning }\n      careful\n");
+    expect(html).toContain("border-amber-500/50");
+    expect(html).toContain("<svg"); // the type's default icon
+  });
+
+  it("lays a card out horizontally with { horizontal }", async () => {
+    const html = await render(
+      "!!! cards\n    - [H](/h){ icon=zap horizontal }\n      side by side\n",
+    );
+    expect(html).toContain("flex items-start gap-4");
+  });
+
+  it("adds a top image from { img=url }", async () => {
+    const html = await render("!!! cards\n    - [Pic](/p){ img=/y.jpg }\n      shot\n");
+    expect(html).toContain('src="/y.jpg"');
+    expect(html).toContain("h-auto"); // natural ratio, full card width
+  });
+
+  it("handles an external image URL even though gfm autolinks it in the attr list", async () => {
+    const html = await render(
+      "!!! cards\n    - [Pic](/p){ img=https://cdn.example.com/a.jpg }\n      shot\n",
+    );
+    expect(html).toContain('src="https://cdn.example.com/a.jpg"');
+    expect(html).toContain("h-auto");
+    expect(html).not.toContain("{ img"); // attr list fully consumed, not left as text
+    expect(html).toContain("shot"); // description still renders
+  });
+
+  it("renders a custom CTA + arrow from { cta arrow }", async () => {
+    const html = await render('!!! cards\n    - [Docs](/d){ cta="Read more" arrow }\n      go\n');
+    expect(html).toContain("Read more");
+    expect(html).toContain("<svg"); // the arrow icon
+  });
+
   it("renders cards as an auto-fit grid without cols", async () => {
     expect(await render("!!! cards\n    - one\n    - two\n")).toContain("auto-fit");
   });

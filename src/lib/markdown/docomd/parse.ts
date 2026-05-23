@@ -51,6 +51,61 @@ export function admonitionTitle(meta: { atype: string; title: string }): string 
   return meta.atype[0].toUpperCase() + meta.atype.slice(1);
 }
 
+export interface DocoAttrs {
+  classes: string[];
+  id: string | null;
+  /** key=val pairs and bare flags (a flag becomes "true"). */
+  props: Record<string, string>;
+  /** Text after the closing brace, kept on the original text node. */
+  rest: string;
+}
+
+// Quote-aware token split: spaces separate tokens, except inside "...". The quote
+// chars are dropped so `cta="Read more"` yields the token `cta=Read more`.
+function tokenizeAttrs(inner: string): string[] {
+  const tokens: string[] = [];
+  let current = "";
+  let quoted = false;
+  for (const char of inner) {
+    if (char === '"') {
+      quoted = !quoted;
+      continue;
+    }
+    if (char === " " && !quoted) {
+      if (current.length > 0) tokens.push(current);
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+  if (current.length > 0) tokens.push(current);
+  return tokens;
+}
+
+/** Parses a leading MkDocs-style attribute list `{ .class #id key=val flag }`. The
+ *  shared parser behind buttons (classes) and cards (props). Returns null if the
+ *  text does not start with `{ ... }`. String ops only (no regex). */
+export function parseAttrs(text: string): DocoAttrs | null {
+  if (!text.startsWith("{")) return null;
+  const close = text.indexOf("}");
+  if (close === -1) return null;
+  const classes: string[] = [];
+  let id: string | null = null;
+  const props: Record<string, string> = {};
+  for (const token of tokenizeAttrs(text.slice(1, close).trim())) {
+    if (token.startsWith(".")) {
+      classes.push(token.slice(1));
+    } else if (token.startsWith("#")) {
+      id = token.slice(1);
+    } else {
+      const eq = token.indexOf("=");
+      if (eq === -1) props[token] = "true";
+      else props[token.slice(0, eq)] = token.slice(eq + 1);
+    }
+  }
+  return { classes, id, props, rest: text.slice(close + 1) };
+}
+
 /** Parses a content tab opener's meta (the part after `===`): the quoted label,
  *  e.g. `"Tab label"`. Falls back to the trimmed text if no quotes are present. */
 export function parseTabLabel(meta: string): string {
