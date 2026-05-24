@@ -1,6 +1,7 @@
 // Client-only: wires the shared hovercard engine to the markdown popover features
 // (footnote previews for now; code annotations and link previews join here). Each is
 // just a content resolver over server-rendered HTML, so the read path stays static.
+import { deLocalizeHref } from "$paraglide/runtime";
 import { setupHovercards, type HovercardSource } from "./hovercard.ts";
 import { renderMermaid } from "./mermaid.ts";
 import { mountChartsIn } from "./charts.ts";
@@ -94,7 +95,10 @@ async function fetchPreview(path: string): Promise<DocoPreview | null> {
 async function linkPreview(link: HTMLElement): Promise<Node | null> {
   const href = link.getAttribute("href");
   if (!href?.startsWith("/")) return null;
-  const path = href.split("#")[0].split("?")[0];
+  // The viewer localizes in-body hrefs (so a /de/ reader keeps the locale when
+  // navigating), but the preview endpoint resolves the canonical
+  // org/project/path, so strip any locale prefix before parsing and fetching.
+  const path = deLocalizeHref(href.split("#")[0].split("?")[0]);
   const segments = path.split("/").filter((segment) => segment.length > 0);
   if (segments.length < 3) return null; // not an org/project/path doco link
   const preview = await fetchPreview(`/${segments.join("/")}`);

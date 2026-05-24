@@ -469,6 +469,23 @@
       ?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
+  // Localize internal links inside the rendered markdown. The body HTML is
+  // cached locale-agnostically (raw paths from the sync link rewriter), so a
+  // link to another doco would otherwise drop the current locale prefix and
+  // send, say, a /de/ reader to the base-locale page. Patch each internal href
+  // to the active locale on the client once the body renders; re-runs when the
+  // body changes on navigation.
+  let bodyEl = $state<HTMLDivElement | null>(null);
+  $effect(() => {
+    void doco.bodyHtml;
+    const el = bodyEl;
+    if (el === null) return;
+    for (const link of el.querySelectorAll('a[href^="/"]')) {
+      const href = link.getAttribute("href");
+      if (href !== null) link.setAttribute("href", localizeHref(href));
+    }
+  });
+
   let copiedMarkdown = $state(false);
   async function copyMarkdown(): Promise<void> {
     await navigator.clipboard.writeText(doco.bodyText);
@@ -769,6 +786,7 @@
       <!-- Rendered body. .prose handles typography; the markdown renderer emits
            our callouts/admonitions; shiki handles code. -->
       <div
+        bind:this={bodyEl}
         class="prose prose-stone dark:prose-invert prose-headings:scroll-mt-20 prose-headings:font-semibold prose-h1:hidden max-w-[72ch]"
       >
         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
