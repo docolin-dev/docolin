@@ -163,8 +163,11 @@ function rehypeTaskLists() {
 
 // Tailwind utilities for attr-list buttons. Set as classes on the <a> (rather
 // than a CSS rule) so they win over the .prose link styling, the same way the old
-// renderer did. md-button is the outline variant; md-button--primary fills it.
+// renderer did. md-button is the outline variant; md-button--primary fills it. The
+// non-Tailwind `doco-button` marker is a stable hook (the md-button class is replaced
+// here) so link hovercards can skip buttons.
 const BUTTON_BASE = [
+  "doco-button",
   "inline-flex",
   "h-11",
   "items-center",

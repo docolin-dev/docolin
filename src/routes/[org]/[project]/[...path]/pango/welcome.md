@@ -14,7 +14,8 @@ address into the void: <https://docolin.com>.
 
 ## Start climbing
 
-Pick an apparatus from the sidebar, or jump straight onto the first bar:
+Pick an apparatus from the sidebar, hover the [math page](/pangos/jungle-gym/math) for
+a preview, or jump straight onto the first bar:
 
 [Enter the jungle gym](/pangos/jungle-gym/text){ .md-button .md-button--primary }
 

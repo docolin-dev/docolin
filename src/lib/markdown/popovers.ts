@@ -115,7 +115,9 @@ async function linkPreview(link: HTMLElement): Promise<Node | null> {
 }
 
 const linkSource: HovercardSource = {
-  selector: ".prose a[href^='/']",
+  // Plain internal doco links only: skip card links and CTA buttons, which already
+  // state where they go.
+  selector: ".prose a[href^='/']:not(.card-link):not(.doco-button)",
   trigger: "hover",
   resolve: linkPreview,
 };
