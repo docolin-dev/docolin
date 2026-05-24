@@ -217,6 +217,13 @@ async function processCode(node: Code, blockIndex: number, highlight: Highlight)
   const meta = parseCodeMeta(node.meta);
   const lang =
     node.lang === null || node.lang === undefined || node.lang === "" ? "text" : node.lang;
+  // Mermaid is not syntax-highlighted: emit the source in a .mermaid element for
+  // the client to lazy-render. The raw source is the no-JS / SEO fallback (and the
+  // client caches it before rendering, so it can re-render on a theme change).
+  if (lang === "mermaid") {
+    builtBlocks.set(node, h("pre", { class: ["mermaid", "not-prose", "my-4"] }, node.value));
+    return;
+  }
   let pre: Element;
   try {
     const root = await highlight(node.value, lang);

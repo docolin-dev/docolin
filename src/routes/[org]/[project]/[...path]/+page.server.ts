@@ -23,6 +23,7 @@ import pangoSteps from "./pango/steps.md?raw";
 import pangoCards from "./pango/cards.md?raw";
 import pangoAccordion from "./pango/accordion.md?raw";
 import pangoTabs from "./pango/tabs.md?raw";
+import pangoMermaid from "./pango/mermaid.md?raw";
 import pangoNesting from "./pango/nesting.md?raw";
 import pangoCrazy from "./pango/crazy.md?raw";
 
@@ -45,6 +46,7 @@ const PANGO_PAGES: PangoPage[] = [
   { slug: "cards", raw: pangoCards },
   { slug: "accordion", raw: pangoAccordion },
   { slug: "tabs", raw: pangoTabs },
+  { slug: "mermaid", raw: pangoMermaid },
   { slug: "nesting", raw: pangoNesting },
   { slug: "crazy", raw: pangoCrazy },
 ].map(({ slug, raw }) => {
@@ -79,6 +81,7 @@ const PANGO_SITEMAP = [
       { title: "Cards", url: "/pangos/jungle-gym/cards" },
       { title: "Accordion", url: "/pangos/jungle-gym/accordion" },
       { title: "Content tabs", url: "/pangos/jungle-gym/tabs" },
+      { title: "Mermaid diagrams", url: "/pangos/jungle-gym/mermaid" },
     ],
   },
   {

@@ -470,4 +470,24 @@ html {
     position: absolute;
     inset: 0;
   }
+
+  /* Mermaid diagrams (client-rendered). The SVG is centered; before the client
+   * renders it (or with JS off) the raw source shows as a muted monospace
+   * fallback so nothing is lost. */
+  .mermaid {
+    margin-block: 1rem;
+    overflow-x: auto;
+    text-align: center;
+  }
+  .mermaid:not([data-processed]) {
+    font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+    color: var(--muted-foreground);
+    white-space: pre-wrap;
+  }
+  .mermaid svg {
+    display: inline-block;
+    height: auto;
+    max-width: 100%;
+  }
 }

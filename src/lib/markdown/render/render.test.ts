@@ -347,3 +347,13 @@ describe("math (LaTeX)", () => {
     expect(html).toContain("katex");
   });
 });
+
+describe("mermaid", () => {
+  it("emits a .mermaid element with the raw source, not a shiki code block", async () => {
+    const html = await render("```mermaid\ngraph TD\n  A --> B\n```\n");
+    expect(html).toContain('class="mermaid');
+    expect(html).toContain("graph TD");
+    expect(html).not.toContain("shiki");
+    expect(html).not.toContain("code-block");
+  });
+});
