@@ -490,4 +490,22 @@ html {
     height: auto;
     max-width: 100%;
   }
+
+  /* Charts (client-rendered LayerChart). The canvas reserves the chart's box up
+   * front (aspect-video, set as a class to match the mounted Chart.Container) so
+   * mounting causes no layout shift; a faint surface marks the reserved area until
+   * it fills. The source <table> stays in the DOM as the data source (sr-only). */
+  .doco-chart-canvas:empty {
+    background-color: color-mix(in oklch, var(--muted) 40%, transparent);
+  }
+  /* Copy-button icon swap, toggled by the client setting data-copied on the figure. */
+  .chart-check-icon {
+    display: none;
+  }
+  .doco-chart[data-copied] .chart-copy-icon {
+    display: none;
+  }
+  .doco-chart[data-copied] .chart-check-icon {
+    display: inline-flex;
+  }
 }

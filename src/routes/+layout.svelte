@@ -12,6 +12,7 @@
   import { setupCodeLineSelect } from "$lib/markdown/code-lines";
   import { setupContentTabs, applyTabPreference } from "$lib/markdown/content-tabs";
   import { setupMermaid, renderMermaid } from "$lib/markdown/mermaid";
+  import { setupCharts, renderCharts } from "$lib/markdown/charts";
   // ?url asks Vite for the asset's final hashed URL string. The latin range
   // covers EN + DE traffic (umlauts and ß live in U+0000-00FF); the ext and
   // cyrillic ranges fetch lazily on demand. Preloading only the latin file
@@ -26,6 +27,7 @@
   afterNavigate(() => {
     applyTabPreference();
     renderMermaid();
+    renderCharts();
   });
 
   // Session lives client-side so public HTML can be edge-cached without
@@ -44,12 +46,14 @@
     const teardownCodeLines = setupCodeLineSelect();
     const teardownTabs = setupContentTabs();
     const teardownMermaid = setupMermaid();
+    const teardownCharts = setupCharts();
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       teardownCodeCopy();
       teardownCodeLines();
       teardownTabs();
       teardownMermaid();
+      teardownCharts();
     };
   });
 

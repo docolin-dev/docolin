@@ -83,6 +83,10 @@ export default ts.config(
       "node_modules/",
       ".vercel/",
       "src/paraglide/",
+      // shadcn-svelte's chart component is generated/vendored (re-added with -o);
+      // its LayerChart-composed code trips many type-aware rules and would resurface
+      // on every re-add. Treat like other generated code rather than rewrite it.
+      "src/lib/components/ui/chart/",
       "tmp/",
       "scripts/",
       // Standalone workers (cron, etc.) have their own runtime context

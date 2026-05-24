@@ -133,3 +133,109 @@ each diagram draws only once both its wrappers are open.
         graph TD
             P --> Q
         ```
+
+## A chart in every hidden box
+
+Charts measure their container, so one in a hidden tab or a closed row could draw at
+a bad size. They hold their last size, so these must come out right when revealed.
+
+A chart inside a tab, next to a plain one:
+
+=== "Charted"
+    | Bar | Height |
+    | --- | ------ |
+    | A   | 12     |
+    | B   | 19     |
+    | C   | 7      |
+
+    { .chart type=bar legend=false title="Bars in a tab" }
+
+=== "Plain"
+    No chart here.
+
+A chart inside a collapsible:
+
+??? note "Open for a chart"
+    | Week | Climbs |
+    | ---- | ------ |
+    | W1   | 4      |
+    | W2   | 9      |
+    | W3   | 6      |
+
+    { .chart type=area legend=false title="Climbs over weeks" }
+
+A chart inside an accordion row:
+
+!!! accordion
+    - **Show the numbers**
+
+      | Snack    | Share |
+      | -------- | ----- |
+      | Ants     | 70    |
+      | Termites | 30    |
+
+      { .chart type=donut legend=false title="Diet" }
+
+A chart inside a card:
+
+!!! cards { cols=2 }
+    - **A charted card**
+
+      | x | y |
+      | - | - |
+      | a | 3 |
+      | b | 5 |
+
+      { .chart type=line legend=false }
+    - **A plain card**
+
+      No chart, just text.
+
+Two levels of hiding: a chart in a tab inside a collapsible.
+
+??? tip "Open, then switch tabs"
+    === "One"
+        | t | v |
+        | - | - |
+        | a | 2 |
+        | b | 6 |
+
+        { .chart type=bar legend=false }
+
+    === "Two"
+        | t | v |
+        | - | - |
+        | a | 5 |
+        | b | 1 |
+
+        { .chart type=bar legend=false }
+
+## Charts with awkward data
+
+More series than the five-color palette (colors cycle), and negative values:
+
+| Month | A  | B  | C  | D  | E  | F  |
+| ----- | -- | -- | -- | -- | -- | -- |
+| Jan   | 5  | -3 | 8  | 2  | -1 | 4  |
+| Feb   | 7  | 1  | -2 | 6  | 3  | -5 |
+| Mar   | -4 | 9  | 3  | -1 | 8  | 2  |
+
+{ .chart type=line title="Six series, some negative" }
+
+A single data point, a single series, and a thousands separator:
+
+| Region | Users |
+| ------ | ----- |
+| Global | 1,284 |
+
+{ .chart type=bar legend=false title="One bar" }
+
+Long category labels that have to share the axis:
+
+| Distribution                  | Downloads |
+| ----------------------------- | --------- |
+| A rather long distro name one | 120       |
+| Another long distribution two | 86        |
+| Yet another long distro three | 54        |
+
+{ .chart type=bar horizontal legend=false title="Long labels" }

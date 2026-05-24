@@ -357,3 +357,85 @@ describe("mermaid", () => {
     expect(html).not.toContain("code-block");
   });
 });
+
+describe("charts", () => {
+  it("promotes a table with a trailing { .chart } into a chart figure, keeping the table", async () => {
+    const html = await render(
+      '| Month | Desktop | Mobile |\n| - | - | - |\n| Jan | 186 | 80 |\n\n{ .chart type=bar title="Users" }\n',
+    );
+    expect(html).toContain('data-doco-chart="bar"');
+    expect(html).toContain("<figure");
+    expect(html).toContain("doco-chart-canvas"); // reserved mount slot (no layout shift)
+    expect(html).toContain("data-chart-copy"); // copy-as-Markdown button
+    expect(html).toContain("<table"); // data table preserved as the source
+    expect(html).toContain("sr-only"); // table hidden once the chart mounts
+    expect(html).toContain("186"); // real data still in the table
+    expect(html).toContain("<figcaption"); // title
+    expect(html).toContain("Users");
+    expect(html).not.toContain("{ .chart"); // marker paragraph consumed
+  });
+
+  it("leaves a normal table untouched", async () => {
+    const html = await render("| a | b |\n| - | - |\n| 1 | 2 |\n");
+    expect(html).toContain("<table");
+    expect(html).not.toContain("doco-chart");
+  });
+
+  it("falls back to a bar chart for an unknown type", async () => {
+    const html = await render("| x | y |\n| - | - |\n| a | 1 |\n\n{ .chart type=wat }\n");
+    expect(html).toContain('data-doco-chart="bar"');
+  });
+});
+
+describe("charts nested in other constructs", () => {
+  it("promotes a chart inside a callout body", async () => {
+    const html = await render(
+      '!!! tip "Stats"\n    | a | b |\n    | - | - |\n    | 1 | 2 |\n\n    { .chart type=donut }\n',
+    );
+    expect(html).toContain('data-doco-chart="donut"');
+    expect(html).toContain("doco-chart-canvas");
+  });
+
+  it("promotes a chart inside a tab panel", async () => {
+    const html = await render(
+      '=== "One"\n    | a | b |\n    | - | - |\n    | 1 | 2 |\n\n    { .chart type=line }\n',
+    );
+    expect(html).toContain('data-doco-chart="line"');
+  });
+});
+
+describe("charts edge cases", () => {
+  it("ignores a { .chart } marker with no preceding table", async () => {
+    const html = await render("Just a paragraph.\n\n{ .chart type=bar }\n");
+    expect(html).not.toContain("doco-chart");
+  });
+
+  it("does not promote a table whose trailing attr-list lacks .chart", async () => {
+    const html = await render("| a | b |\n| - | - |\n| 1 | 2 |\n\n{ .other }\n");
+    expect(html).toContain("<table");
+    expect(html).not.toContain("doco-chart");
+  });
+
+  it("carries stacked + horizontal flags through to data attributes", async () => {
+    const html = await render(
+      "| q | a | b |\n| - | - | - |\n| 1 | 2 | 3 |\n\n{ .chart type=bar stacked horizontal }\n",
+    );
+    expect(html).toContain('data-doco-chart="bar"');
+    expect(html).toContain("data-stacked");
+    expect(html).toContain("data-horizontal");
+  });
+
+  it("promotes a chart inside an accordion row", async () => {
+    const html = await render(
+      "!!! accordion\n    - **Q**\n\n      | a | b |\n      | - | - |\n      | 1 | 2 |\n\n      { .chart type=area }\n",
+    );
+    expect(html).toContain('data-doco-chart="area"');
+  });
+
+  it("promotes a chart inside a card", async () => {
+    const html = await render(
+      "!!! cards\n    - **A card**\n\n      | a | b |\n      | - | - |\n      | 1 | 2 |\n\n      { .chart type=line }\n",
+    );
+    expect(html).toContain('data-doco-chart="line"');
+  });
+});

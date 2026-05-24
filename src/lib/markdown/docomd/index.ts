@@ -25,6 +25,8 @@ export { tabFromMarkdown } from "./tab-mdast.ts";
 export { tabToMarkdown } from "./tab-to-markdown.ts";
 export { remarkTabGroup } from "./tab-group.ts";
 export { remarkAttrList } from "./attr-list.ts";
+export { remarkChart } from "./chart.ts";
+export type { ChartSpec, ChartType, DocoChart } from "./chart.ts";
 
 /** Adds docomd admonition + content-tab syntax to a unified/remark processor. */
 export const remarkDocomd: Plugin<[], Root> = function (): undefined {
