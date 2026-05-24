@@ -49,7 +49,8 @@ code stays literal.
 
 Pango's boasts come with receipts.[^scales] He also keeps a running tally.[^ants]
 Hover a marker for a preview, or follow it to the list at the bottom. The same
-marker can be reused,[^scales] and a footnote can even reference another.
+marker can be reused,[^scales] and reused again,[^scales] and a footnote can even
+reference another.
 
 [^scales]: Pangolins are the only mammals entirely covered in scales.[^keratin]
 

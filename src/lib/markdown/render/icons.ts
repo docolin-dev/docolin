@@ -13,6 +13,7 @@ import {
   Plus,
   TextSelect,
   TriangleAlert,
+  Undo2,
 } from "lucide";
 
 // Lucide icons as hast (svg elements), shared by the render handlers (callout
@@ -39,6 +40,7 @@ const ICONS = {
   plus: Plus,
   "text-select": TextSelect,
   "arrow-right": ArrowRight,
+  "undo-2": Undo2,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

@@ -520,8 +520,38 @@ html {
   font-size: 0.875rem;
   color: var(--muted-foreground);
 }
+/* Echo the inline marker's rust on the definition numbers, so the superscript you
+   clicked and the row you land on read as the same thing. */
+.footnotes ol > li::marker {
+  color: var(--primary);
+  font-weight: 600;
+}
+/* Highlight the row a no-JS reader lands on after following an inline marker; the
+   scroll-margin keeps it clear of the sticky header. */
+.footnotes li {
+  scroll-margin-top: 5rem;
+  transition: background-color 300ms;
+}
+.footnotes li:target {
+  background: var(--muted);
+}
+/* A quiet return arrow (plus bare superscript indices for re-references) replaces
+   remark-gfm's cryptic ↩ / ↩² glyphs. */
 .prose [data-footnote-backref] {
   text-decoration: none;
+  color: var(--muted-foreground);
+  padding: 0.1em 0.3em;
+  transition: color 150ms;
+}
+.prose [data-footnote-backref]:hover,
+.prose [data-footnote-backref]:focus-visible {
+  color: var(--primary);
+}
+.footnote-backref-icon {
+  display: inline-block;
+  width: 0.95em;
+  height: 0.95em;
+  vertical-align: -0.15em;
 }
 /* Enlarge the footnote marker's hit area (the superscript number alone is a tiny
    hover/tap target) and show a muted background on hover so it reads as a target. */

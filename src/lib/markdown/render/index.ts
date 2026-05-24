@@ -9,7 +9,7 @@ import { visit } from "unist-util-visit";
 import { h, s } from "hastscript";
 import { toString as mdastToString } from "mdast-util-to-string";
 import DOMPurify from "isomorphic-dompurify";
-import type { Root as HastRoot, Element } from "hast";
+import type { Root as HastRoot, Element, ElementContent } from "hast";
 import type { Root as MdastRoot } from "mdast";
 import {
   remarkDocomd,
@@ -25,6 +25,7 @@ import { rehypeIconShortcodes } from "./icon-shortcode.ts";
 import { remarkCode, codeHandler, type Highlight } from "./code.ts";
 import { chartHandler } from "./chart.ts";
 import { rehypeAnnotations } from "./annotations.ts";
+import { iconHast } from "./icons.ts";
 
 // docolin's markdown renderer, built on remark/rehype + the docomd syntax. The
 // pipeline is isomorphic; only the shiki highlighter differs (static on the
@@ -35,7 +36,7 @@ import { rehypeAnnotations } from "./annotations.ts";
 
 // Bump to invalidate every cached rendered page on the next read (it changes the
 // cache key); no DB backfill needed.
-export const RENDERER_VERSION = "2";
+export const RENDERER_VERSION = "1";
 
 /** Shiki dual theme: light + dark emitted together as CSS variables
  *  (`defaultColor: false`), so rendered code switches with the `.dark` class with
@@ -206,6 +207,15 @@ function rehypeButtons() {
   };
 }
 
+// The backref link content for each footnote definition (remark-rehype calls this
+// once per reference). The first reference gets a quiet return arrow; re-references
+// get a bare superscript index, so a thrice-cited note reads "↩ 2 3" instead of
+// gfm's confusing "↩ ↩2 ↩3". (rereferenceIndex is 1-based.)
+function footnoteBackContent(_referenceIndex: number, rereferenceIndex: number): ElementContent {
+  if (rereferenceIndex > 1) return h("sup", String(rereferenceIndex));
+  return iconHast("undo-2", "footnote-backref-icon");
+}
+
 /** Builds a render function bound to a shiki highlighter. */
 export function createMarkdownRenderer(highlight: Highlight): (source: string) => Promise<string> {
   const processor = unified()
@@ -220,6 +230,7 @@ export function createMarkdownRenderer(highlight: Highlight): (source: string) =
     .use(remarkHeadingIds)
     .use(remarkCode, highlight)
     .use(remarkRehype, {
+      footnoteBackContent,
       handlers: {
         admonition: admonitionHandler,
         code: codeHandler,
