@@ -514,7 +514,7 @@
 
 <!-- pt-20 clears the fixed navbar (~50px) + reading breathing room.
      Sticky sidebars use top-20 to align below the navbar. -->
-<div class="mx-auto flex max-w-7xl gap-10 px-6 pt-24 pb-10">
+<div class="flex gap-10 px-6 pt-24 pb-10">
   <!-- Sidebar column always rendered (empty when no sitemap) so the article
        column stays at the same horizontal position regardless of project
        config. Prevents layout shift between docos with and without sitemaps. -->
@@ -864,7 +864,7 @@
 
   <!-- TOC column always rendered (empty when no headings) so the article
        column doesn't shift horizontally between short and long docos. -->
-  <aside class="hidden w-52 shrink-0 xl:block">
+  <aside class="hidden w-60 shrink-0 xl:block">
     <div class="sticky top-20 pb-6">
       {#if !data.playground}
         <PangoScoreRail
