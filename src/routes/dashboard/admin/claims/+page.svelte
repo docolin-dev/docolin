@@ -3,6 +3,7 @@
   import { localizeHref } from "$paraglide/runtime";
   import { getLocale } from "$paraglide/runtime";
   import { Input } from "$lib/components/ui/input";
+  import { maskEmail } from "$lib/mask-email";
   import ArrowRight from "@lucide/svelte/icons/arrow-right";
   import Search from "@lucide/svelte/icons/search";
   import type { PageProps } from "./$types";
@@ -107,7 +108,7 @@
                 <span class="text-foreground/80 text-sm">@{claim.requester.handle}</span>
                 {#if claim.requester.email}
                   <span class="text-muted-foreground font-mono text-sm">
-                    {claim.requester.email}
+                    {maskEmail(claim.requester.email)}
                   </span>
                 {/if}
               </div>

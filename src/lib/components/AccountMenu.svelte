@@ -5,6 +5,7 @@
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { session } from "$lib/client/session.svelte";
+  import MaskedEmail from "$lib/components/MaskedEmail.svelte";
 
   // Tri-state account control shared between marketing and dashboard navbars.
   //  - signed in + onboarded → handle dropdown (Dashboard, Sign out)
@@ -36,9 +37,10 @@
       <DropdownMenu.Label class="flex flex-col gap-0.5 py-2">
         <span class="font-mono text-sm font-medium">@{dbUser.handle}</span>
         {#if session.value.auth?.email}
-          <span class="text-muted-foreground text-xs font-normal">
-            {session.value.auth.email}
-          </span>
+          <MaskedEmail
+            email={session.value.auth.email}
+            class="text-muted-foreground text-xs font-normal"
+          />
         {/if}
       </DropdownMenu.Label>
       <DropdownMenu.Separator />

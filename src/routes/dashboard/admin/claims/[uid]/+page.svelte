@@ -4,6 +4,7 @@
   import { localizeHref } from "$paraglide/runtime";
   import { getLocale } from "$paraglide/runtime";
   import { Button } from "$lib/components/ui/button";
+  import MaskedEmail from "$lib/components/MaskedEmail.svelte";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
   import Check from "@lucide/svelte/icons/check";
   import X from "@lucide/svelte/icons/x";
@@ -66,7 +67,7 @@
     </span>
     {#if claim.requester.email}
       <span class="text-muted-foreground" aria-hidden="true">·</span>
-      <span class="text-foreground font-mono select-all">{claim.requester.email}</span>
+      <MaskedEmail email={claim.requester.email} class="text-foreground font-mono" />
     {/if}
   </p>
   <p class="text-muted-foreground mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs">
@@ -108,7 +109,8 @@
             <li>
               <span class="text-foreground/80">@{sib.handle}</span>
               {#if sib.email}
-                <span class="font-mono"> · {sib.email}</span>
+                <span aria-hidden="true">·</span>
+                <MaskedEmail email={sib.email} class="font-mono" />
               {/if}
             </li>
           {/each}

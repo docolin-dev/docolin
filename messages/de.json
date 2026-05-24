@@ -5,6 +5,8 @@
   "common_theme_light": "Hell",
   "common_theme_dark": "Dunkel",
   "common_theme_system": "System",
+  "common_email_reveal": "E-Mail-Adresse anzeigen",
+  "common_email_hide": "E-Mail-Adresse verbergen",
 
   "nav_browse": "Entdecken",
   "nav_for_projects": "Für Projekte",

@@ -5,6 +5,8 @@
   "common_theme_light": "Light",
   "common_theme_dark": "Dark",
   "common_theme_system": "System",
+  "common_email_reveal": "Reveal email address",
+  "common_email_hide": "Hide email address",
 
   "nav_browse": "Browse",
   "nav_for_projects": "For projects",
