@@ -91,6 +91,26 @@ function rehypeExternalLinks() {
   };
 }
 
+// GitHub-style heading anchors: prepend a link icon to each in-content heading
+// (h2-h6 already carry an id from remarkHeadingIds). CSS reveals it on hover;
+// clicking jumps to and addresses that section. h1 is the (hidden) doco title,
+// so it's skipped.
+function rehypeHeadingAnchors() {
+  const headings = new Set(["h2", "h3", "h4", "h5", "h6"]);
+  return (tree: HastRoot): undefined => {
+    visit(tree, "element", (node) => {
+      if (!headings.has(node.tagName)) return;
+      const id = node.properties.id;
+      if (typeof id !== "string" || id.length === 0) return;
+      node.children.unshift(
+        h("a", { class: "heading-anchor", href: `#${id}`, "aria-label": "Link to this section" }, [
+          iconHast("link", "heading-anchor-icon"),
+        ]),
+      );
+    });
+  };
+}
+
 // Read-only checkbox styled like the shadcn Checkbox (we cannot mount a Svelte
 // component into rendered HTML, so we emit the same look).
 function shadcnCheckbox(checked: boolean): Element {
@@ -241,6 +261,7 @@ export function createMarkdownRenderer(highlight: Highlight): (source: string) =
     .use(rehypeKatex)
     .use(rehypeButtons)
     .use(rehypeExternalLinks)
+    .use(rehypeHeadingAnchors)
     .use(rehypeTaskLists)
     .use(rehypeIconShortcodes)
     .use(rehypeAnnotations)

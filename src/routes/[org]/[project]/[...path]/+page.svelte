@@ -23,6 +23,7 @@
   import StampPrompt from "$lib/components/doco/StampPrompt.svelte";
   import { githubEditUrl } from "$lib/git/github-url";
   import { session } from "$lib/client/session.svelte";
+  import { toast } from "svelte-sonner";
   import type { ModerationTargetType } from "$lib/moderation-reasons";
   import type { PageProps } from "./$types";
 
@@ -484,6 +485,29 @@
       const href = link.getAttribute("href");
       if (href !== null) link.setAttribute("href", localizeHref(href));
     }
+  });
+
+  // GitHub-style heading anchor click: the link navigates to (and addresses) the
+  // section, and we also copy the full section URL to the clipboard and toast a
+  // confirmation. Delegated on the document so keyboard activation counts too.
+  $effect(() => {
+    function onClick(event: MouseEvent): void {
+      if (!(event.target instanceof Element)) return;
+      const anchor = event.target.closest(".heading-anchor");
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      void navigator.clipboard
+        .writeText(anchor.href)
+        .then(() => {
+          toast.success(m.doco_heading_copied());
+        })
+        .catch(() => {
+          // Clipboard blocked (permissions / insecure context); the hash still updated.
+        });
+    }
+    document.addEventListener("click", onClick);
+    return () => {
+      document.removeEventListener("click", onClick);
+    };
   });
 
   let copiedMarkdown = $state(false);

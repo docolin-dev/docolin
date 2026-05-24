@@ -573,6 +573,36 @@ html {
   background: var(--muted);
 }
 
+/* GitHub-style heading anchor: a link icon that fades in to the left of an
+   in-content heading on hover; clicking it jumps to and addresses the section. */
+.prose :is(h2, h3, h4, h5, h6) {
+  position: relative;
+}
+.heading-anchor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -1.35em;
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted-foreground);
+  opacity: 0;
+  transition:
+    opacity 150ms,
+    color 150ms;
+}
+.prose :is(h2, h3, h4, h5, h6):hover > .heading-anchor,
+.heading-anchor:focus-visible {
+  opacity: 1;
+}
+.heading-anchor:hover {
+  color: var(--primary);
+}
+.heading-anchor-icon {
+  width: 0.8em;
+  height: 0.8em;
+}
+
 /* Appended to <body>, positioned by Floating UI (position: fixed). */
 .doco-hovercard {
   position: fixed;

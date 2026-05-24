@@ -2,6 +2,7 @@
   import "./layout.css";
   import type { Snippet } from "svelte";
   import { ModeWatcher } from "mode-watcher";
+  import { Toaster } from "$lib/components/ui/sonner";
   import { onMount } from "svelte";
   import { afterNavigate } from "$app/navigation";
   import { page } from "$app/state";
@@ -92,5 +93,6 @@
      (persisted, follows the OS for "system"), with a no-flash inline script. The
      frontpage opts back out by wrapping itself in `.light` (see +page.svelte). -->
 <ModeWatcher />
+<Toaster />
 
 {@render children()}
