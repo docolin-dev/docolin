@@ -68,6 +68,34 @@ An unknown language, so Pango can confirm it falls back without faceplanting:
 ?? this grammar climbed the wrong bar ??
 ```
 
+## Fences inside fences
+
+Wrap a block in **four** backticks when its body itself contains a three-backtick
+fence. That is how a doc shows you a code block without running it, the inner fence
+stays literal text:
+
+````md
+```ts
+const grip: string = "firm";
+```
+````
+
+And the four-backtick wrapper keeps _everything_ inside it literal, prose, headings,
+and the inner fence alike:
+
+````md
+## Not a real heading
+
+Some **bold** text, a list, then a fenced block, all shown verbatim:
+
+- one
+- two
+
+```ts
+const grip: string = "firm";
+```
+````
+
 ## Annotations
 
 Mark a line with `(n)` and follow the block with a numbered list. The marker becomes
