@@ -1,14 +1,12 @@
 <script lang="ts">
   import { m } from "$paraglide/messages";
   import Check from "@lucide/svelte/icons/check";
+  import Bot from "@lucide/svelte/icons/bot";
 
   // Each pillar gets its own evidence artifact instead of an abstract icon.
   // The artifact is the dominant visual; the title and body caption it.
-  const verifiedSystems = [
-    { name: "ubuntu 24.04", count: 87, width: 100 },
-    { name: "pop!_os 22.04", count: 31, width: 36 },
-    { name: "fedora 41", count: 24, width: 28 },
-  ];
+  // Verification leads the row: it's the one thing no other docs platform has,
+  // so it gets the first card and a real signed stamp rather than a counter.
 </script>
 
 <section class="px-6 py-24 sm:py-32">
@@ -23,6 +21,39 @@
     </div>
 
     <div class="bg-border/60 grid grid-cols-1 gap-px md:grid-cols-3">
+      <article class="bg-background flex flex-col p-6 sm:p-8">
+        <div
+          class="border-foreground/10 bg-muted/30 mb-6 flex h-44 flex-col justify-center border p-5"
+        >
+          <div class="flex items-center justify-between">
+            <span
+              class="bg-primary/15 text-primary inline-flex items-center gap-1.5 px-2 py-1 font-mono text-[10px] font-medium"
+            >
+              <Check class="size-3" />
+              {m.home_what_verified_outcome()}
+            </span>
+            <span class="text-foreground/45 font-mono text-[10px]">
+              {m.home_what_verified_when()}
+            </span>
+          </div>
+          <p class="text-foreground/85 mt-4 text-xs">
+            {m.home_what_verified_by()}
+            <span class="text-primary">@maria</span>
+          </p>
+          <p class="text-foreground/55 mt-1 font-mono text-[10px]">
+            Ubuntu 24.04 · kernel 6.8 · NVIDIA 550
+          </p>
+          <p
+            class="border-foreground/10 text-foreground/55 mt-3 flex items-center gap-1.5 border-t pt-2.5 text-[10px]"
+          >
+            <Bot class="text-foreground/40 size-3 shrink-0" />
+            {m.home_what_verified_agent()}
+          </p>
+        </div>
+        <h3 class="text-xl font-medium tracking-tight">{m.home_what_verified_title()}</h3>
+        <p class="text-muted-foreground mt-3 leading-relaxed">{m.home_what_verified_body()}</p>
+      </article>
+
       <article class="bg-background flex flex-col p-6 sm:p-8">
         <div
           class="border-foreground/10 bg-muted/30 mb-6 flex h-44 flex-col justify-center border p-5"
@@ -46,36 +77,6 @@
         </div>
         <h3 class="text-xl font-medium tracking-tight">{m.home_what_structured_title()}</h3>
         <p class="text-muted-foreground mt-3 leading-relaxed">{m.home_what_structured_body()}</p>
-      </article>
-
-      <article class="bg-background flex flex-col p-6 sm:p-8">
-        <div
-          class="border-foreground/10 bg-muted/30 mb-6 flex h-44 flex-col justify-center border p-5"
-        >
-          <div class="flex items-center gap-2">
-            <span class="bg-primary/15 text-primary inline-flex size-6 items-center justify-center">
-              <Check class="size-3.5" />
-            </span>
-            <span class="text-foreground/85 text-sm font-medium">
-              {m.home_what_verified_count()}
-            </span>
-          </div>
-          <div class="mt-4 space-y-2">
-            {#each verifiedSystems as system (system.name)}
-              <div class="flex items-center gap-3 text-[11px]">
-                <span class="text-foreground/55 w-24 font-mono">{system.name}</span>
-                <div class="bg-foreground/8 h-1 flex-1">
-                  <div class="bg-primary h-full" style="width: {system.width.toString()}%"></div>
-                </div>
-                <span class="text-foreground/65 w-6 text-right font-mono tabular-nums"
-                  >{system.count}</span
-                >
-              </div>
-            {/each}
-          </div>
-        </div>
-        <h3 class="text-xl font-medium tracking-tight">{m.home_what_verified_title()}</h3>
-        <p class="text-muted-foreground mt-3 leading-relaxed">{m.home_what_verified_body()}</p>
       </article>
 
       <article class="bg-background flex flex-col p-6 sm:p-8">

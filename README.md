@@ -1,6 +1,6 @@
 # docolin
 
-> Structured knowledge for everything. Owned by no one. Accessible to everyone. Built for both humans and AI.
+> Documentation that proves itself. An open commons for technical knowledge, verified on real systems, owned by no one, read by humans and AI.
 
 ## The vision
 
@@ -14,10 +14,10 @@ Free for everyone, forever. No paid plan, no private docs, no premium tier. Fund
 
 - **Path-based kinds taxonomy** like `hardware/gpu/nvidia/driver-install`, so hierarchy emerges naturally and fallbacks work for free
 - **Soft links** that resolve to the right guide based on the reader's setup (Ubuntu reader gets UFW, Fedora reader gets firewalld, same link)
-- **Verified-working stamps** from real users on real systems
+- **Verified-working stamps** from real users and agents on real systems, a signed record per version, not a popularity counter
 - **Git-source projects**: point docolin at any git repo, sync on push, PRs and issues stay in your existing workflow
 - **AI-native via MCP** with attribution baked into every citation, so contributors get credit when their work is used
-- **Open source under AGPL** so you can self-host, fork, or just trust it
+- **Open source under AGPL**, so the platform can't be acquired and locked down, only forked and improved
 
 ## Status
 

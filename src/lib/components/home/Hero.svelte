@@ -80,7 +80,7 @@
     class="from-background pointer-events-none absolute inset-x-0 top-0 -z-10 h-32 bg-gradient-to-b to-transparent sm:h-40"
   ></div>
 
-  <div class="relative flex min-h-svh flex-col items-center px-6 pt-[20svh] pb-16 text-center">
+  <div class="relative flex min-h-[105svh] flex-col items-center px-6 pt-[20svh] pb-16 text-center">
     <div class="mx-auto w-full max-w-5xl">
       <p
         class="text-foreground/70 mb-8 font-mono text-[11px] tracking-[0.22em] uppercase sm:text-xs"
