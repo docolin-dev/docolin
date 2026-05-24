@@ -128,10 +128,17 @@ export const versions = pgTable(
       .default("commonmark")
       .$type<"commonmark" | "asciidoc" | "rst" | "mdx">(),
 
-    // Vote cache. Backing per-vote rows are deferred until the verification
-    // mechanism is designed; this contract is what readers consume.
-    upVotesCache: integer("up_votes_cache").notNull().default(0),
-    downVotesCache: integer("down_votes_cache").notNull().default(0),
+    // Verification aggregate, recomputed from the stamps ledger off the write
+    // path. verificationScore is the 0-1000 reliability number, null until the
+    // guide clears the minimum-evidence gate ("not verified yet"). stampCount is
+    // the raw number of stamps behind it; lastConfirmedAt is the most recent
+    // worked / worked-with-caveats stamp (for "last confirmed working N ago").
+    verificationScore: integer("verification_score"),
+    verificationStampCount: integer("verification_stamp_count").notNull().default(0),
+    verificationLastConfirmedAt: timestamp("verification_last_confirmed_at", {
+      withTimezone: true,
+    }),
+    verificationComputedAt: timestamp("verification_computed_at", { withTimezone: true }),
 
     // Search.
     embedding: vector("embedding", { dimensions: 1536 }),
@@ -205,8 +212,9 @@ export const latestVersions = pgMaterializedView("latest_versions", {
   sitemap: jsonb("sitemap"),
   bodyText: text("body_text").notNull(),
   bodyFormat: text("body_format").notNull(),
-  upVotesCache: integer("up_votes_cache").notNull(),
-  downVotesCache: integer("down_votes_cache").notNull(),
+  verificationScore: integer("verification_score"),
+  verificationStampCount: integer("verification_stamp_count").notNull(),
+  verificationLastConfirmedAt: timestamp("verification_last_confirmed_at", { withTimezone: true }),
   embedding: vector("embedding", { dimensions: 1536 }),
   publishedAt: timestamp("published_at", { withTimezone: true }).notNull(),
 }).as(
@@ -234,8 +242,9 @@ export const latestVersions = pgMaterializedView("latest_versions", {
       v.sitemap,
       v.body_text,
       v.body_format,
-      v.up_votes_cache,
-      v.down_votes_cache,
+      v.verification_score,
+      v.verification_stamp_count,
+      v.verification_last_confirmed_at,
       v.embedding,
       v.published_at
     FROM docos d

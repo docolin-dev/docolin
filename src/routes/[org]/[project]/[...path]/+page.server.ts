@@ -9,6 +9,8 @@ import { renderMarkdown, extractDocoToc } from "$lib/server/markdown";
 import { resolveDocoIdentity, resolveProjectBySlug } from "$lib/server/doco-resolve";
 import { fileDeletionRequest, submitReport } from "$lib/server/moderation";
 import { pathFromSourcePath, rebuildPathInSource } from "$lib/doco-urls";
+import { recordStamp } from "$lib/verification/ingest";
+import type { StampOutcome } from "$lib/verification/score";
 // Dev-only markdown playground registry, shared with the link-preview endpoint.
 import { PANGO_PAGES, PANGO_SITEMAP } from "./pango/pages.ts";
 
@@ -89,6 +91,8 @@ export const load: PageServerLoad = async ({ params, setHeaders, isDataRequest }
         sitemap: PANGO_SITEMAP,
         authors: playgroundAuthors,
         verifiedCount: 0,
+        pangoScore: null,
+        lastConfirmedAt: null,
         versionNumber: 1,
         commitSha: null,
         versionTag: null,
@@ -101,6 +105,7 @@ export const load: PageServerLoad = async ({ params, setHeaders, isDataRequest }
             versionTag: null,
             publishedAt: now,
             verifiedCount: 0,
+            pangoScore: null,
           },
         ],
       },
@@ -168,7 +173,9 @@ export const load: PageServerLoad = async ({ params, setHeaders, isDataRequest }
       nextLink: versions.nextLink,
       sitemap: versions.sitemap,
       authors: versions.authors,
-      verifiedCount: versions.upVotesCache,
+      verifiedCount: versions.verificationStampCount,
+      pangoScore: versions.verificationScore,
+      lastConfirmedAt: versions.verificationLastConfirmedAt,
       publishedAt: versions.publishedAt,
     })
     .from(versions)
@@ -195,7 +202,8 @@ export const load: PageServerLoad = async ({ params, setHeaders, isDataRequest }
       commitSha: versions.commitSha,
       versionTag: versions.versionTag,
       publishedAt: versions.publishedAt,
-      verifiedCount: versions.upVotesCache,
+      verifiedCount: versions.verificationStampCount,
+      pangoScore: versions.verificationScore,
     })
     .from(versions)
     .where(eq(versions.docoId, doco.docoId))
@@ -268,6 +276,8 @@ export const load: PageServerLoad = async ({ params, setHeaders, isDataRequest }
       sitemap: doco.sitemap,
       authors: resolvedAuthors,
       verifiedCount: doco.verifiedCount,
+      pangoScore: doco.pangoScore,
+      lastConfirmedAt: doco.lastConfirmedAt?.toISOString() ?? null,
       versionNumber: doco.versionNumber,
       commitSha: doco.commitSha,
       versionTag: doco.versionTag,
@@ -279,6 +289,7 @@ export const load: PageServerLoad = async ({ params, setHeaders, isDataRequest }
         versionTag: v.versionTag,
         publishedAt: v.publishedAt.toISOString(),
         verifiedCount: v.verifiedCount,
+        pangoScore: v.pangoScore,
       })),
     },
   };
@@ -480,6 +491,10 @@ function fieldStr(form: FormData, key: string): string {
 // "version"). Reporting a doco routes straight to platform staff; "request
 // deletion" is moderator-only. Versions have no in-place hide yet, so neither
 // changes the rendered page; both just file a record for the admin queue.
+function isStampOutcome(value: string): value is StampOutcome {
+  return value === "worked" || value === "worked_with_caveats" || value === "didnt_work";
+}
+
 export const actions = {
   report: async ({ request, params, locals }) => {
     if (!locals.dbUser) return fail(401, { action: "report", error: "generic" });
@@ -537,5 +552,41 @@ export const actions = {
       });
     }
     return { action: "requestDeletion", ok: true };
+  },
+
+  stamp: async ({ request, params, locals }) => {
+    const form = await request.formData();
+    const versionId = fieldStr(form, "versionId");
+    const outcome = fieldStr(form, "outcome");
+    if (!isStampOutcome(outcome) || versionId.length === 0) {
+      return fail(400, { action: "stamp", error: "generic" });
+    }
+
+    // Don't trust the client to point the stamp at an arbitrary version: confirm
+    // it belongs to the project in the URL.
+    const proj = await resolveProjectBySlug(params.org, params.project);
+    if (proj === null) return fail(404, { action: "stamp", error: "generic" });
+    const owned = await db
+      .select({ id: versions.id })
+      .from(versions)
+      .innerJoin(docosTable, eq(docosTable.id, versions.docoId))
+      .where(and(eq(versions.id, versionId), eq(docosTable.projectId, proj.projectId)))
+      .limit(1);
+    if (owned.length === 0) return fail(404, { action: "stamp", error: "generic" });
+
+    const voter = locals.dbUser ?? null;
+    await recordStamp({
+      versionId,
+      outcome,
+      source: voter ? "human" : "anonymous",
+      voterUserId: voter ? voter.id : null,
+      // Network bucket + rate limiting land with the holistic anti-abuse pass.
+      networkBucket: null,
+    });
+
+    // The write stays a single insert. The score recompute is debounced off the
+    // write path by /api/cron/recompute-scores, which coalesces a burst of stamps
+    // on the same version into one recompute.
+    return { action: "stamp", ok: true };
   },
 } satisfies Actions;

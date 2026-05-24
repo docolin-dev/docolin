@@ -14,10 +14,13 @@
   import Ellipsis from "@lucide/svelte/icons/ellipsis";
   import Flag from "@lucide/svelte/icons/flag";
   import Trash2 from "@lucide/svelte/icons/trash-2";
+  import PawPrint from "@lucide/svelte/icons/paw-print";
   import DocoViewerNavbar from "$lib/components/DocoViewerNavbar.svelte";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
   import ReportDialog from "$lib/components/moderation/ReportDialog.svelte";
   import RequestDeletionDialog from "$lib/components/moderation/RequestDeletionDialog.svelte";
+  import PangoScoreRail from "$lib/components/doco/PangoScoreRail.svelte";
+  import StampPrompt from "$lib/components/doco/StampPrompt.svelte";
   import { githubEditUrl } from "$lib/git/github-url";
   import { session } from "$lib/client/session.svelte";
   import type { ModerationTargetType } from "$lib/moderation-reasons";
@@ -50,6 +53,36 @@
         const caps = (await res.json()) as { canModerate: boolean };
         canModerate = caps.canModerate;
       }
+    })();
+  });
+
+  // Pango Score freshness. The doco HTML is long-cached, so the score baked into
+  // it can be up to a day stale. Paint that value instantly, then refetch the
+  // live score after hydration and update it in place. Cache-first: mutable
+  // public data hydrates client-side, so a stamp/recompute never needs a page
+  // purge. Re-runs on version change so navigation refreshes it.
+  let liveScore = $state<number | null>(null);
+  let liveCount = $state(0);
+  let liveConfirmed = $state<string | null>(null);
+  $effect(() => {
+    liveScore = doco.pangoScore;
+    liveCount = doco.verifiedCount;
+    liveConfirmed = doco.lastConfirmedAt;
+    if (data.playground) return;
+    const versionId = doco.versionId;
+    void (async () => {
+      const res = await fetch(`/api/versions/${versionId}/pango-score`, {
+        credentials: "same-origin",
+      });
+      if (!res.ok || doco.versionId !== versionId) return;
+      const fresh = (await res.json()) as {
+        score: number | null;
+        verifiedCount: number;
+        lastConfirmedAt: string | null;
+      };
+      liveScore = fresh.score;
+      liveCount = fresh.verifiedCount;
+      liveConfirmed = fresh.lastConfirmedAt;
     })();
   });
 
@@ -427,6 +460,15 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function scrollToStampPrompt(): void {
+    // Same pin-during-scroll trick as scrollToTop so the TOC H3 lists don't flap
+    // open as the programmatic scroll passes through sections.
+    pinUntilScrollEnd(-1);
+    document
+      .getElementById("stamp-prompt")
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   let copiedMarkdown = $state(false);
   async function copyMarkdown(): Promise<void> {
     await navigator.clipboard.writeText(doco.bodyText);
@@ -692,8 +734,9 @@
                             : v.commitSha.slice(0, 7))}
                       </span>
                       <span class="text-muted-foreground">{relativeTime(v.publishedAt)}</span>
-                      <span class="text-muted-foreground font-mono">
-                        {m.doco_meta_verified({ count: v.verifiedCount })}
+                      <span class="text-muted-foreground inline-flex items-center gap-1 font-mono">
+                        <PawPrint class="size-3" />
+                        {v.pangoScore ?? "-"}
                       </span>
                     </a>
                   </li>
@@ -705,10 +748,6 @@
           {#if doco.status !== "stable"}
             <span class="text-muted-foreground/40">·</span>
             <span class="text-amber-700">{doco.status}</span>
-          {/if}
-          {#if doco.verifiedCount > 0}
-            <span class="text-muted-foreground/40">·</span>
-            <span>{m.doco_meta_verified({ count: doco.verifiedCount })}</span>
           {/if}
         </div>
       </header>
@@ -736,12 +775,16 @@
         {@html doco.bodyHtml}
       </div>
 
+      {#if !data.playground}
+        <StampPrompt versionId={doco.versionId} score={liveScore} {signedIn} />
+      {/if}
+
       <!-- End-of-article engagement zone. The Discussions CTA mirrors the
            top-header button, positioned where the eye lands after finishing
            the body. Edit lives at the top (next to Copy markdown) as an
            icon-only affordance for the contributor minority. -->
       <aside
-        class="border-primary/40 bg-primary/5 mt-12 flex flex-col gap-3 border border-l-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+        class="border-primary/40 bg-primary/5 mt-8 flex flex-col gap-3 border border-l-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
       >
         <div class="min-w-0">
           <p class="text-foreground text-base font-medium">
@@ -761,7 +804,7 @@
       </aside>
 
       {#if doco.prevNav !== null || doco.nextNav !== null}
-        <footer class="mt-12 grid gap-4 text-sm md:grid-cols-2">
+        <footer class="mt-8 grid gap-4 text-sm md:grid-cols-2">
           {#if doco.prevNav}
             <a
               href={doco.prevNav.kind === "resolved"
@@ -822,13 +865,22 @@
   <!-- TOC column always rendered (empty when no headings) so the article
        column doesn't shift horizontally between short and long docos. -->
   <aside class="hidden w-52 shrink-0 xl:block">
-    {#if tocTree.length > 0}
-      <nav class="sticky top-20 pb-6">
-        <p class="text-muted-foreground mb-3 font-mono text-xs tracking-[0.18em] uppercase">
-          {m.doco_toc_heading()}
-        </p>
+    <div class="sticky top-20 pb-6">
+      {#if !data.playground}
+        <PangoScoreRail
+          score={liveScore}
+          verifiedCount={liveCount}
+          lastConfirmedAt={liveConfirmed}
+          onStampIt={scrollToStampPrompt}
+        />
+      {/if}
+      {#if tocTree.length > 0}
+        <nav>
+          <p class="text-muted-foreground mb-3 font-mono text-xs tracking-[0.18em] uppercase">
+            {m.doco_toc_heading()}
+          </p>
 
-        <!-- Layered scroll indicator:
+          <!-- Layered scroll indicator:
              - background line: muted, full TOC height
              - active segment: primary, mapped proportionally from the
                viewport's doc range to TOC y-range via headingMap. Slides
@@ -837,66 +889,67 @@
              Items get left padding to clear the bar. No per-item borders to
              avoid two competing indicators. No CSS transition: with frequent
              scroll updates a transition just adds visible lag. -->
-        <div class="relative" bind:this={tocBarEl}>
-          <div class="bg-foreground/15 absolute top-0 bottom-0 left-0 w-px"></div>
-          <div
-            class="bg-primary absolute left-0 w-px"
-            style:top="{indicatorRange.top}px"
-            style:height="{indicatorRange.height}px"
-          ></div>
+          <div class="relative" bind:this={tocBarEl}>
+            <div class="bg-foreground/15 absolute top-0 bottom-0 left-0 w-px"></div>
+            <div
+              class="bg-primary absolute left-0 w-px"
+              style:top="{indicatorRange.top}px"
+              style:height="{indicatorRange.height}px"
+            ></div>
 
-          <ul class="flex flex-col text-sm">
-            <li>
-              <button
-                type="button"
-                onclick={scrollToTop}
-                class="text-muted-foreground hover:text-foreground block w-full cursor-pointer py-1 pr-2 pl-3 text-left transition-colors"
-              >
-                ↑ {m.doco_toc_back_to_top()}
-              </button>
-            </li>
-            {#each tocTree as section, i (section.h2.id)}
+            <ul class="flex flex-col text-sm">
               <li>
-                <a
-                  href={"#" + section.h2.id}
-                  onclick={() => {
-                    pinSectionForId(section.h2.id);
-                  }}
-                  class="block py-1 pr-2 pl-3 transition-colors"
-                  class:text-foreground={i === activeSectionIndex}
-                  class:font-medium={i === activeSectionIndex}
-                  class:text-muted-foreground={i !== activeSectionIndex}
-                  class:hover:text-foreground={i !== activeSectionIndex}
+                <button
+                  type="button"
+                  onclick={scrollToTop}
+                  class="text-muted-foreground hover:text-foreground block w-full cursor-pointer py-1 pr-2 pl-3 text-left transition-colors"
                 >
-                  {section.h2.text}
-                </a>
-                {#if i === expandedSectionIndex && section.h3s.length > 0}
-                  <ul transition:slide={{ duration: 150 }} class="flex flex-col">
-                    {#each section.h3s as h3 (h3.id)}
-                      <li>
-                        <a
-                          href={"#" + h3.id}
-                          onclick={() => {
-                            pinSectionForId(h3.id);
-                          }}
-                          class="block py-1 pr-2 pl-6 transition-colors"
-                          class:text-foreground={activeId === h3.id}
-                          class:font-medium={activeId === h3.id}
-                          class:text-muted-foreground={activeId !== h3.id}
-                          class:hover:text-foreground={activeId !== h3.id}
-                        >
-                          {h3.text}
-                        </a>
-                      </li>
-                    {/each}
-                  </ul>
-                {/if}
+                  ↑ {m.doco_toc_back_to_top()}
+                </button>
               </li>
-            {/each}
-          </ul>
-        </div>
-      </nav>
-    {/if}
+              {#each tocTree as section, i (section.h2.id)}
+                <li>
+                  <a
+                    href={"#" + section.h2.id}
+                    onclick={() => {
+                      pinSectionForId(section.h2.id);
+                    }}
+                    class="block py-1 pr-2 pl-3 transition-colors"
+                    class:text-foreground={i === activeSectionIndex}
+                    class:font-medium={i === activeSectionIndex}
+                    class:text-muted-foreground={i !== activeSectionIndex}
+                    class:hover:text-foreground={i !== activeSectionIndex}
+                  >
+                    {section.h2.text}
+                  </a>
+                  {#if i === expandedSectionIndex && section.h3s.length > 0}
+                    <ul transition:slide={{ duration: 150 }} class="flex flex-col">
+                      {#each section.h3s as h3 (h3.id)}
+                        <li>
+                          <a
+                            href={"#" + h3.id}
+                            onclick={() => {
+                              pinSectionForId(h3.id);
+                            }}
+                            class="block py-1 pr-2 pl-6 transition-colors"
+                            class:text-foreground={activeId === h3.id}
+                            class:font-medium={activeId === h3.id}
+                            class:text-muted-foreground={activeId !== h3.id}
+                            class:hover:text-foreground={activeId !== h3.id}
+                          >
+                            {h3.text}
+                          </a>
+                        </li>
+                      {/each}
+                    </ul>
+                  {/if}
+                </li>
+              {/each}
+            </ul>
+          </div>
+        </nav>
+      {/if}
+    </div>
   </aside>
 </div>
 

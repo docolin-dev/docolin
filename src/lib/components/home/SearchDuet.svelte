@@ -1,6 +1,6 @@
 <script lang="ts">
   import { m } from "$paraglide/messages";
-  import Check from "@lucide/svelte/icons/check";
+  import PawPrint from "@lucide/svelte/icons/paw-print";
   import ArrowRight from "@lucide/svelte/icons/arrow-right";
 
   // Same docolin path resolves to different guides based on the reader's
@@ -45,7 +45,7 @@
         <h3 class="text-base font-medium tracking-tight">{m.home_search_left_title()}</h3>
         <div class="mt-4 flex items-center justify-between gap-3">
           <p class="text-muted-foreground flex items-center gap-1.5 text-xs">
-            <Check class="text-primary size-3.5" />
+            <PawPrint class="text-primary size-3.5" />
             {m.home_search_left_verified()}
           </p>
           <span
@@ -74,7 +74,7 @@
         <h3 class="text-base font-medium tracking-tight">{m.home_search_right_title()}</h3>
         <div class="mt-4 flex items-center justify-between gap-3">
           <p class="text-muted-foreground flex items-center gap-1.5 text-xs">
-            <Check class="text-primary size-3.5" />
+            <PawPrint class="text-primary size-3.5" />
             {m.home_search_right_verified()}
           </p>
           <span
