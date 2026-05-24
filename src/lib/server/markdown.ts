@@ -3,6 +3,7 @@ import {
   createMarkdownRenderer,
   extractToc,
   RENDERER_VERSION,
+  SHIKI_THEMES,
   type TocEntry,
 } from "$lib/markdown/render";
 
@@ -23,7 +24,7 @@ export { RENDERER_VERSION };
 export type { TocEntry };
 
 const render = createMarkdownRenderer((code, lang) =>
-  codeToHast(code, { lang, theme: "github-light" }),
+  codeToHast(code, { lang, themes: SHIKI_THEMES, defaultColor: false }),
 );
 
 export function renderMarkdown(source: string): Promise<string> {

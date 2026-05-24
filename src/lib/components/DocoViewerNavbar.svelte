@@ -5,6 +5,7 @@
   import AccountMenu from "$lib/components/AccountMenu.svelte";
   import InboxBell from "$lib/components/InboxBell.svelte";
   import LanguageSwitcher from "$lib/components/LanguageSwitcher.svelte";
+  import ThemeToggle from "$lib/components/ThemeToggle.svelte";
 
   // Public doco-page chrome. Mirrors the dashboard navbar's style and right-
   // side widget cluster so signed-in users have visual continuity between
@@ -106,6 +107,7 @@
         <InboxBell />
         <AccountMenu />
       </div>
+      <ThemeToggle />
     </div>
   </nav>
 </header>

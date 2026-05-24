@@ -112,22 +112,10 @@ function restructureLines(pre: Element, blockIndex: number, hlLines: Set<number>
   code.children = lines;
 }
 
-function header(title: string | null, lang: string): Element {
-  const left: ElementContent[] =
-    title === null
-      ? []
-      : [h("span", { class: ["truncate", "font-medium", "text-foreground"] }, title)];
-  const showLang = lang.length > 0 && lang !== "text";
-  const right = h("div", { class: ["ml-auto", "flex", "items-center", "gap-3"] }, [
-    ...(showLang
-      ? [
-          h(
-            "span",
-            { class: ["font-mono", "text-[0.7rem]", "uppercase", "text-muted-foreground"] },
-            lang,
-          ),
-        ]
-      : []),
+// The select + copy buttons, shared by the header bar (titled blocks) and the
+// floating overlay (untitled blocks).
+function actionButtons(): ElementContent[] {
+  return [
     h(
       "button",
       {
@@ -157,9 +145,26 @@ function header(title: string | null, lang: string): Element {
       },
       [
         iconHast("copy", "code-copy-icon size-4"),
-        iconHast("check", "code-check-icon size-4 text-emerald-600"),
+        iconHast("check", "code-check-icon size-4 text-emerald-600 dark:text-emerald-400"),
       ],
     ),
+  ];
+}
+
+// Header bar for a titled block: filename on the left, language + buttons right.
+function header(title: string, lang: string): Element {
+  const showLang = lang.length > 0 && lang !== "text";
+  const right = h("div", { class: ["ml-auto", "flex", "items-center", "gap-3"] }, [
+    ...(showLang
+      ? [
+          h(
+            "span",
+            { class: ["font-mono", "text-[0.7rem]", "uppercase", "text-muted-foreground"] },
+            lang,
+          ),
+        ]
+      : []),
+    ...actionButtons(),
   ]);
   return h(
     "div",
@@ -177,7 +182,30 @@ function header(title: string | null, lang: string): Element {
         "text-xs",
       ],
     },
-    [...left, right],
+    [h("span", { class: ["truncate", "font-medium", "text-foreground"] }, title), right],
+  );
+}
+
+// Untitled blocks skip the header bar; the buttons float over the code's top-right
+// on a chip whose background matches the code (set in layout.css from shiki's vars).
+function floatingActions(): Element {
+  return h(
+    "div",
+    {
+      class: [
+        "code-actions",
+        "absolute",
+        "top-1.5",
+        "right-1.5",
+        "z-10",
+        "flex",
+        "items-center",
+        "gap-2",
+        "px-2",
+        "py-1",
+      ],
+    },
+    actionButtons(),
   );
 }
 
@@ -202,14 +230,27 @@ async function processCode(node: Code, blockIndex: number, highlight: Highlight)
   restructureLines(pre, blockIndex, meta.hlLines);
 
   // not-prose opts the block out of @tailwindcss/typography so its own styling
-  // (layout.css) applies without a specificity fight. code-linenums keeps the
-  // gutter numbers always on (author opted in); otherwise they reveal on hover.
-  const wrapperClass = ["code-block", "not-prose", "group", "my-4", "border", "border-border"];
+  // (layout.css) applies without a specificity fight. relative anchors the floating
+  // actions; code-linenums keeps the gutter numbers always on (author opted in).
+  const wrapperClass = [
+    "code-block",
+    "not-prose",
+    "group",
+    "relative",
+    "my-4",
+    "border",
+    "border-border",
+  ];
   if (meta.linenums) wrapperClass.push("code-linenums");
+  // Titled blocks get the header bar; untitled ones float the buttons over the code.
+  const top = meta.title === null ? floatingActions() : header(meta.title, lang);
   const block = h("div", { class: wrapperClass }, [
-    header(meta.title, lang),
+    top,
     h("div", { class: ["code-body", "overflow-x-auto"] }, [pre]),
   ]);
+  // Mirror shiki's bg vars onto the wrapper so the floating chip matches the code.
+  const style = pre.properties.style;
+  if (typeof style === "string") block.properties.style = style;
 
   builtBlocks.set(node, block);
 }

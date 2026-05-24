@@ -27,7 +27,12 @@ import { remarkCode, codeHandler, type Highlight } from "./code.ts";
 
 // Bump to invalidate every cached rendered page on the next read (it changes the
 // cache key); no DB backfill needed.
-export const RENDERER_VERSION = "1";
+export const RENDERER_VERSION = "2";
+
+/** Shiki dual theme: light + dark emitted together as CSS variables
+ *  (`defaultColor: false`), so rendered code switches with the `.dark` class with
+ *  no re-highlight. Pass to the injected highlighter (server + client preview). */
+export const SHIKI_THEMES = { light: "github-light", dark: "github-dark" } as const;
 
 // `name`/`type`/`checked`/`for` drive the content-tab radio group; `name` is also
 // the exclusive-open accordion key (<details name>); `open` the collapsible state;

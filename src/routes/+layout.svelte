@@ -1,6 +1,7 @@
 <script lang="ts">
   import "./layout.css";
   import type { Snippet } from "svelte";
+  import { ModeWatcher } from "mode-watcher";
   import { onMount } from "svelte";
   import { afterNavigate } from "$app/navigation";
   import { page } from "$app/state";
@@ -75,5 +76,10 @@
   {/each}
   <link rel="alternate" hreflang="x-default" href={xDefault} />
 </svelte:head>
+
+<!-- Manages the light/dark/system preference: toggles `.dark` on <html>
+     (persisted, follows the OS for "system"), with a no-flash inline script. The
+     frontpage opts back out by wrapping itself in `.light` (see +page.svelte). -->
+<ModeWatcher />
 
 {@render children()}

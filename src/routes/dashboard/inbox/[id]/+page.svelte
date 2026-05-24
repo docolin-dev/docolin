@@ -158,7 +158,7 @@
      content below the message (none in this layout) doesn't shift; the prose
      class handles typography. -->
 <div
-  class="prose prose-sm text-foreground/90 mt-8 max-w-none leading-relaxed"
+  class="prose prose-sm dark:prose-invert text-foreground/90 mt-8 max-w-none leading-relaxed"
   style="min-height: 8rem;"
 >
   {#if msg}

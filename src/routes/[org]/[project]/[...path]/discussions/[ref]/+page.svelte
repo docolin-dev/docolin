@@ -406,7 +406,7 @@
                   </DropdownMenu.Root>
                 {/if}
               </div>
-              <div class="prose prose-stone prose-sm max-w-none px-3 py-2">
+              <div class="prose prose-stone dark:prose-invert prose-sm max-w-none px-3 py-2">
                 <!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side -->
                 {@html v.bodyHtml}
               </div>
@@ -563,8 +563,10 @@
           </div>
         </form>
       {:else}
-        <!-- eslint-disable-next-line svelte/no-at-html-tags -- bodyHtml is sanitized server-side -->
-        <div class="prose prose-stone max-w-none px-4 py-3">{@html thread.op.bodyHtml}</div>
+        <div class="prose prose-stone dark:prose-invert max-w-none px-4 py-3">
+          <!-- eslint-disable-next-line svelte/no-at-html-tags -- bodyHtml is sanitized server-side -->
+          {@html thread.op.bodyHtml}
+        </div>
       {/if}
       {#if historyOpenFor === thread.op.id}
         <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -->
@@ -643,7 +645,7 @@
               </div>
             </form>
           {:else}
-            <div class="prose prose-stone prose-sm max-w-none px-4 py-3">
+            <div class="prose prose-stone dark:prose-invert prose-sm max-w-none px-4 py-3">
               <!-- eslint-disable-next-line svelte/no-at-html-tags -- bodyHtml is sanitized server-side -->
               {@html reply.bodyHtml}
             </div>

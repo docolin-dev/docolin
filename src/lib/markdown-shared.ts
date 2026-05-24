@@ -9,12 +9,12 @@ let preview: ((source: string) => Promise<string>) | null = null;
 
 export async function renderMarkdownPreview(source: string): Promise<string> {
   if (preview === null) {
-    const [{ createMarkdownRenderer }, { codeToHast }] = await Promise.all([
+    const [{ createMarkdownRenderer, SHIKI_THEMES }, { codeToHast }] = await Promise.all([
       import("$lib/markdown/render"),
       import("shiki"),
     ]);
     preview = createMarkdownRenderer((code, lang) =>
-      codeToHast(code, { lang, theme: "github-light" }),
+      codeToHast(code, { lang, themes: SHIKI_THEMES, defaultColor: false }),
     );
   }
   return preview(source);

@@ -6,6 +6,7 @@
   import AccountMenu from "$lib/components/AccountMenu.svelte";
   import InboxBell from "$lib/components/InboxBell.svelte";
   import LanguageSwitcher from "$lib/components/LanguageSwitcher.svelte";
+  import ThemeToggle from "$lib/components/ThemeToggle.svelte";
 
   // Breadcrumb-style top bar for /dashboard/* routes. Different chrome from
   // the marketing navbar so the user knows they're in admin mode. Logo +
@@ -117,6 +118,7 @@
         <InboxBell />
         <AccountMenu />
       </div>
+      <ThemeToggle />
     </div>
   </nav>
 </header>

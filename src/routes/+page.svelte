@@ -78,7 +78,9 @@
   {@html websiteJsonLdHtml}
 </svelte:head>
 
-<div class="bg-background text-foreground flex min-h-screen flex-col">
+<!-- `light` opts the frontpage out of dark mode (it stays light even when the
+     reader has dark enabled elsewhere); see the .light rule in layout.css. -->
+<div class="light bg-background text-foreground flex min-h-screen flex-col">
   <Navbar />
 
   <main class="flex-grow">

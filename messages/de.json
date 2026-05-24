@@ -1,6 +1,11 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
 
+  "common_theme_toggle": "Design umschalten",
+  "common_theme_light": "Hell",
+  "common_theme_dark": "Dunkel",
+  "common_theme_system": "System",
+
   "nav_browse": "Entdecken",
   "nav_for_projects": "Für Projekte",
   "nav_for_ai": "Für KI",

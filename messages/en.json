@@ -1,6 +1,11 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
 
+  "common_theme_toggle": "Toggle theme",
+  "common_theme_light": "Light",
+  "common_theme_dark": "Dark",
+  "common_theme_system": "System",
+
   "nav_browse": "Browse",
   "nav_for_projects": "For projects",
   "nav_for_ai": "For AI",

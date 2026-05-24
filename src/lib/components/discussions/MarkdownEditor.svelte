@@ -237,7 +237,7 @@
         {m.discussion_editor_preview_loading()}
       </p>
     {:else if previewHtml.length > 0}
-      <div class="prose prose-stone prose-sm min-h-32 max-w-none px-3 py-3">
+      <div class="prose prose-stone dark:prose-invert prose-sm min-h-32 max-w-none px-3 py-3">
         <!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized in renderMarkdownPreview -->
         {@html previewHtml}
       </div>

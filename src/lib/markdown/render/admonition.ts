@@ -59,16 +59,16 @@ export const CALLOUTS: Record<string, AdmonitionConfig> = {
   tip: {
     icon: "lightbulb",
     border: "border-emerald-500/40",
-    header: "bg-emerald-100",
-    body: "bg-emerald-50",
-    text: "text-emerald-900",
+    header: "bg-emerald-100 dark:bg-emerald-950/50",
+    body: "bg-emerald-50 dark:bg-emerald-950/25",
+    text: "text-emerald-900 dark:text-emerald-100",
   },
   warning: {
     icon: "triangle-alert",
     border: "border-amber-500/50",
-    header: "bg-amber-100",
-    body: "bg-amber-50",
-    text: "text-amber-900",
+    header: "bg-amber-100 dark:bg-amber-950/50",
+    body: "bg-amber-50 dark:bg-amber-950/25",
+    text: "text-amber-900 dark:text-amber-100",
   },
   danger: {
     icon: "octagon-alert",
@@ -80,9 +80,9 @@ export const CALLOUTS: Record<string, AdmonitionConfig> = {
   check: {
     icon: "check",
     border: "border-emerald-500/40",
-    header: "bg-emerald-100",
-    body: "bg-emerald-50",
-    text: "text-emerald-900",
+    header: "bg-emerald-100 dark:bg-emerald-950/50",
+    body: "bg-emerald-50 dark:bg-emerald-950/25",
+    text: "text-emerald-900 dark:text-emerald-100",
   },
 };
 

@@ -1,12 +1,12 @@
 import { describe, it, expect } from "bun:test";
 import { codeToHast } from "shiki";
-import { createMarkdownRenderer, extractToc } from "./index.ts";
+import { createMarkdownRenderer, extractToc, SHIKI_THEMES } from "./index.ts";
 
-// Render with a real shiki highlighter (static, like the server path). These pin
-// the HTML the doco viewer's CSS depends on, so the marked -> remark swap is a
+// Render with a real shiki highlighter (dual-theme, like the server path). These
+// pin the HTML the doco viewer's CSS depends on, so the marked -> remark swap is a
 // parity swap, not a visual change.
 const render = createMarkdownRenderer((code, lang) =>
-  codeToHast(code, { lang, theme: "github-light" }),
+  codeToHast(code, { lang, themes: SHIKI_THEMES, defaultColor: false }),
 );
 
 describe("admonitions", () => {
@@ -220,13 +220,22 @@ describe("nesting (playground edge cases)", () => {
 });
 
 describe("code blocks", () => {
-  it("wraps code in a header bar with a select button and a copy button", async () => {
+  it("floats the action buttons on an untitled block (no header bar)", async () => {
     const html = await render("```ts\nconst x = 1;\n```\n");
     expect(html).toContain("code-block");
-    expect(html).toContain("code-header");
+    expect(html).toContain("code-actions"); // floating, not a header bar
+    expect(html).not.toContain("code-header");
     expect(html).toContain("data-code-select");
     expect(html).toContain("data-code-copy");
     expect(html).toContain("shiki");
+  });
+
+  it("uses a header bar (not floating buttons) when title= is set", async () => {
+    const html = await render('```ts title="x.ts"\nconst x = 1;\n```\n');
+    expect(html).toContain("code-header");
+    expect(html).toContain("x.ts");
+    expect(html).not.toContain("code-actions");
+    expect(html).toContain("data-code-copy");
   });
 
   it("gives every block shareable line ids, even unnumbered", async () => {

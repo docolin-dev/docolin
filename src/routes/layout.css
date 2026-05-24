@@ -57,7 +57,10 @@ html {
 @plugin "@tailwindcss/forms";
 @plugin "@tailwindcss/typography";
 
-:root {
+/* `.light` re-asserts the light tokens so a subtree can opt out of dark mode even
+   under `html.dark` (the frontpage wraps itself in `.light`). */
+:root,
+.light {
   --background: oklch(1 0 0);
   --foreground: oklch(0.147 0.004 49.25);
   --card: oklch(1 0 0);
@@ -247,8 +250,41 @@ html {
     font-size: 0.85rem;
     line-height: 1.5;
   }
+  /* shiki gives the <pre> tabindex=0 (for keyboard scroll); suppress its focus
+   * outline, it reads as noise around the block in both light and dark. */
+  .code-block pre:focus,
+  .code-block pre:focus-visible {
+    outline: none;
+  }
   .code-block code {
     font-family: inherit;
+  }
+  /* shiki dual-theme: each token carries --shiki-light / --shiki-dark inline (and
+   * the <pre> the matching -bg). Use the light vars by default, the dark vars under
+   * .dark, so code recolors with the theme without re-highlighting. */
+  .code-block .shiki,
+  .code-block .shiki span {
+    color: var(--shiki-light);
+  }
+  .code-block .shiki {
+    background-color: var(--shiki-light-bg);
+  }
+  .dark .code-block .shiki,
+  .dark .code-block .shiki span {
+    color: var(--shiki-dark);
+  }
+  .dark .code-block .shiki {
+    background-color: var(--shiki-dark-bg);
+  }
+  /* Floating action chip on untitled blocks: its background matches the code (the
+   * wrapper carries shiki's bg vars), so the buttons read as floating on the code
+   * while still covering whatever is behind them. Falls back to muted if a block
+   * has no shiki output (unknown grammar). */
+  .code-actions {
+    background-color: var(--shiki-light-bg, var(--muted));
+  }
+  .dark .code-actions {
+    background-color: var(--shiki-dark-bg, var(--muted));
   }
   /* Every line is block-level so it can be a CSS :target and a click target. The
    * negative inline margin (cancelled by equal padding) bleeds the line box across
@@ -301,12 +337,12 @@ html {
   .code-block[data-selecting] .code-select {
     color: var(--primary);
   }
-  /* Line highlight intensity. "brighter" = 24% primary, "darker" = 34%. In light
-   * mode a selected line and a hover preview are brighter (24%); a selected line
-   * that is also hovered drops to darker (34%) for click feedback. Dark mode
-   * inverts it (normal 34%, the hovered-while-selected case 24%). The rust accent
-   * bar marks genuinely selected / highlighted lines, not a plain hover. The
-   * combined (selected + hovered) selector is most specific, so it wins. */
+  /* Line highlight intensity. A selected line and a hover preview use a 24%
+   * primary tint; a selected line that is also hovered drops to 34% for click
+   * feedback. The same values hold in dark mode, the dark background already makes
+   * the tint read differently, so no inversion is needed. The rust accent bar
+   * marks genuinely selected / highlighted lines, not a plain hover. The combined
+   * (selected + hovered) selector is most specific, so it wins. */
   .code-block[data-selecting] .line:hover,
   .code-block .line-highlight,
   .code-block .line:target,
@@ -322,17 +358,6 @@ html {
   .code-block[data-selecting] .line:target:hover,
   .code-block[data-selecting] .line.line-selected:hover {
     background: color-mix(in oklch, var(--primary) 34%, transparent);
-  }
-  .dark .code-block[data-selecting] .line:hover,
-  .dark .code-block .line-highlight,
-  .dark .code-block .line:target,
-  .dark .code-block .line.line-selected {
-    background: color-mix(in oklch, var(--primary) 34%, transparent);
-  }
-  .dark .code-block[data-selecting] .line-highlight:hover,
-  .dark .code-block[data-selecting] .line:target:hover,
-  .dark .code-block[data-selecting] .line.line-selected:hover {
-    background: color-mix(in oklch, var(--primary) 24%, transparent);
   }
   /* Copy-button icon swap, toggled by the client setting data-copied. */
   .code-check-icon {
