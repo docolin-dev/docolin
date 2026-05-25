@@ -22,6 +22,8 @@
   import PangoScoreRail from "$lib/components/doco/PangoScoreRail.svelte";
   import StampPrompt from "$lib/components/doco/StampPrompt.svelte";
   import { githubEditUrl } from "$lib/git/github-url";
+  import { trackDwell } from "$lib/client/track-dwell";
+  import { recordSetup } from "$lib/client/setup-profile";
   import { session } from "$lib/client/session.svelte";
   import { toast } from "svelte-sonner";
   import type { ModerationTargetType } from "$lib/moderation-reasons";
@@ -85,6 +87,23 @@
       liveCount = fresh.verifiedCount;
       liveConfirmed = fresh.lastConfirmedAt;
     })();
+  });
+
+  // Once this doco has been actively read past the dwell threshold, fold its
+  // applies_to tags into the reader's local setup profile, so search can softly
+  // tune to their setup. Local-only (see setup-profile); re-arms per version so
+  // each genuine read counts. The playground has no real applies_to to learn from.
+  $effect(() => {
+    const tags = doco.appliesTo;
+    // Reading versionId re-arms the timer when the reader navigates on to another
+    // doco or version without a full page load.
+    void doco.versionId;
+    if (data.playground || tags.length === 0) return;
+    return trackDwell({
+      onThreshold: () => {
+        recordSetup(tags);
+      },
+    });
   });
 
   // Moderation dialogs target the displayed version. Report is open to any
