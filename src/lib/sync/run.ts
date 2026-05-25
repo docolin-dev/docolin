@@ -1,10 +1,12 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, like } from "drizzle-orm";
 import type { R2Bucket } from "@cloudflare/workers-types";
 import { db } from "$lib/server/db";
-import { projects, orgs, gitSources, syncFileErrors } from "$lib/server/db/schema";
+import { projects, orgs, gitSources, syncFileErrors, docos, versions } from "$lib/server/db/schema";
 import { parseGithubUrl } from "$lib/git/github-url";
 import { fetchTree, fetchCompare, fetchTags, type GitHubResult } from "$lib/git/github-api";
-import { fetchGlobalSitemap, type GlobalSitemapResult } from "./sitemap";
+import { fetchFileFromJsDelivr } from "$lib/git/jsdelivr";
+import { createSitemapResolver, isDocoSitemapFile, dirOf, type SitemapResolver } from "./sitemap";
+import type { Sitemap } from "./sitemap-schema";
 import { isDocoFile } from "./file-scope";
 import {
   processFile,
@@ -164,18 +166,15 @@ async function runInitialSync(ctx: ModeBase): Promise<SyncRunResult> {
 
   const resolvedSha = tree.value.sha;
   const eligible: string[] = [];
+  const sitemapFiles: string[] = [];
   for (const entry of tree.value.tree) {
-    if (entry.type === "blob" && isDocoFile(entry.path, ctx.subpath)) {
-      eligible.push(entry.path);
-    }
+    if (entry.type !== "blob") continue;
+    if (isDocoFile(entry.path, ctx.subpath)) eligible.push(entry.path);
+    else if (isDocoSitemapFile(entry.path, ctx.subpath)) sitemapFiles.push(entry.path);
   }
 
-  const globalSitemap = await fetchGlobalSitemap({
-    owner: ctx.owner,
-    repo: ctx.repo,
-    ref: resolvedSha,
-    subpath: ctx.subpath,
-  });
+  const resolver = makeResolver(ctx, resolvedSha);
+  await validateSitemapFiles(ctx.projectId, resolver, sitemapFiles);
 
   const versionTag = await resolveTagForSha(ctx.owner, ctx.repo, resolvedSha);
   const { counts, changedPaths } = await processFiles(
@@ -185,11 +184,38 @@ async function runInitialSync(ctx: ModeBase): Promise<SyncRunResult> {
     ctx,
     resolvedSha,
     versionTag,
-    globalSitemap,
+    resolver,
   );
   const result = await markIdle(ctx.gitSourceId, resolvedSha, counts);
   await purgeChangedDocos(ctx, changedPaths);
   return result;
+}
+
+// A per-sync sitemap resolver bound to the resolved commit. Fetches each
+// doco_sitemap.yaml at most once and walks up from a doco to find the nearest.
+function makeResolver(ctx: ModeBase, ref: string): SitemapResolver {
+  return createSitemapResolver({
+    subpath: ctx.subpath,
+    fetchFile: (path) => fetchFileFromJsDelivr({ owner: ctx.owner, repo: ctx.repo, ref, path }),
+  });
+}
+
+// Validates each changed/known doco_sitemap.yaml and records or clears a
+// per-file sync error so an authoring mistake surfaces the same way a bad doco
+// does. Reuses the resolver's cache, so the fetch is shared with resolution.
+async function validateSitemapFiles(
+  projectId: string,
+  resolver: SitemapResolver,
+  sitemapPaths: string[],
+): Promise<void> {
+  for (const path of sitemapPaths) {
+    const res = await resolver.resultForDir(dirOf(path));
+    if (res.status === "invalid") {
+      await recordFileError(projectId, path, "invalid_sitemap", res.message, {});
+    } else {
+      await clearFileError(projectId, path);
+    }
+  }
 }
 
 async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<SyncRunResult> {
@@ -212,6 +238,9 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
   const toProcess: string[] = [];
   const toRename: { oldPath: string; newPath: string; alsoModified: boolean }[] = [];
   const toDelete: string[] = [];
+  // Changed doco_sitemap.yaml files: path -> whether it was removed. Drives
+  // per-file validation and subtree re-resolution after docos are processed.
+  const changedSitemaps = new Map<string, boolean>();
 
   // Files with lingering errors from a previous sync get re-processed even
   // when GitHub reports no change. This is how schema/validator fixes
@@ -224,6 +253,19 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
     .where(eq(syncFileErrors.projectId, ctx.projectId));
 
   for (const f of compare.value.files) {
+    if (isDocoSitemapFile(f.filename, ctx.subpath)) {
+      changedSitemaps.set(f.filename, f.status === "removed");
+      // A sitemap renamed from one doco_sitemap.yaml spot to another: the old
+      // directory lost its file too.
+      if (
+        f.status === "renamed" &&
+        f.previousFilename !== undefined &&
+        isDocoSitemapFile(f.previousFilename, ctx.subpath)
+      ) {
+        changedSitemaps.set(f.previousFilename, true);
+      }
+      continue;
+    }
     if (!isDocoFile(f.filename, ctx.subpath)) {
       // Renames where the old path was a doco but the new one isn't (or
       // vice versa) are edge cases; treat as delete-then-add via separate
@@ -234,6 +276,15 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
         isDocoFile(f.previousFilename, ctx.subpath)
       ) {
         toDelete.push(f.previousFilename);
+      }
+      // A sitemap file renamed to a non-sitemap name: its directory lost its
+      // sitemap, so that subtree must fall back to a parent.
+      if (
+        f.status === "renamed" &&
+        f.previousFilename !== undefined &&
+        isDocoSitemapFile(f.previousFilename, ctx.subpath)
+      ) {
+        changedSitemaps.set(f.previousFilename, true);
       }
       continue;
     }
@@ -266,16 +317,25 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
     if (toProcessSet.has(filePath) || toDeleteSet.has(filePath)) continue;
     if (isDocoFile(filePath, ctx.subpath)) {
       toProcess.push(filePath);
+    } else if (isDocoSitemapFile(filePath, ctx.subpath)) {
+      // Re-validate a previously-broken sitemap file even when this compare
+      // didn't touch it, so a fix pushed in an unrelated commit clears the error.
+      if (!changedSitemaps.has(filePath)) changedSitemaps.set(filePath, false);
     } else {
       await clearFileError(ctx.projectId, filePath);
     }
   }
 
   // Now that errored files are folded in, check if there's actually anything
-  // to do. If compare reported identical AND no errored files needed retrying,
-  // short-circuit with a lastSyncedAt touch so the project doesn't keep
-  // bubbling to the top of the hourly queue.
-  if (toProcess.length === 0 && toRename.length === 0 && toDelete.length === 0) {
+  // to do. If compare reported identical AND no errored files needed retrying
+  // AND no sitemap files changed, short-circuit with a lastSyncedAt touch so the
+  // project doesn't keep bubbling to the top of the hourly queue.
+  if (
+    toProcess.length === 0 &&
+    toRename.length === 0 &&
+    toDelete.length === 0 &&
+    changedSitemaps.size === 0
+  ) {
     await db
       .update(gitSources)
       .set({
@@ -300,12 +360,7 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
     if (result.status === "renamed") renameCounts.renamed += 1;
   }
 
-  const globalSitemap = await fetchGlobalSitemap({
-    owner: ctx.owner,
-    repo: ctx.repo,
-    ref: resolvedSha,
-    subpath: ctx.subpath,
-  });
+  const resolver = makeResolver(ctx, resolvedSha);
 
   const versionTag = await resolveTagForSha(ctx.owner, ctx.repo, resolvedSha);
   const { counts, changedPaths } = await processFiles(
@@ -315,15 +370,34 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
     ctx,
     resolvedSha,
     versionTag,
-    globalSitemap,
+    resolver,
   );
   counts.renamed = renameCounts.renamed;
+
+  // Sitemap files that changed this run: validate them (surface authoring
+  // errors), then re-resolve the subtrees they govern so existing docos pick up
+  // the new sidebar without needing a content change.
+  await validateSitemapFiles(
+    ctx.projectId,
+    resolver,
+    [...changedSitemaps.entries()].filter(([, removed]) => !removed).map(([path]) => path),
+  );
+  for (const [path, removed] of changedSitemaps) {
+    if (removed) await clearFileError(ctx.projectId, path);
+  }
+  const sitemapTouched = await reresolveAffectedDocos(
+    ctx,
+    resolver,
+    new Set([...changedSitemaps.keys()].map(dirOf)),
+    new Set(toProcess),
+  );
+
   // Renames also invalidate the OLD URL: it used to serve the doco, now it's a
   // 404 (or whatever replaced it). The new path is already in changedPaths via
   // toProcess (renames are always paired with a process call in the loop above).
   const renameOldPaths = toRename.map((r) => r.oldPath);
   const result = await markIdle(ctx.gitSourceId, resolvedSha, counts);
-  await purgeChangedDocos(ctx, [...changedPaths, ...renameOldPaths]);
+  await purgeChangedDocos(ctx, [...changedPaths, ...renameOldPaths, ...sitemapTouched]);
   return result;
 }
 
@@ -351,7 +425,7 @@ async function processFiles(
   ctx: ModeBase,
   resolvedSha: string,
   versionTag: string | null,
-  globalSitemap: GlobalSitemapResult,
+  resolver: SitemapResolver,
 ): Promise<{ counts: SyncRunCounts; changedPaths: string[] }> {
   const counts: SyncRunCounts = { ...ZERO_COUNTS };
   // Source paths whose latest URL is now stale. Drives the cache purge. Errored
@@ -370,7 +444,7 @@ async function processFiles(
     orgSlug: ctx.orgSlug,
     projectSlug: ctx.projectSlug,
     subpath: ctx.subpath,
-    globalSitemap,
+    resolveSitemap: (path) => resolver.resolve(path),
   };
 
   for (const path of toProcess) {
@@ -412,6 +486,69 @@ async function applyFileResult(
   if (result.status === "updated") counts.updated += 1;
   await clearFileError(projectId, filePath);
   return true;
+}
+
+// ---------- sitemap subtree re-resolution ----------
+
+// When a doco_sitemap.yaml is added, edited, or removed, every doco under its
+// directory might now resolve to a different sidebar. Re-resolve each (the
+// resolver handles nearest-wins, so nested overrides are respected) and update
+// the ones whose sidebar actually changed, in place on the latest version. No
+// new version is created: the doco's content did not change, only its sidebar.
+// Returns the source paths whose sidebar changed, for cache purging. Docos
+// already re-processed this run (`skip`) are left alone; they got a fresh
+// resolution with their new version row.
+async function reresolveAffectedDocos(
+  ctx: ModeBase,
+  resolver: SitemapResolver,
+  dirs: Set<string>,
+  skip: Set<string>,
+): Promise<string[]> {
+  const changed: string[] = [];
+  const seen = new Set<string>();
+  for (const dir of dirs) {
+    const rows = await db
+      .select({
+        docoId: docos.id,
+        path: docos.pathInSource,
+        sitemap: versions.sitemap,
+      })
+      .from(docos)
+      .innerJoin(versions, and(eq(versions.docoId, docos.id), eq(versions.isLatest, true)))
+      .where(
+        and(
+          eq(docos.projectId, ctx.projectId),
+          isNull(docos.deletedAt),
+          // Every doco below the changed sitemap's directory. dir === "" (repo
+          // root, no subpath) governs the whole project, so no prefix filter.
+          dir.length === 0 ? undefined : like(docos.pathInSource, `${dir}/%`),
+        ),
+      );
+    for (const row of rows) {
+      if (row.path === null || skip.has(row.path) || seen.has(row.path)) continue;
+      seen.add(row.path);
+      const resolved = await resolver.resolve(row.path);
+      if (!sitemapEqual(resolved, row.sitemap as Sitemap | null)) {
+        await updateLatestVersionSitemap(row.docoId, resolved);
+        changed.push(row.path);
+      }
+    }
+  }
+  return changed;
+}
+
+async function updateLatestVersionSitemap(docoId: string, sitemap: Sitemap | null): Promise<void> {
+  await db
+    .update(versions)
+    .set({ sitemap })
+    .where(and(eq(versions.docoId, docoId), eq(versions.isLatest, true)));
+}
+
+// Structural equality for two resolved sitemaps. Both come from ordered sources
+// (YAML document order, or the stored JSON), so a stable stringify compares them.
+function sitemapEqual(a: Sitemap | null, b: Sitemap | null): boolean {
+  if (a === null || b === null) return a === b;
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 // ---------- cache invalidation ----------

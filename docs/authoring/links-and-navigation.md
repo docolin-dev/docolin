@@ -94,9 +94,7 @@ docolin:
 
 ## The sidebar
 
-The sidebar shown beside every doco in a project comes from one file, `docolin/sitemap.yaml`, at the **repo root**, alongside `README.md` and `package.json`. It sits at the root no matter where your docs live, because it is project-level configuration, not docs content. One project, one file.
-
-It is a recursive list of `{ title, url?, children? }` entries. Each entry is **either** a link (has `url`) **or** a group (has `children`), never both.
+The sidebar shown beside a doco comes from a `doco_sitemap.yaml` file that lives **in your docs**, next to the pages it describes. Put one in your docs root and it covers the whole project:
 
 ```yaml
 sitemap:
@@ -110,16 +108,34 @@ sitemap:
     url: ./reference.md
 ```
 
-A `url` accepts any link form: relative path, hard URL, soft URL by kind, or external. `title` is always required. A single doco can override the project sidebar for itself with a `sitemap` field in its own frontmatter.
+It is a recursive list of `{ title, url?, children? }` entries. Each entry is **either** a link (has `url`) **or** a group (has `children`), never both. A `url` accepts any link form: relative path, hard URL, soft URL by kind, or external. `title` is always required.
 
-!!! tip "An empty file means something"
-    An empty `docolin/sitemap.yaml` (or `sitemap: []`) explicitly opts the project out of a sidebar. That is different from having **no** file, which docolin may later treat as "auto-detect a sidebar." Until that lands, both render with no sidebar, but the intent you signal is not the same.
+### Cascading
+
+A `doco_sitemap.yaml` applies to **its own folder and every folder beneath it**, until a nearer one takes over. So you can keep one sidebar for the whole project and, where a section needs its own, drop another `doco_sitemap.yaml` into that subfolder to override the parent for that subtree only.
+
+```
+docs/
+  doco_sitemap.yaml        <- the default sidebar for everything under docs/
+  install.md
+  auth/
+    doco_sitemap.yaml      <- overrides the sidebar for docs/auth/ and below
+    signin.md
+```
+
+docolin resolves a doco by walking up from its folder and using the first `doco_sitemap.yaml` it finds. Files above your docs root never apply.
+
+Two more layers of override sit on top:
+
+- A single doco can replace its sidebar with a `sitemap` field in its own frontmatter.
+- An **empty** `doco_sitemap.yaml` (or `sitemap: []`) is an explicit "no sidebar here" that shadows any parent, handy for opting one section out.
 
 ## Gotchas
 
 - **Prefer relative links inside a project.** They survive moves and renames better than hard URLs to your own files.
 - **Soft for "whichever fits," hard for "this exact one."** Mixing them up sends readers somewhere subtly wrong.
 - **Sidebar entries are link XOR group.** An entry with both `url` and `children` is invalid; nest a link under the group instead.
+- **Nearest wins.** A `doco_sitemap.yaml` deeper in the tree fully replaces the parent's for its subtree; the two are not merged.
 
 ## See also
 

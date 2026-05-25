@@ -7,7 +7,7 @@ import { fetchFileFromJsDelivr } from "$lib/git/jsdelivr";
 import { parseDocoFile, type ParsedDoco } from "./parse";
 import { convertBody } from "./body-pipeline";
 import { makeImageArchiver, type SyncFileErrorRecord } from "./media-archive";
-import { resolveDocoSitemap, type GlobalSitemapResult } from "./sitemap";
+import { resolveDocoSitemap } from "./sitemap";
 import { resolveRelativePath } from "./path-resolve";
 import { pathFromSourcePath } from "$lib/doco-urls";
 import type { Sitemap } from "./sitemap-schema";
@@ -35,7 +35,9 @@ export interface ProcessFileContext {
   // The git source's docs subpath (e.g. "docs"), stripped from URLs. Needed so
   // relative links resolve to the same path-from-project-root the viewer serves.
   subpath: string | null;
-  globalSitemap: GlobalSitemapResult;
+  // Resolves the cascade sitemap (nearest doco_sitemap.yaml) for a doco by its
+  // source path. The per-doco frontmatter override is applied on top below.
+  resolveSitemap: (docoPath: string) => Promise<Sitemap | null>;
 }
 
 export type ProcessFileResult =
@@ -97,8 +99,10 @@ export async function processFile(
     rewriteRelativeLink: linkRewriter,
   });
 
-  // 4. Resolve which sitemap applies to this doco (per-doco override or global).
-  const sitemap = resolveDocoSitemap(parsed.frontmatter.docolin.sitemap, ctx.globalSitemap);
+  // 4. Resolve which sitemap applies to this doco: the nearest doco_sitemap.yaml
+  // walking up from this file, unless the doco's frontmatter overrides it.
+  const cascade = await ctx.resolveSitemap(filePath);
+  const sitemap = resolveDocoSitemap(parsed.frontmatter.docolin.sitemap, cascade);
 
   // 5. Find or create the doco row, then write the version.
   const existing = await db

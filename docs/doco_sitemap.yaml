@@ -1,6 +1,8 @@
-# docolin's own docs sidebar. Synced alongside docs/ when the docolin-dev/docolin
-# project pulls from this repo. Same shape as the per-doco `sitemap` frontmatter:
-# recursive { title, url?, children? } with url xor children per entry.
+# docolin's own docs sidebar. Lives in the docs root, so it applies to every
+# doco under docs/ and below. A nested docs/<dir>/doco_sitemap.yaml would
+# override it for that subtree, and a doco's frontmatter `sitemap:` overrides it
+# per page. Same recursive shape as the frontmatter field: { title, url?,
+# children? } with url xor children per entry.
 
 sitemap:
   - title: Getting started

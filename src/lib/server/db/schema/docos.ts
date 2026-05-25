@@ -115,8 +115,9 @@ export const versions = pgTable(
       .notNull()
       .default(sql`'[]'::jsonb`),
     // Resolved sitemap for this version: either the per-doco override from
-    // frontmatter, or the project-wide docolin/sitemap.yaml at sync time.
-    // Recursive { title, url?, children? } shape with url xor children per entry.
+    // frontmatter, or the nearest doco_sitemap.yaml cascading up the docs tree,
+    // resolved at sync time. Recursive { title, url?, children? } shape with
+    // url xor children per entry.
     sitemap: jsonb("sitemap"),
     frontmatterExtra: jsonb("frontmatter_extra")
       .notNull()

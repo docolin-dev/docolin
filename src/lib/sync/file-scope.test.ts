@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { isDocoFile, isSitemapFile } from "./file-scope";
+import { isDocoFile } from "./file-scope";
 
 describe("isDocoFile", () => {
   describe("with no configured subpath", () => {
@@ -51,26 +51,5 @@ describe("isDocoFile", () => {
       // "docs2" must NOT match subpath "docs".
       expect(isDocoFile("docs2/install.md", "docs")).toBe(false);
     });
-  });
-});
-
-describe("isSitemapFile", () => {
-  it("recognizes the file at repo root when no subpath", () => {
-    expect(isSitemapFile("docolin/sitemap.yaml", null)).toBe(true);
-    expect(isSitemapFile("docolin/sitemap.yaml", "")).toBe(true);
-  });
-
-  it("recognizes the file under the configured subpath", () => {
-    expect(isSitemapFile("docs/docolin/sitemap.yaml", "docs")).toBe(true);
-  });
-
-  it("rejects other yaml files", () => {
-    expect(isSitemapFile("docolin/other.yaml", null)).toBe(false);
-    expect(isSitemapFile("sitemap.yaml", null)).toBe(false);
-  });
-
-  it("rejects the file at the wrong location", () => {
-    // sitemap at repo root when project's subpath is "docs": not the one.
-    expect(isSitemapFile("docolin/sitemap.yaml", "docs")).toBe(false);
   });
 });
