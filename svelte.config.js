@@ -7,9 +7,9 @@ const config = {
     runes: ({ filename }) => (filename.split(/[/\\]/).includes("node_modules") ? undefined : true),
   },
   kit: {
-    // Cloudflare Pages adapter. In `vite dev` the adapter wires up
-    // wrangler.toml bindings (R2, KV, Cron, env vars) via getPlatformProxy
-    // so `event.platform.env.MEDIA_BUCKET` works in dev exactly like in prod.
+    // Cloudflare Workers adapter (Worker + static assets). In `vite dev` the
+    // adapter wires up wrangler.toml bindings (R2, AI, env vars) via
+    // getPlatformProxy so `event.platform.env.MEDIA_BUCKET` works in dev like prod.
     adapter: adapter(),
     alias: {
       $paraglide: "src/paraglide",

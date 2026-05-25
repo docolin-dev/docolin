@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "preview": "vite build && wrangler pages dev .svelte-kit/cloudflare",
-    "deploy": "vite build && wrangler pages deploy .svelte-kit/cloudflare",
+    "preview": "vite build && wrangler dev",
+    "deploy": "vite build && wrangler deploy",
     "cron:deploy": "wrangler deploy -c workers/cron/wrangler.toml",
     "cron:secret": "wrangler secret put CRON_SECRET -c workers/cron/wrangler.toml",
     "cron:logs": "wrangler tail -c workers/cron/wrangler.toml",

@@ -1,16 +1,38 @@
-# Cloudflare config for the docolin app. Used by adapter-cloudflare during
-# `vite dev` (via getPlatformProxy) and by `wrangler pages deploy` for
-# deployment. Bindings declared here surface as `event.platform.env.*`
-# in SvelteKit server code.
+# Cloudflare config for the docolin app. Deployed as a Cloudflare Worker with
+# static assets (not Pages). adapter-cloudflare detects Workers mode from `main`
+# + `[assets]` and writes the worker plus the client build into
+# .svelte-kit/cloudflare. Bindings here surface as event.platform.env.* in
+# SvelteKit server code, and `wrangler dev` wires them up locally via
+# getPlatformProxy. Used by `wrangler deploy` (and the git-connected build).
 
 name = "docolin"
+main = ".svelte-kit/cloudflare/_worker.js"
 compatibility_date = "2026-05-17"
-pages_build_output_dir = ".svelte-kit/cloudflare"
+
+# The Neon serverless driver (and its `ws` dependency) pull in Node built-ins,
+# so the Worker needs Node compatibility to run them at the edge.
+compatibility_flags = ["nodejs_compat"]
+
+# Non-secret runtime config. These live here (not as dashboard vars) because
+# `wrangler deploy` treats this file as authoritative for plain vars and would
+# otherwise wipe dashboard-set plaintext on each deploy. All public values;
+# real secrets (DATABASE_URL, WORKOS_API_KEY, WORKOS_COOKIE_PASSWORD, tokens)
+# stay as Cloudflare secrets, which persist across deploys.
+[vars]
+WORKOS_CLIENT_ID = "client_01KRJQZ8DPMA346EB8XBB5Q6Y5"
+WORKOS_REDIRECT_URI = "https://docolin.com/callback"
+R2_PUBLIC_BASE = "https://media.docolin.com"
+
+# SvelteKit's client build (static assets + prerendered pages). The Worker
+# serves these directly; ASSETS is the binding adapter-cloudflare expects.
+[assets]
+binding = "ASSETS"
+directory = ".svelte-kit/cloudflare"
 
 # Media bucket: sync engine archives doco images here (<=50MB each), served
 # publicly via media.docolin.com (prod) or media-dev.docolin.com (dev).
 # bucket_name applies to production deployments; preview_bucket_name applies
-# to local `vite dev` and preview branch deploys.
+# to local `wrangler dev` and preview deploys.
 [[r2_buckets]]
 binding = "MEDIA_BUCKET"
 bucket_name = "docolin-media"
