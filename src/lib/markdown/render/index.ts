@@ -8,7 +8,6 @@ import rehypeStringify from "rehype-stringify";
 import { visit } from "unist-util-visit";
 import { h, s } from "hastscript";
 import { toString as mdastToString } from "mdast-util-to-string";
-import DOMPurify from "isomorphic-dompurify";
 import type { Root as HastRoot, Element, ElementContent } from "hast";
 import type { Root as MdastRoot } from "mdast";
 import {
@@ -26,13 +25,15 @@ import { remarkCode, codeHandler, type Highlight } from "./code.ts";
 import { chartHandler } from "./chart.ts";
 import { rehypeAnnotations } from "./annotations.ts";
 import { iconHast } from "./icons.ts";
+import { rehypeSanitizeUrls } from "./sanitize.ts";
 
 // docolin's markdown renderer, built on remark/rehype + the docomd syntax. The
 // pipeline is isomorphic; only the shiki highlighter differs (static on the
-// server, lazy on the client), so it is injected. Output is sanitized with the
-// same DOMPurify config the marked renderer used, so the security surface is
-// unchanged. Raw HTML in markdown is dropped (remark-rehype default), which is
-// safer and fine for community docs.
+// server, lazy on the client), so it is injected. Raw HTML in markdown is dropped
+// (remark-rehype default) and attr-list only sets class/id, so the sole XSS
+// surface is dangerous URL schemes; rehypeSanitizeUrls strips those (and any on*
+// attributes) on the HAST tree, which works at the edge unlike a DOM-based
+// sanitizer.
 
 // Bump to invalidate every cached rendered page on the next read (it changes the
 // cache key); no DB backfill needed.
@@ -42,27 +43,6 @@ export const RENDERER_VERSION = "1";
  *  (`defaultColor: false`), so rendered code switches with the `.dark` class with
  *  no re-highlight. Pass to the injected highlighter (server + client preview). */
 export const SHIKI_THEMES = { light: "github-light", dark: "github-dark" } as const;
-
-// `name`/`type`/`checked`/`for` drive the content-tab radio group; `name` is also
-// the exclusive-open accordion key (<details name>); `open` the collapsible state;
-// the rest carry classes/anchors/shiki styles/link rels.
-const SANITIZE_ADD_ATTR = [
-  "class",
-  "target",
-  "rel",
-  "id",
-  "style",
-  "open",
-  "name",
-  "type",
-  "checked",
-  "for",
-];
-
-/** Sanitizes rendered HTML. One step shared by every render path. */
-export function sanitizeHtml(raw: string): string {
-  return DOMPurify.sanitize(raw, { ADD_ATTR: SANITIZE_ADD_ATTR });
-}
 
 // mdast: give every heading an id matching extractToc's slug, so in-page anchors
 // line up with the table of contents.
@@ -265,11 +245,12 @@ export function createMarkdownRenderer(highlight: Highlight): (source: string) =
     .use(rehypeTaskLists)
     .use(rehypeIconShortcodes)
     .use(rehypeAnnotations)
+    .use(rehypeSanitizeUrls)
     .use(rehypeStringify);
 
   return async (source: string): Promise<string> => {
     const file = await processor.process(source);
-    return sanitizeHtml(String(file));
+    return String(file);
   };
 }
 

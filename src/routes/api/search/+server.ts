@@ -1,5 +1,4 @@
 import { json } from "@sveltejs/kit";
-import DOMPurify from "isomorphic-dompurify";
 import type { RequestHandler } from "./$types";
 import {
   aggregateFacets,
@@ -64,11 +63,11 @@ function clampInt(value: string | null, fallback: number, max: number): number {
 }
 
 // ts_headline wraps matched terms in <mark> but does NOT escape the surrounding
-// document text, so the raw snippet must be sanitized before it is rendered as
-// HTML. Use the project's DOMPurify (isomorphic, already used server-side in the
-// render pipeline), allowing only the <mark> highlight tag.
+// document text, so escape everything, then restore only the <mark> tags. Pure
+// string ops, no DOM, so it works at the edge (unlike DOMPurify).
 function sanitizeSnippet(raw: string): string {
-  return DOMPurify.sanitize(raw, { ALLOWED_TAGS: ["mark"], ALLOWED_ATTR: [] });
+  const escaped = raw.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+  return escaped.replaceAll("&lt;mark&gt;", "<mark>").replaceAll("&lt;/mark&gt;", "</mark>");
 }
 
 // Address an older version by its short commit SHA when available (immutable and

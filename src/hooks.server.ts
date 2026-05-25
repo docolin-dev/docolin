@@ -50,18 +50,15 @@ const authHandle: Handle = async ({ event, resolve }) => {
 };
 
 // Per-request database handle. On Cloudflare a Neon WebSocket connection is
-// request-scoped, so open one per request, bind it for the request's duration
-// via async-local storage, and close it once the response is sent. Runs before
-// authHandle, which queries the DB.
-const dbHandle: Handle = async ({ event, resolve }) => {
-  const { db, close } = createRequestDb();
-  try {
-    return await runWithDb(db, () => resolve(event));
-  } finally {
-    const ctx = event.platform?.context;
-    if (ctx) ctx.waitUntil(close());
-    else void close();
-  }
+// request-scoped, so open one per request and bind it for the request's
+// duration via async-local storage. We do NOT close the pool here: the runtime
+// closes request I/O at the end of the invocation, which is *after* any
+// `waitUntil` background work (e.g. the sync engine) that still needs it.
+// Closing in a finally raced with that background work. Runs before authHandle,
+// which queries the DB.
+const dbHandle: Handle = ({ event, resolve }) => {
+  const { db } = createRequestDb();
+  return runWithDb(db, () => resolve(event));
 };
 
 export const handle = sequence(paraglideHandle, dbHandle, authHandle);
