@@ -42,9 +42,11 @@ function pgArray(values: string[]): string {
 export type SearchFtsConfig = "english" | "simple";
 
 /**
- * Result ordering. `relevance` is the hybrid RRF rank and needs a query;
- * the rest are query-independent business orderings that also drive browse
- * (no-query) listings. `relevance` with an empty query falls back to `newest`.
+ * Result ordering. `relevance` blends the lexical/dense rank (when there is a
+ * query) with the business signals; for a browse listing (no query) the rank
+ * collapses to a constant base, so `relevance` then orders purely by those
+ * signals (ranking estimate, status, recency, reader-setup fit). The others are
+ * query-independent single-column orderings.
  */
 export type SearchSort = "relevance" | "verified" | "recent" | "newest";
 
@@ -81,11 +83,16 @@ export interface SearchInput {
 // user text), so they are safe to inline with sql.raw. Each non-relevance sort
 // adds published_at as a stable tiebreaker.
 const SORT_CLAUSES: Record<SearchSort, string> = {
-  relevance: `"finalScore" DESC`,
+  relevance: `"finalScore" DESC, v.published_at DESC`,
   verified: `v.verification_ranking_score DESC NULLS LAST, v.published_at DESC`,
   recent: `v.verification_last_confirmed_at DESC NULLS LAST, v.published_at DESC`,
   newest: `v.published_at DESC`,
 };
+
+// Browse rows (empty query) have no RRF rank; this constant base lets the
+// business-signal multipliers in finalScore (ranking, status, recency, and the
+// reader-setup boost) still produce a meaningful order under `relevance`.
+const BROWSE_RANK_BASE = 1.0;
 
 /** One ranked guide, viewed through its latest version. */
 export interface SearchCandidate {
@@ -126,10 +133,7 @@ export async function searchGuides(input: SearchInput): Promise<SearchCandidate[
   const { cfg } = input;
   const limit = input.limit ?? 20;
   const offset = input.offset ?? 0;
-  // Relevance is meaningless without a query (RRF rank is 0 for every browse
-  // row), so an empty query falls back to newest-first.
   const sort: SearchSort = input.sort ?? "relevance";
-  const effectiveSort: SearchSort = q === "" && sort === "relevance" ? "newest" : sort;
   const f = input.filters ?? {};
   const kindPrefix = f.kindPrefix ?? null;
   const types = f.types ?? null;
@@ -204,7 +208,7 @@ export async function searchGuides(input: SearchInput): Promise<SearchCandidate[
         -- The guards make exactly one arm non-empty for a given request.
         SELECT id, rrf FROM fused
         UNION ALL
-        SELECT v.id, 0::double precision AS rrf
+        SELECT v.id, ${sql.raw(String(BROWSE_RANK_BASE))}::double precision AS rrf
         FROM versions v
         WHERE ${facets} AND ${q} = ''
       )
@@ -245,7 +249,7 @@ export async function searchGuides(input: SearchInput): Promise<SearchCandidate[
       JOIN orgs o ON o.id = p.owner_org_id
       LEFT JOIN git_sources gs ON gs.id = d.git_source_id
       WHERE d.deleted_at IS NULL
-      ORDER BY ${sql.raw(SORT_CLAUSES[effectiveSort])}
+      ORDER BY ${sql.raw(SORT_CLAUSES[sort])}
       LIMIT ${sql.raw(String(limit))} OFFSET ${sql.raw(String(offset))}
     `);
   })) as unknown as { rows: SearchCandidate[] };
@@ -261,6 +265,8 @@ export interface VersionRef {
   versionTag: string | null;
   appliesTo: string[];
   verificationScore: number | null;
+  /** When this version was published; shown as the alternate's "updated" age. */
+  publishedAt: Date | string;
   isLatest: boolean;
 }
 
@@ -280,6 +286,7 @@ interface VersionContextRow {
   appliesTo: string[];
   status: string;
   verificationScore: number | null;
+  publishedAt: Date | string;
   commitSha: string | null;
   versionTag: string | null;
 }
@@ -292,6 +299,7 @@ function toVersionRef(row: VersionContextRow): VersionRef {
     versionTag: row.versionTag,
     appliesTo: row.appliesTo,
     verificationScore: row.verificationScore,
+    publishedAt: row.publishedAt,
     isLatest: row.isLatest,
   };
 }
@@ -329,6 +337,7 @@ export async function resolveVersionContext(
       appliesTo: versions.appliesTo,
       status: versions.status,
       verificationScore: versions.verificationScore,
+      publishedAt: versions.publishedAt,
       commitSha: versions.commitSha,
       versionTag: versions.versionTag,
     })

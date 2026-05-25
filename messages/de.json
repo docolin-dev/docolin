@@ -641,6 +641,7 @@
   "search_min_pango_any": "Beliebig",
   "search_min_pango_option": "{score}+",
   "search_confirmed": "bestätigt {time}",
+  "search_published": "veröffentlicht {time}",
   "search_type_tutorial": "Tutorial",
   "search_type_how_to": "Anleitung",
   "search_type_reference": "Referenz",
@@ -658,5 +659,11 @@
   "search_browse_body": "Wähle ein Thema oder suche nach deinem Ziel.",
   "search_error_title": "Suche nicht verfügbar",
   "search_error_body": "Etwas ist schiefgelaufen. Versuche es gleich erneut.",
-  "search_retry": "Erneut versuchen"
+  "search_retry": "Erneut versuchen",
+
+  "kind_subtopics_heading": "Unterthemen",
+  "kind_no_subtopics": "Keine weiteren Unterthemen hier.",
+  "kind_empty_title": "Noch nichts hier",
+  "kind_empty_body": "Noch keine Dokumentation unter {kind}. Schau bald wieder vorbei.",
+  "kind_meta_description": "Community-Dokumentation zu {kind} auf docolin."
 }

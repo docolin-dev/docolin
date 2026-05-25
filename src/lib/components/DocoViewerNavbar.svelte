@@ -48,7 +48,12 @@
 
   const GAP_PX = 16; // breathing room kept before the obstacle on the right
 
-  const visibleSegments = $derived(kindSegments.slice(hiddenCount));
+  // Each segment links to its cumulative kind path (e.g. the "gpu" crumb of
+  // hardware/gpu/nvidia -> /hardware/gpu), which renders that kind's browse page.
+  const crumbs = $derived(
+    kindSegments.map((slug, i) => ({ slug, href: `/${kindSegments.slice(0, i + 1).join("/")}` })),
+  );
+  const visibleCrumbs = $derived(crumbs.slice(hiddenCount));
   // Apple shows ⌘, everything else Ctrl. False on SSR, swaps after hydration.
   const isMac = $derived(isMacPlatform());
 
@@ -118,13 +123,28 @@
   });
 </script>
 
-{#snippet crumbUnit(seg: string, isLeaf: boolean, truncate: boolean)}
+{#snippet crumbUnit(seg: string, href: string, isLeaf: boolean, truncate: boolean, asLink: boolean)}
   <span data-seg class="inline-flex shrink-0 items-baseline gap-1.5 pr-2 font-mono text-xs">
     <span class="text-foreground/25">/</span>
-    {#if truncate}
-      <span class="text-foreground truncate" style="max-width: {leafMaxPx}px">{seg}</span>
+    {#if asLink}
+      <a
+        href={localizeHref(href)}
+        class="hover:text-primary transition-colors {truncate
+          ? 'text-foreground truncate'
+          : isLeaf
+            ? 'text-foreground'
+            : 'text-muted-foreground'}"
+        style={truncate ? `max-width: ${String(leafMaxPx)}px` : ""}>{seg}</a
+      >
     {:else}
-      <span class={isLeaf ? "text-foreground" : "text-muted-foreground"}>{seg}</span>
+      <span
+        class={truncate
+          ? "text-foreground truncate"
+          : isLeaf
+            ? "text-foreground"
+            : "text-muted-foreground"}
+        style={truncate ? `max-width: ${String(leafMaxPx)}px` : ""}>{seg}</span
+      >
     {/if}
   </span>
 {/snippet}
@@ -157,19 +177,21 @@
 
       <span bind:this={crumbEl} class="flex min-w-0 items-baseline overflow-hidden">
         {#if hiddenCount === 0}
-          {#each kindSegments as seg, i (i)}
+          {#each crumbs as crumb, i (i)}
             <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -->
-            {@render crumbUnit(seg, i === kindSegments.length - 1, false)}
+            {@render crumbUnit(crumb.slug, crumb.href, i === crumbs.length - 1, false, true)}
           {/each}
         {:else}
           <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -->
           {@render ellipsisUnit()}
-          {#each visibleSegments as seg, i (i)}
+          {#each visibleCrumbs as crumb, i (i)}
             <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -->
             {@render crumbUnit(
-              seg,
-              i === visibleSegments.length - 1,
-              truncateLeaf && i === visibleSegments.length - 1,
+              crumb.slug,
+              crumb.href,
+              i === visibleCrumbs.length - 1,
+              truncateLeaf && i === visibleCrumbs.length - 1,
+              true,
             )}
           {/each}
         {/if}
@@ -214,7 +236,7 @@
     >
       {#each kindSegments as seg, i (i)}
         <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -->
-        {@render crumbUnit(seg, false, false)}
+        {@render crumbUnit(seg, "", false, false, false)}
       {/each}
       <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -->
       {@render ellipsisUnit()}

@@ -641,6 +641,7 @@
   "search_min_pango_any": "Any",
   "search_min_pango_option": "{score}+",
   "search_confirmed": "confirmed {time}",
+  "search_published": "published {time}",
   "search_type_tutorial": "Tutorial",
   "search_type_how_to": "How-to",
   "search_type_reference": "Reference",
@@ -658,5 +659,11 @@
   "search_browse_body": "Pick a topic, or search by what you're trying to do.",
   "search_error_title": "Search is unavailable",
   "search_error_body": "Something went wrong. Try again in a moment.",
-  "search_retry": "Try again"
+  "search_retry": "Try again",
+
+  "kind_subtopics_heading": "Subtopics",
+  "kind_no_subtopics": "No more subtopics here.",
+  "kind_empty_title": "Nothing here yet",
+  "kind_empty_body": "No documentation under {kind} yet. Check back soon.",
+  "kind_meta_description": "Community documentation in {kind} on docolin."
 }

@@ -17,7 +17,7 @@ export interface KindNode {
 // Turns an ltree segment (`steps_accordion`, `gpu`) into a display label. ltree
 // labels use underscores where the display path uses hyphens; both become spaces
 // and each word is capitalized.
-function labelForSegment(segment: string): string {
+export function labelForSegment(segment: string): string {
   const words = segment.replaceAll("_", " ").replaceAll("-", " ").split(" ");
   return words
     .filter((w) => w.length > 0)
@@ -61,4 +61,21 @@ export function buildKindTree(items: KindFacetCount[]): KindNode[] {
   sortTree(roots);
 
   return roots;
+}
+
+// Finds the node at an exact ltree path within a built tree, or null. Used by
+// the kind browse page to render the children (the folder navigator) of the
+// kind the reader is currently viewing.
+export function findKindNode(roots: KindNode[], path: string): KindNode | null {
+  const segments = path.split(".");
+  let level = roots;
+  let found: KindNode | null = null;
+  for (let i = 0; i < segments.length; i++) {
+    const wanted = segments.slice(0, i + 1).join(".");
+    const node = level.find((n) => n.path === wanted);
+    if (node === undefined) return null;
+    found = node;
+    level = node.children;
+  }
+  return found;
 }

@@ -28,6 +28,7 @@ interface AlternateDto {
   href: string;
   label: string;
   pangoScore: number | null;
+  publishedAt: string | null;
   appliesTo: string[];
 }
 
@@ -97,6 +98,7 @@ function buildDto(
     href: `${baseHref}@${versionSuffix(alt.commitSha, alt.versionNumber)}`,
     label: alt.versionTag ?? versionSuffix(alt.commitSha, alt.versionNumber),
     pangoScore: alt.verificationScore,
+    publishedAt: toIsoString(alt.publishedAt),
     appliesTo: alt.appliesTo,
   }));
 
@@ -163,9 +165,10 @@ export const GET: RequestHandler = async ({ url, platform, setHeaders }) => {
   // thin TTL since content changes slowly.
   setHeaders({ "cache-control": "public, max-age=0, s-maxage=60" });
 
-  // Empty query with no facet request is a no-op (the palette/hero only fetch
-  // once the reader types). The faceted page still browses on an empty query.
-  if (q.length === 0 && !wantFacets) {
+  // Empty query is a no-op for the palette/hero (they only fetch once the reader
+  // types). A browse still runs when the faceted page asks for counts, or when a
+  // kind is scoped (the kind landing pages and their client setup re-rank).
+  if (q.length === 0 && !wantFacets && filters.kindPrefix === null) {
     return json({
       query: q,
       mode,

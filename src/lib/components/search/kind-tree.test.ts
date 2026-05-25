@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { buildKindTree } from "./kind-tree";
+import { buildKindTree, findKindNode } from "./kind-tree";
 
 describe("buildKindTree", () => {
   it("nests by ltree segment and rolls counts up to ancestors", () => {
@@ -33,5 +33,26 @@ describe("buildKindTree", () => {
   it("labels segments by titleizing and converting underscores", () => {
     const tree = buildKindTree([{ path: "tools.steps_accordion", count: 1 }]);
     expect(tree[0].children[0].label).toBe("Steps Accordion");
+  });
+});
+
+describe("findKindNode", () => {
+  const tree = buildKindTree([
+    { path: "hardware.gpu.nvidia", count: 3 },
+    { path: "hardware.gpu.amd", count: 2 },
+    { path: "hardware.cpu", count: 1 },
+  ]);
+
+  it("returns the node at an exact path with its children", () => {
+    const gpu = findKindNode(tree, "hardware.gpu");
+    expect(gpu?.count).toBe(5);
+    expect(gpu?.children.map((n) => n.path).sort()).toEqual([
+      "hardware.gpu.amd",
+      "hardware.gpu.nvidia",
+    ]);
+  });
+
+  it("returns null for a path not in the tree", () => {
+    expect(findKindNode(tree, "hardware.gpu.intel")).toBeNull();
   });
 });

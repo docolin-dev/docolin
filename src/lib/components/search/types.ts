@@ -8,6 +8,7 @@ export interface Alternate {
   href: string;
   label: string;
   pangoScore: number | null;
+  publishedAt: string | null;
   appliesTo: string[];
 }
 
