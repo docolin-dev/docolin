@@ -10,12 +10,7 @@
   import { baseLocale, deLocalizeUrl, localizeUrl, locales } from "$paraglide/runtime";
   import { SITE_URL } from "$lib/site";
   import { refreshSession } from "$lib/client/session.svelte";
-  import { setupCodeCopy } from "$lib/markdown/copy-code";
-  import { setupCodeLineSelect } from "$lib/markdown/code-lines";
-  import { setupContentTabs, applyTabPreference } from "$lib/markdown/content-tabs";
-  import { setupMermaid, renderMermaid } from "$lib/markdown/mermaid";
-  import { setupCharts, renderCharts } from "$lib/markdown/charts";
-  import { setupMarkdownPopovers } from "$lib/markdown/popovers";
+  import { browser } from "$app/environment";
   // ?url asks Vite for the asset's final hashed URL string. The latin range
   // covers EN + DE traffic (umlauts and ß live in U+0000-00FF); the ext and
   // cyrillic ranges fetch lazily on demand. Preloading only the latin file
@@ -27,10 +22,15 @@
   // Reapply the reader's stored content-tab choice after the initial load and
   // every client navigation. Switching itself is CSS, so this only restores the
   // remembered tab on freshly rendered pages.
+  // Client markdown hydration is loaded lazily (its browser-only deps stay out of
+  // the worker), so it can be null on the first navigation; onMount does the
+  // initial render once the module resolves.
+  let markdown: typeof import("$lib/markdown/hydrate") | null = null;
+
   afterNavigate(() => {
-    applyTabPreference();
-    renderMermaid();
-    renderCharts();
+    markdown?.applyTabPreference();
+    markdown?.renderMermaid();
+    markdown?.renderCharts();
   });
 
   // Session lives client-side so public HTML can be edge-cached without
@@ -43,22 +43,23 @@
       if (document.visibilityState === "visible") void refreshSession();
     };
     document.addEventListener("visibilitychange", onVisibility);
-    // Wire copy buttons and shareable line selection in any rendered code block
-    // (doco, discussion, preview).
-    const teardownCodeCopy = setupCodeCopy();
-    const teardownCodeLines = setupCodeLineSelect();
-    const teardownTabs = setupContentTabs();
-    const teardownMermaid = setupMermaid();
-    const teardownCharts = setupCharts();
-    const teardownPopovers = setupMarkdownPopovers();
+    // Wire every client-side markdown widget (copy buttons, line select, tabs,
+    // Mermaid, charts, popovers). Loaded lazily and behind `browser` so Vite
+    // drops the browser-only libraries from the SSR/worker build.
+    let teardownMarkdown: (() => void) | undefined;
+    if (browser) {
+      void import("$lib/markdown/hydrate").then((mod) => {
+        markdown = mod;
+        teardownMarkdown = mod.setupMarkdownHydration();
+        // afterNavigate for the first page may have run before this resolved.
+        mod.applyTabPreference();
+        mod.renderMermaid();
+        mod.renderCharts();
+      });
+    }
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
-      teardownCodeCopy();
-      teardownCodeLines();
-      teardownTabs();
-      teardownMermaid();
-      teardownCharts();
-      teardownPopovers();
+      teardownMarkdown?.();
     };
   });
 
