@@ -3,6 +3,8 @@
 
 export const SITE_NAME = "docolin";
 export const SITE_URL = "https://docolin.com";
+export const SITE_CONTACT_EMAIL = "hello@docolin.com";
+export const SITE_SUPPORT_EMAIL = "support@docolin.com";
 export const SITE_REPO = "https://github.com/docolin-dev/docolin";
 export const SITE_REPO_OWNER = "docolin-dev";
 export const SITE_REPO_NAME = "docolin";

@@ -51,10 +51,13 @@
         <a href={localizeHref("/browse")} class="hover:text-foreground transition-colors"
           >{m.home_footer_browse()}</a
         >
+        <a href={localizeHref("/compare")} class="hover:text-foreground transition-colors"
+          >{m.home_footer_compare()}</a
+        >
         <a href={localizeHref("/for-projects")} class="hover:text-foreground transition-colors"
           >{m.home_footer_projects()}</a
         >
-        <a href={localizeHref("/for-ai")} class="hover:text-foreground transition-colors"
+        <a href={localizeHref("/mcp")} class="hover:text-foreground transition-colors"
           >{m.home_footer_ai()}</a
         >
         <a
@@ -66,8 +69,12 @@
         <a href={localizeHref("/sponsor")} class="hover:text-foreground transition-colors"
           >{m.home_footer_sponsor()}</a
         >
-        <a href={localizeHref("/privacy")} class="hover:text-foreground transition-colors"
-          >{m.home_footer_privacy()}</a
+        <a
+          href={localizeHref("/docolin/docolin/privacy")}
+          class="hover:text-foreground transition-colors">{m.home_footer_privacy()}</a
+        >
+        <a href={localizeHref("/terms")} class="hover:text-foreground transition-colors"
+          >{m.home_footer_terms()}</a
         >
       </nav>
     </div>
