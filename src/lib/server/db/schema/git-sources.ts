@@ -32,7 +32,15 @@ export const gitSources = pgTable(
   (t) => [
     // Enforces the one-source-per-project rule.
     uniqueIndex("git_sources_project_unique").on(t.projectId),
-    uniqueIndex("git_sources_provider_repo_unique").on(t.provider, t.repoUrl),
+    // A repo can back multiple projects as long as each scopes to a distinct
+    // subdirectory (one monorepo, one project per folder; the sync engine filters
+    // to each project's subpath). coalesce(subpath, '') folds a null (root)
+    // subpath to '' so two root-scoped projects on the same repo still collide.
+    uniqueIndex("git_sources_provider_repo_subpath_unique").on(
+      t.provider,
+      t.repoUrl,
+      sql`coalesce(${t.subpath}, '')`,
+    ),
     check("git_sources_provider_check", sql`${t.provider} IN ('github', 'gitlab', 'gitea')`),
     check("git_sources_sync_status_check", sql`${t.syncStatus} IN ('idle', 'syncing', 'error')`),
   ],

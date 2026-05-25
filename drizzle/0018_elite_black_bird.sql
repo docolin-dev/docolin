@@ -1,0 +1,2 @@
+DROP INDEX "git_sources_provider_repo_unique";--> statement-breakpoint
+CREATE UNIQUE INDEX "git_sources_provider_repo_subpath_unique" ON "git_sources" USING btree ("provider","repo_url",coalesce("subpath", ''));
