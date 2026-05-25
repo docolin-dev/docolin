@@ -13,6 +13,10 @@ compatibility_date = "2026-05-17"
 # so the Worker needs Node compatibility to run them at the edge.
 compatibility_flags = ["nodejs_compat"]
 
+# Production custom domain, declared here so `wrangler deploy` keeps it attached;
+# it is authoritative for routes and would otherwise drop a dashboard-added one.
+routes = [{ pattern = "docolin.com", custom_domain = true }]
+
 # Non-secret runtime config. These live here (not as dashboard vars) because
 # `wrangler deploy` treats this file as authoritative for plain vars and would
 # otherwise wipe dashboard-set plaintext on each deploy. All public values;
@@ -43,3 +47,9 @@ preview_bucket_name = "docolin-media-dev"
 # Surfaces as event.platform.env.AI in SvelteKit server code.
 [ai]
 binding = "AI"
+
+# Workers Logs so runtime exceptions surface in the dashboard (and persist)
+# without needing `wrangler tail` open.
+[observability.logs]
+enabled = true
+invocation_logs = true

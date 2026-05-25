@@ -1,6 +1,7 @@
 import type { Handle } from "@sveltejs/kit";
 import { sequence } from "@sveltejs/kit/hooks";
 import { authService } from "$lib/server/auth";
+import { createRequestDb, runWithDb } from "$lib/server/db";
 import { findUserByWorkosId } from "$lib/server/users";
 import { paraglideMiddleware } from "$paraglide/server";
 
@@ -48,4 +49,19 @@ const authHandle: Handle = async ({ event, resolve }) => {
   return response;
 };
 
-export const handle = sequence(paraglideHandle, authHandle);
+// Per-request database handle. On Cloudflare a Neon WebSocket connection is
+// request-scoped, so open one per request, bind it for the request's duration
+// via async-local storage, and close it once the response is sent. Runs before
+// authHandle, which queries the DB.
+const dbHandle: Handle = async ({ event, resolve }) => {
+  const { db, close } = createRequestDb();
+  try {
+    return await runWithDb(db, () => resolve(event));
+  } finally {
+    const ctx = event.platform?.context;
+    if (ctx) ctx.waitUntil(close());
+    else void close();
+  }
+};
+
+export const handle = sequence(paraglideHandle, dbHandle, authHandle);
