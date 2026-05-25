@@ -1,4 +1,4 @@
-import { R2_PUBLIC_BASE } from "$env/static/private";
+import { requireEnv } from "$lib/server/env";
 
 // R2 URL and key helpers. The R2 bucket itself comes straight from the
 // Cloudflare Workers binding (event.platform.env.MEDIA_BUCKET); callers use
@@ -8,11 +8,12 @@ import { R2_PUBLIC_BASE } from "$env/static/private";
 //   Dev:  R2_PUBLIC_BASE=https://media-dev.docolin.com  (docolin-media-dev)
 //   Prod: R2_PUBLIC_BASE=https://media.docolin.com      (docolin-media)
 //
-// Static import means missing-config fails fast at build/typecheck, never
-// silently with a wrong-domain default.
+// Read at runtime; a missing value throws when the sync engine needs it, never
+// silently resolving to a wrong-domain default.
 
 export function r2PublicBase(): string {
-  return R2_PUBLIC_BASE.endsWith("/") ? R2_PUBLIC_BASE.slice(0, -1) : R2_PUBLIC_BASE;
+  const base = requireEnv("R2_PUBLIC_BASE");
+  return base.endsWith("/") ? base.slice(0, -1) : base;
 }
 
 export function r2PublicUrl(key: string): string {

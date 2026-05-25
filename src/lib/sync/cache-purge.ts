@@ -1,4 +1,4 @@
-import { CLOUDFLARE_ZONE_ID, CLOUDFLARE_CACHE_PURGE_TOKEN } from "$env/static/private";
+import { env } from "$lib/server/env";
 
 // Cloudflare cache purge for doco latest URLs. After a sync publishes new
 // versions, we tell CF to drop the cached HTML for every affected URL so the
@@ -22,7 +22,9 @@ const PURGE_CHUNK_SIZE = 30;
 export async function purgeCacheUrls(urls: string[]): Promise<void> {
   if (urls.length === 0) return;
 
-  if (!CLOUDFLARE_ZONE_ID || !CLOUDFLARE_CACHE_PURGE_TOKEN) {
+  const zoneId = env.CLOUDFLARE_ZONE_ID;
+  const purgeToken = env.CLOUDFLARE_CACHE_PURGE_TOKEN;
+  if (!zoneId || !purgeToken) {
     console.warn(
       `Cache purge skipped: CLOUDFLARE_ZONE_ID / CLOUDFLARE_CACHE_PURGE_TOKEN unset. ${urls.length.toString()} URL(s) would have been purged.`,
     );
@@ -32,17 +34,14 @@ export async function purgeCacheUrls(urls: string[]): Promise<void> {
   for (let i = 0; i < urls.length; i += PURGE_CHUNK_SIZE) {
     const chunk = urls.slice(i, i + PURGE_CHUNK_SIZE);
     try {
-      const res = await fetch(
-        `https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/purge_cache`,
-        {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${CLOUDFLARE_CACHE_PURGE_TOKEN}`,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({ files: chunk }),
+      const res = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${purgeToken}`,
+          "content-type": "application/json",
         },
-      );
+        body: JSON.stringify({ files: chunk }),
+      });
       if (!res.ok) {
         const body = await res.text();
         console.error(

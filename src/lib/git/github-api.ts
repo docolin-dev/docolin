@@ -1,4 +1,4 @@
-import { GITHUB_TOKEN } from "$env/static/private";
+import { env } from "$lib/server/env";
 
 // Thin client for the GitHub endpoints the sync engine uses:
 //
@@ -21,7 +21,8 @@ function authHeaders(): Record<string, string> {
     "X-GitHub-Api-Version": "2022-11-28",
     "User-Agent": "docolin-sync",
   };
-  if (GITHUB_TOKEN) base.Authorization = `Bearer ${GITHUB_TOKEN}`;
+  const token = env.GITHUB_TOKEN;
+  if (token) base.Authorization = `Bearer ${token}`;
   return base;
 }
 

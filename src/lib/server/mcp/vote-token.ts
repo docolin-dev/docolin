@@ -1,4 +1,4 @@
-import { WORKOS_COOKIE_PASSWORD } from "$env/static/private";
+import { requireEnv } from "$lib/server/env";
 
 // One-time vote tokens. A token is a stateless, HMAC-signed binding of a doco
 // version + a random nonce + an expiry, handed out in an MCP fetch result (and
@@ -22,7 +22,7 @@ let keyPromise: Promise<CryptoKey> | null = null;
 function hmacKey(): Promise<CryptoKey> {
   keyPromise ??= crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(WORKOS_COOKIE_PASSWORD),
+    new TextEncoder().encode(requireEnv("WORKOS_COOKIE_PASSWORD")),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],

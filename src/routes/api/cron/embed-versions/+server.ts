@@ -1,6 +1,6 @@
 import { error, json } from "@sveltejs/kit";
 import { and, eq, isNull } from "drizzle-orm";
-import { CRON_SECRET } from "$env/static/private";
+import { requireEnv } from "$lib/server/env";
 import type { RequestHandler } from "./$types";
 import { db } from "$lib/server/db";
 import { versions } from "$lib/server/db/schema";
@@ -19,7 +19,7 @@ const MAX_VERSIONS_PER_TICK = 50;
 
 export const POST: RequestHandler = async ({ request, platform }) => {
   const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${CRON_SECRET}`) error(401, "unauthorized");
+  if (auth !== `Bearer ${requireEnv("CRON_SECRET")}`) error(401, "unauthorized");
 
   const ai = platform?.env.AI;
   if (ai === undefined) error(500, "AI binding unavailable");
