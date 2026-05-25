@@ -522,6 +522,17 @@ html {
   }
 }
 
+/* Light/dark image variants. An author pairs two images and tags each with a
+   theme class, and docolin shows whichever fits the active theme:
+     ![alt](diagram-light.png){ .light-only }
+     ![alt](diagram-dark.png){ .dark-only }
+   Only the off-theme variant is hidden, so the visible one keeps its normal
+   layout. Unlayered so it beats the .prose img display. */
+.dark .light-only,
+html:not(.dark) .dark-only {
+  display: none;
+}
+
 /* Footnotes (remark-gfm) + the shared hovercard popover. Unlayered so they win over
    the .prose typography utilities (utilities beat @layer base regardless of
    specificity). */

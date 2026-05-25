@@ -50,6 +50,15 @@ describe("convertBody preserves docomd constructs", () => {
     expect(out).toContain("!!! steps");
   });
 
+  it("preserves an image's attr-list (light/dark variant classes)", async () => {
+    // The attr-list is consumed at render time, not here. Canonicalize must pass
+    // the `{ .dark-only }` text through untouched, or the variant breaks in synced
+    // docs while the playground looks fine.
+    const out = await convertBody("![Dark](/a-dark.png){ .dark-only }\n", passthrough);
+    expect(out).toContain("](/a-dark.png)");
+    expect(out).toContain("{ .dark-only }");
+  });
+
   it("is idempotent on an admonition", async () => {
     const once = await convertBody('!!! tip "Note"\n    Body text here.\n', passthrough);
     const twice = await convertBody(once, passthrough);

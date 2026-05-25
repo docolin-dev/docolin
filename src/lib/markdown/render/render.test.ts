@@ -72,6 +72,17 @@ describe("standard markdown parity", () => {
     expect(html).not.toContain("md-button");
     expect(html).not.toContain("{ .md-button");
   });
+
+  it("attaches an attr-list class to an image (light/dark variants) and strips the attr text", async () => {
+    const html = await render(
+      "![Light](/a-light.png){ .light-only }\n\n![Dark](/a-dark.png){ .dark-only }\n",
+    );
+    expect(html).toContain('class="light-only"');
+    expect(html).toContain('class="dark-only"');
+    expect(html).toContain('src="/a-light.png"');
+    expect(html).not.toContain("{ .light-only }");
+    expect(html).not.toContain("{ .dark-only }");
+  });
 });
 
 describe("table of contents", () => {

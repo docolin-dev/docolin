@@ -146,6 +146,17 @@ and a bare URL: <https://docolin.com>.
 
 The text in brackets is the alt text. Write it as if describing the image to someone who cannot see it; it is what screen readers announce and what shows if the image fails to load. Never leave it empty for a meaningful image.
 
+### Light and dark variants
+
+A screenshot or diagram that reads well in one theme can be unreadable in the other. Tag a pair of images with `{ .light-only }` and `{ .dark-only }` and docolin shows whichever fits the reader's active theme:
+
+```md
+![Architecture diagram](architecture-light.png){ .light-only }
+![Architecture diagram](architecture-dark.png){ .dark-only }
+```
+
+Each tag hides its image in the other theme, so only the matching one shows. Use the same alt text on both. If you only have one image, leave the tags off and it shows in both themes.
+
 ## Horizontal rule
 
 Three or more dashes on their own line draw a divider. Use it to separate genuinely distinct sections, not for decoration.

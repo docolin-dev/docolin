@@ -2,17 +2,21 @@ import type { Root, RootContent } from "mdast";
 import { visit } from "unist-util-visit";
 import { parseAttrs, type DocoAttrs } from "./parse.ts";
 
-// MkDocs-style attribute lists for links: `[label](url){ .class #id }`. This
-// powers buttons (`{ .md-button .md-button--primary }`); the same `{ ... }` syntax
-// also carries card props (`{ icon=... type=... }`), but those are read by the
-// card renderer, so here we only act on a list that has classes or an id and leave
-// a props-only list untouched. Parsing (parseAttrs) is string-based, no regex.
+// MkDocs-style attribute lists for links and images: `[label](url){ .class #id }`
+// or `![alt](src){ .class }`. This powers buttons (`{ .md-button }`) and the
+// light/dark image variant classes (`{ .light-only }` / `{ .dark-only }`); the
+// same `{ ... }` syntax also carries card props (`{ icon=... type=... }`), but
+// those are read by the card renderer, so here we only act on a list that has
+// classes or an id and leave a props-only list untouched. Parsing (parseAttrs)
+// is string-based, no regex.
 
-/** Attaches a trailing `{ .class #id }` attribute list to the preceding link. */
+/** Attaches a trailing `{ .class #id }` attribute list to the preceding link or
+ *  image. */
 export function remarkAttrList() {
   return (tree: Root): undefined => {
-    visit(tree, "link", (node, index, parent) => {
+    visit(tree, ["link", "image"], (node, index, parent) => {
       if (parent === undefined || index === undefined) return;
+      if (node.type !== "link" && node.type !== "image") return;
       const next = parent.children.at(index + 1);
       if (next?.type !== "text") return;
       const parsed = parseAttrs(next.value);
