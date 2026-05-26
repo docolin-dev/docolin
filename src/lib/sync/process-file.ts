@@ -8,6 +8,8 @@ import { parseDocoFile, type ParsedDoco } from "./parse";
 import { convertBody } from "./body-pipeline";
 import { makeImageArchiver, type SyncFileErrorRecord } from "./media-archive";
 import { resolveDocoSitemap } from "./sitemap";
+import { mintlifyMdxToDocoSource, hasDocolinFrontmatter } from "./mintlify/convert";
+import type { MintlifyIconLibrary } from "./mintlify/detect";
 import { resolveRelativePath } from "./path-resolve";
 import { pathFromSourcePath } from "$lib/doco-urls";
 import type { Sitemap } from "./sitemap-schema";
@@ -36,8 +38,15 @@ export interface ProcessFileContext {
   // relative links resolve to the same path-from-project-root the viewer serves.
   subpath: string | null;
   // Resolves the cascade sitemap (nearest doco_sitemap.yaml) for a doco by its
-  // source path. The per-doco frontmatter override is applied on top below.
+  // source path. The per-doco frontmatter override is applied on top below. For
+  // a Mintlify project this returns the nav-derived sidebar for every file.
   resolveSitemap: (docoPath: string) => Promise<Sitemap | null>;
+  // When true, the file is a Mintlify `.mdx`: its body is converted to docomd
+  // before parsing, and the maintainer must supply the docolin frontmatter.
+  mintlify: boolean;
+  // The Mintlify project's icon library; card icon names are rewritten with its
+  // set prefix. Ignored when `mintlify` is false.
+  mintlifyIconLibrary: MintlifyIconLibrary;
 }
 
 export type ProcessFileResult =
@@ -69,9 +78,26 @@ export async function processFile(
     };
   }
 
-  // 2. Parse + validate frontmatter (also resolves author handles to userIds).
-  const parseResult = await parseDocoFile(fetched.content);
+  // 2. For a Mintlify import, convert the MDX body to docomd and keep the
+  // maintainer's frontmatter; everything downstream treats it as a docolin file.
+  const source = ctx.mintlify
+    ? mintlifyMdxToDocoSource(fetched.content, ctx.mintlifyIconLibrary)
+    : fetched.content;
+
+  // 3. Parse + validate frontmatter (also resolves author handles to userIds).
+  const parseResult = await parseDocoFile(source);
   if (!parseResult.ok) {
+    // A Mintlify page that hasn't had docolin frontmatter added yet: tell the
+    // maintainer exactly what to add instead of dumping a raw schema error.
+    if (ctx.mintlify && !hasDocolinFrontmatter(fetched.content)) {
+      return {
+        status: "errored",
+        errorCode: "mintlify_frontmatter_required",
+        errorMessage:
+          "Imported from Mintlify. Add docolin frontmatter to this page: an `authors` list (at least one) and a `docolin:` block with `kind` and `type`.",
+        errorDetails: { underlying: parseResult.error.code },
+      };
+    }
     return {
       status: "errored",
       errorCode: parseResult.error.code,
@@ -81,7 +107,7 @@ export async function processFile(
   }
   const parsed = parseResult.parsed;
 
-  // 3. Convert the body. Image archival errors get collected here; they don't
+  // 4. Convert the body. Image archival errors get collected here; they don't
   // fail the file since the markdown still renders with the source URL.
   const assetErrors: SyncFileErrorRecord[] = [];
   const imageArchiver = makeImageArchiver({
@@ -91,20 +117,28 @@ export async function processFile(
     repo: ctx.repo,
     ref: ctx.ref,
     docoPath: filePath,
+    // Mintlify authors `/images/x` relative to the docs root, not the repo root.
+    absoluteBase: ctx.mintlify ? ctx.subpath : null,
     onError: (err) => assetErrors.push(err),
   });
   const linkRewriter = makeLinkRewriter(filePath, ctx.orgSlug, ctx.projectSlug, ctx.subpath);
   const convertedBody = await convertBody(parsed.body, {
     rewriteImageUrl: imageArchiver,
     rewriteRelativeLink: linkRewriter,
+    // Mintlify links are root-absolute to the docs root (`/devtools/mcp`); map
+    // them to this project's URL space. docolin repos leave `/` links alone.
+    rewriteAbsoluteLink: ctx.mintlify
+      ? (url) =>
+          `/${ctx.orgSlug}/${ctx.projectSlug}/${pathFromSourcePath(url.startsWith("/") ? url.slice(1) : url, null)}`
+      : undefined,
   });
 
-  // 4. Resolve which sitemap applies to this doco: the nearest doco_sitemap.yaml
+  // 5. Resolve which sitemap applies to this doco: the nearest doco_sitemap.yaml
   // walking up from this file, unless the doco's frontmatter overrides it.
   const cascade = await ctx.resolveSitemap(filePath);
   const sitemap = resolveDocoSitemap(parsed.frontmatter.docolin.sitemap, cascade);
 
-  // 5. Find or create the doco row, then write the version.
+  // 6. Find or create the doco row, then write the version.
   const existing = await db
     .select()
     .from(docos)

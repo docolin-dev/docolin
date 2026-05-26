@@ -1,6 +1,6 @@
 import { visit, SKIP } from "unist-util-visit";
 import type { ElementContent, Root } from "hast";
-import { lucideIconHast } from "./icons.ts";
+import { resolveIconHast } from "./icons.ts";
 
 // `:icon-name:` in body text becomes an inline Lucide icon sized to the
 // surrounding text. Only a well-formed kebab name that resolves to a real Lucide
@@ -32,7 +32,9 @@ function replaceIcons(value: string): ElementContent[] | null {
       const close = value.indexOf(":", i + 1);
       if (close !== -1) {
         const name = value.slice(i + 1, close);
-        const icon = isIconCandidate(name) ? lucideIconHast(name, ICON_CLASS) : null;
+        // Bare names only inline (the `:` delimiters preclude a `set:` prefix);
+        // resolveIconHast is Lucide-first with a Font Awesome fallback.
+        const icon = isIconCandidate(name) ? resolveIconHast(name, ICON_CLASS) : null;
         if (icon !== null) {
           if (buffer.length > 0) {
             out.push({ type: "text", value: buffer });

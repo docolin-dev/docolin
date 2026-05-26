@@ -3,7 +3,7 @@ import type { Element, ElementContent } from "hast";
 import type { ListItem, Paragraph } from "mdast";
 import type { State } from "mdast-util-to-hast";
 import { parseAttrs, type Admonition } from "$lib/markdown/docomd";
-import { iconHast, lucideIconHast } from "./icons.ts";
+import { iconHast, resolveIconHast } from "./icons.ts";
 import { BODY_RESET, CALLOUTS, type AdmonitionConfig } from "./admonition.ts";
 
 // docolin's design layer for cards: a list inside `!!! cards` becomes a responsive
@@ -166,11 +166,12 @@ function buildCard(state: State, item: ListItem, groupHorizontal: boolean): Elem
         )
       : h("span", { class: ["block", "font-medium", "text-foreground"] }, titleChildren);
 
-  // Icon: an explicit `{ icon=name }` (any Lucide icon) or the type's default.
+  // Icon: an explicit `{ icon=name }` (optionally `set:name`, e.g. fa:plug) or
+  // the type's default. resolveIconHast is Lucide-first for a bare name.
   const iconColor = theme !== undefined ? theme.text : "text-muted-foreground";
   let icon: Element | null = null;
   if (props.icon !== undefined && props.icon !== "true") {
-    icon = lucideIconHast(props.icon, `size-5 ${iconColor}`);
+    icon = resolveIconHast(props.icon, `size-5 ${iconColor}`);
   } else if (theme !== undefined) {
     icon = iconHast(theme.icon, `size-5 ${iconColor}`);
   }

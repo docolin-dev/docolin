@@ -101,4 +101,30 @@ describe("convertBody still rewrites images and links", () => {
     });
     expect(out).toContain("https://cdn/pic.png");
   });
+
+  it("rewrites a relative .mdx link (Mintlify imports)", async () => {
+    const out = await convertBody("See [mcp](./mcp.mdx).\n", {
+      rewriteImageUrl: (url) => Promise.resolve(url),
+      rewriteRelativeLink: (url) => (url === "./mcp.mdx" ? "/notra/notra/devtools/mcp" : url),
+    });
+    expect(out).toContain("/notra/notra/devtools/mcp");
+    expect(out).not.toContain("./mcp.mdx");
+  });
+
+  it("rewrites a Mintlify root-absolute link when rewriteAbsoluteLink is set", async () => {
+    const out = await convertBody("See [mcp](/devtools/mcp).\n", {
+      rewriteImageUrl: (url) => Promise.resolve(url),
+      rewriteRelativeLink: (url) => url,
+      rewriteAbsoluteLink: (url) => `/notra/notra${url}`,
+    });
+    expect(out).toContain("/notra/notra/devtools/mcp");
+  });
+
+  it("leaves root-absolute links alone without rewriteAbsoluteLink (docolin repos)", async () => {
+    const out = await convertBody("See [fw](/network/firewall/setup).\n", {
+      rewriteImageUrl: (url) => Promise.resolve(url),
+      rewriteRelativeLink: (url) => url,
+    });
+    expect(out).toContain("/network/firewall/setup");
+  });
 });

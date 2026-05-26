@@ -9,6 +9,14 @@ import { createSitemapResolver, isDocoSitemapFile, dirOf, type SitemapResolver }
 import type { Sitemap } from "./sitemap-schema";
 import { isDocoFile } from "./file-scope";
 import {
+  findMintlifyConfig,
+  configPathsFor,
+  docsDirForConfig,
+  parseMintlifyConfig,
+  type MintlifyIconLibrary,
+} from "./mintlify/detect";
+import { navToSitemap } from "./mintlify/nav-to-sitemap";
+import {
   processFile,
   processFileRename,
   processFileDelete,
@@ -165,29 +173,46 @@ async function runInitialSync(ctx: ModeBase): Promise<SyncRunResult> {
   if (!tree.ok) return await handleGitHubFailure(ctx.gitSourceId, tree, ZERO_COUNTS);
 
   const resolvedSha = tree.value.sha;
+  const blobPaths = tree.value.tree
+    .filter((entry) => entry.type === "blob")
+    .map((entry) => entry.path);
+
+  // Mintlify repos convert per-file and take their sidebar from the config's nav;
+  // a docolin repo uses the doco_sitemap.yaml cascade.
+  const mintlify = await resolveMintlify(ctx, resolvedSha, blobPaths);
+  const ctx2: ModeBase = { ...ctx, subpath: mintlify?.subpath ?? ctx.subpath };
+
   const eligible: string[] = [];
   const sitemapFiles: string[] = [];
-  for (const entry of tree.value.tree) {
-    if (entry.type !== "blob") continue;
-    if (isDocoFile(entry.path, ctx.subpath)) eligible.push(entry.path);
-    else if (isDocoSitemapFile(entry.path, ctx.subpath)) sitemapFiles.push(entry.path);
+  for (const path of blobPaths) {
+    if (isDocoFile(path, ctx2.subpath, mintlify !== null)) eligible.push(path);
+    else if (mintlify === null && isDocoSitemapFile(path, ctx2.subpath)) sitemapFiles.push(path);
   }
 
-  const resolver = makeResolver(ctx, resolvedSha);
-  await validateSitemapFiles(ctx.projectId, resolver, sitemapFiles);
-
   const versionTag = await resolveTagForSha(ctx.owner, ctx.repo, resolvedSha);
+  let resolveSitemap: (docoPath: string) => Promise<Sitemap | null>;
+  if (mintlify !== null) {
+    const navSitemap = mintlify.sitemap;
+    resolveSitemap = () => Promise.resolve(navSitemap);
+  } else {
+    const resolver = makeResolver(ctx2, resolvedSha);
+    await validateSitemapFiles(ctx2.projectId, resolver, sitemapFiles);
+    resolveSitemap = (path) => resolver.resolve(path);
+  }
+
   const { counts, changedPaths } = await processFiles(
     eligible,
     [],
     [],
-    ctx,
+    ctx2,
     resolvedSha,
     versionTag,
-    resolver,
+    resolveSitemap,
+    mintlify !== null,
+    mintlify?.iconLibrary ?? "fontawesome",
   );
-  const result = await markIdle(ctx.gitSourceId, resolvedSha, counts);
-  await purgeChangedDocos(ctx, changedPaths);
+  const result = await markIdle(ctx2.gitSourceId, resolvedSha, counts);
+  await purgeChangedDocos(ctx2, changedPaths);
   return result;
 }
 
@@ -198,6 +223,75 @@ function makeResolver(ctx: ModeBase, ref: string): SitemapResolver {
     subpath: ctx.subpath,
     fetchFile: (path) => fetchFileFromJsDelivr({ owner: ctx.owner, repo: ctx.repo, ref, path }),
   });
+}
+
+// ---------- Mintlify detection ----------
+
+interface MintlifyMode {
+  // The docs root (may be auto-derived from the config location).
+  subpath: string | null;
+  // The sidebar derived from the Mintlify config's navigation, applied to every
+  // doco. Null when the config has no usable navigation.
+  sitemap: Sitemap | null;
+  // The configured icon library (Font Awesome by default), used to prefix card
+  // icon names during conversion.
+  iconLibrary: MintlifyIconLibrary;
+}
+
+// Decides whether this repo is a Mintlify docs project for this sync. An initial
+// sync passes the file tree (so a nested docs.json is found and its directory
+// persisted as the subpath); an incremental sync passes null and the known
+// subpath is probed. Returns null for a normal docolin repo.
+async function resolveMintlify(
+  ctx: ModeBase,
+  ref: string,
+  treePaths: string[] | null,
+): Promise<MintlifyMode | null> {
+  const configPath =
+    treePaths !== null
+      ? findMintlifyConfig(treePaths, ctx.subpath)
+      : await findConfigByFetch(ctx, ref);
+  if (configPath === null) return null;
+
+  const docsDir = docsDirForConfig(configPath);
+  const userSubpath = ctx.subpath !== null && ctx.subpath.length > 0 ? ctx.subpath : null;
+  const effectiveSubpath = userSubpath ?? (docsDir.length > 0 ? docsDir : null);
+  if (userSubpath === null && effectiveSubpath !== null) {
+    // Persist the auto-detected docs root so later incremental syncs scope to it.
+    await db
+      .update(gitSources)
+      .set({ subpath: effectiveSubpath, updatedAt: new Date() })
+      .where(eq(gitSources.id, ctx.gitSourceId));
+  }
+
+  const fetched = await fetchFileFromJsDelivr({
+    owner: ctx.owner,
+    repo: ctx.repo,
+    ref,
+    path: configPath,
+  });
+  let sitemap: Sitemap | null = null;
+  let iconLibrary: MintlifyIconLibrary = "fontawesome";
+  if (fetched.ok) {
+    const config = parseMintlifyConfig(fetched.content);
+    if (config !== null) {
+      iconLibrary = config.iconLibrary;
+      const nav = navToSitemap(config.navigation, {
+        orgSlug: ctx.orgSlug,
+        projectSlug: ctx.projectSlug,
+      });
+      if (nav.length > 0) sitemap = nav;
+    }
+  }
+  return { subpath: effectiveSubpath, sitemap, iconLibrary };
+}
+
+async function findConfigByFetch(ctx: ModeBase, ref: string): Promise<string | null> {
+  for (const path of configPathsFor(ctx.subpath)) {
+    const fetched = await fetchFileFromJsDelivr({ owner: ctx.owner, repo: ctx.repo, ref, path });
+    if (fetched.ok) return path;
+  }
+  return null;
 }
 
 // Validates each changed/known doco_sitemap.yaml and records or clears a
@@ -235,12 +329,20 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
 
   const resolvedSha = compare.value.resolvedSha;
 
+  // Detect Mintlify for this sync (probes the persisted docs subpath). Mintlify
+  // takes its sidebar from the config nav; a docolin repo uses the cascade.
+  const mintlify = await resolveMintlify(ctx, resolvedSha, null);
+  const ctx2: ModeBase & { base: string } = { ...ctx, subpath: mintlify?.subpath ?? ctx.subpath };
+  const allowMdx = mintlify !== null;
+  const configPaths = mintlify !== null ? new Set(configPathsFor(ctx2.subpath)) : new Set<string>();
+
   const toProcess: string[] = [];
   const toRename: { oldPath: string; newPath: string; alsoModified: boolean }[] = [];
   const toDelete: string[] = [];
-  // Changed doco_sitemap.yaml files: path -> whether it was removed. Drives
-  // per-file validation and subtree re-resolution after docos are processed.
+  // docolin only: changed doco_sitemap.yaml files (path -> removed?).
   const changedSitemaps = new Map<string, boolean>();
+  // Mintlify only: whether the config (and so the whole nav sidebar) changed.
+  let configChanged = false;
 
   // Files with lingering errors from a previous sync get re-processed even
   // when GitHub reports no change. This is how schema/validator fixes
@@ -250,39 +352,44 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
   const erroredRows = await db
     .select({ filePath: syncFileErrors.filePath })
     .from(syncFileErrors)
-    .where(eq(syncFileErrors.projectId, ctx.projectId));
+    .where(eq(syncFileErrors.projectId, ctx2.projectId));
 
   for (const f of compare.value.files) {
-    if (isDocoSitemapFile(f.filename, ctx.subpath)) {
+    if (mintlify !== null && configPaths.has(f.filename)) {
+      configChanged = true;
+      continue;
+    }
+    if (mintlify === null && isDocoSitemapFile(f.filename, ctx2.subpath)) {
       changedSitemaps.set(f.filename, f.status === "removed");
       // A sitemap renamed from one doco_sitemap.yaml spot to another: the old
       // directory lost its file too.
       if (
         f.status === "renamed" &&
         f.previousFilename !== undefined &&
-        isDocoSitemapFile(f.previousFilename, ctx.subpath)
+        isDocoSitemapFile(f.previousFilename, ctx2.subpath)
       ) {
         changedSitemaps.set(f.previousFilename, true);
       }
       continue;
     }
-    if (!isDocoFile(f.filename, ctx.subpath)) {
+    if (!isDocoFile(f.filename, ctx2.subpath, allowMdx)) {
       // Renames where the old path was a doco but the new one isn't (or
       // vice versa) are edge cases; treat as delete-then-add via separate
       // entries. For v1 ignore non-doco files entirely.
       if (
         f.status === "renamed" &&
         f.previousFilename !== undefined &&
-        isDocoFile(f.previousFilename, ctx.subpath)
+        isDocoFile(f.previousFilename, ctx2.subpath, allowMdx)
       ) {
         toDelete.push(f.previousFilename);
       }
       // A sitemap file renamed to a non-sitemap name: its directory lost its
       // sitemap, so that subtree must fall back to a parent.
       if (
+        mintlify === null &&
         f.status === "renamed" &&
         f.previousFilename !== undefined &&
-        isDocoSitemapFile(f.previousFilename, ctx.subpath)
+        isDocoSitemapFile(f.previousFilename, ctx2.subpath)
       ) {
         changedSitemaps.set(f.previousFilename, true);
       }
@@ -315,27 +422,22 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
   const toDeleteSet = new Set(toDelete);
   for (const { filePath } of erroredRows) {
     if (toProcessSet.has(filePath) || toDeleteSet.has(filePath)) continue;
-    if (isDocoFile(filePath, ctx.subpath)) {
+    if (isDocoFile(filePath, ctx2.subpath, allowMdx)) {
       toProcess.push(filePath);
-    } else if (isDocoSitemapFile(filePath, ctx.subpath)) {
+    } else if (mintlify === null && isDocoSitemapFile(filePath, ctx2.subpath)) {
       // Re-validate a previously-broken sitemap file even when this compare
       // didn't touch it, so a fix pushed in an unrelated commit clears the error.
       if (!changedSitemaps.has(filePath)) changedSitemaps.set(filePath, false);
     } else {
-      await clearFileError(ctx.projectId, filePath);
+      await clearFileError(ctx2.projectId, filePath);
     }
   }
 
-  // Now that errored files are folded in, check if there's actually anything
-  // to do. If compare reported identical AND no errored files needed retrying
-  // AND no sitemap files changed, short-circuit with a lastSyncedAt touch so the
-  // project doesn't keep bubbling to the top of the hourly queue.
-  if (
-    toProcess.length === 0 &&
-    toRename.length === 0 &&
-    toDelete.length === 0 &&
-    changedSitemaps.size === 0
-  ) {
+  // Now that errored files are folded in, check if there's actually anything to
+  // do. Short-circuit with a lastSyncedAt touch when nothing changed (no docos,
+  // no sitemap source) so the project stops bubbling to the top of the queue.
+  const hasSitemapWork = mintlify !== null ? configChanged : changedSitemaps.size > 0;
+  if (toProcess.length === 0 && toRename.length === 0 && toDelete.length === 0 && !hasSitemapWork) {
     await db
       .update(gitSources)
       .set({
@@ -344,7 +446,7 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
         syncError: null,
         updatedAt: new Date(),
       })
-      .where(eq(gitSources.id, ctx.gitSourceId));
+      .where(eq(gitSources.id, ctx2.gitSourceId));
     return {
       status: "skipped_no_change",
       resolvedSha,
@@ -356,48 +458,75 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
   // finds the original doco, not a freshly-inserted one at the same name.
   const renameCounts = { renamed: 0 };
   for (const rn of toRename) {
-    const result = await processFileRename(rn.oldPath, rn.newPath, ctx.gitSourceId);
+    const result = await processFileRename(rn.oldPath, rn.newPath, ctx2.gitSourceId);
     if (result.status === "renamed") renameCounts.renamed += 1;
   }
 
-  const resolver = makeResolver(ctx, resolvedSha);
+  // Sitemap source: the nav (a constant) for Mintlify; the doco_sitemap.yaml
+  // cascade resolver otherwise.
+  let resolveSitemap: (docoPath: string) => Promise<Sitemap | null>;
+  let resolver: SitemapResolver | null = null;
+  if (mintlify !== null) {
+    const navSitemap = mintlify.sitemap;
+    resolveSitemap = () => Promise.resolve(navSitemap);
+  } else {
+    const r = makeResolver(ctx2, resolvedSha);
+    resolver = r;
+    resolveSitemap = (path) => r.resolve(path);
+  }
 
-  const versionTag = await resolveTagForSha(ctx.owner, ctx.repo, resolvedSha);
+  const versionTag = await resolveTagForSha(ctx2.owner, ctx2.repo, resolvedSha);
   const { counts, changedPaths } = await processFiles(
     toProcess,
     toRename,
     toDelete,
-    ctx,
+    ctx2,
     resolvedSha,
     versionTag,
-    resolver,
+    resolveSitemap,
+    mintlify !== null,
+    mintlify?.iconLibrary ?? "fontawesome",
   );
   counts.renamed = renameCounts.renamed;
 
-  // Sitemap files that changed this run: validate them (surface authoring
-  // errors), then re-resolve the subtrees they govern so existing docos pick up
-  // the new sidebar without needing a content change.
-  await validateSitemapFiles(
-    ctx.projectId,
-    resolver,
-    [...changedSitemaps.entries()].filter(([, removed]) => !removed).map(([path]) => path),
-  );
-  for (const [path, removed] of changedSitemaps) {
-    if (removed) await clearFileError(ctx.projectId, path);
+  let sitemapTouched: string[] = [];
+  if (mintlify !== null) {
+    // A changed Mintlify config means the whole sidebar changed: re-apply the new
+    // nav to every doco (skipping those just re-processed with it).
+    if (configChanged) {
+      sitemapTouched = await reresolveAffectedDocos(
+        ctx2,
+        resolveSitemap,
+        new Set([""]),
+        new Set(toProcess),
+      );
+    }
+  } else if (resolver !== null) {
+    // Changed doco_sitemap.yaml files: validate (surface authoring errors), then
+    // re-resolve the subtrees they govern so existing docos pick up the new
+    // sidebar without needing a content change.
+    await validateSitemapFiles(
+      ctx2.projectId,
+      resolver,
+      [...changedSitemaps.entries()].filter(([, removed]) => !removed).map(([path]) => path),
+    );
+    for (const [path, removed] of changedSitemaps) {
+      if (removed) await clearFileError(ctx2.projectId, path);
+    }
+    sitemapTouched = await reresolveAffectedDocos(
+      ctx2,
+      resolveSitemap,
+      new Set([...changedSitemaps.keys()].map(dirOf)),
+      new Set(toProcess),
+    );
   }
-  const sitemapTouched = await reresolveAffectedDocos(
-    ctx,
-    resolver,
-    new Set([...changedSitemaps.keys()].map(dirOf)),
-    new Set(toProcess),
-  );
 
   // Renames also invalidate the OLD URL: it used to serve the doco, now it's a
   // 404 (or whatever replaced it). The new path is already in changedPaths via
   // toProcess (renames are always paired with a process call in the loop above).
   const renameOldPaths = toRename.map((r) => r.oldPath);
-  const result = await markIdle(ctx.gitSourceId, resolvedSha, counts);
-  await purgeChangedDocos(ctx, [...changedPaths, ...renameOldPaths, ...sitemapTouched]);
+  const result = await markIdle(ctx2.gitSourceId, resolvedSha, counts);
+  await purgeChangedDocos(ctx2, [...changedPaths, ...renameOldPaths, ...sitemapTouched]);
   return result;
 }
 
@@ -425,7 +554,9 @@ async function processFiles(
   ctx: ModeBase,
   resolvedSha: string,
   versionTag: string | null,
-  resolver: SitemapResolver,
+  resolveSitemap: (docoPath: string) => Promise<Sitemap | null>,
+  mintlify: boolean,
+  mintlifyIconLibrary: MintlifyIconLibrary,
 ): Promise<{ counts: SyncRunCounts; changedPaths: string[] }> {
   const counts: SyncRunCounts = { ...ZERO_COUNTS };
   // Source paths whose latest URL is now stale. Drives the cache purge. Errored
@@ -444,7 +575,9 @@ async function processFiles(
     orgSlug: ctx.orgSlug,
     projectSlug: ctx.projectSlug,
     subpath: ctx.subpath,
-    resolveSitemap: (path) => resolver.resolve(path),
+    mintlifyIconLibrary,
+    resolveSitemap,
+    mintlify,
   };
 
   for (const path of toProcess) {
@@ -500,7 +633,7 @@ async function applyFileResult(
 // resolution with their new version row.
 async function reresolveAffectedDocos(
   ctx: ModeBase,
-  resolver: SitemapResolver,
+  resolveSitemap: (docoPath: string) => Promise<Sitemap | null>,
   dirs: Set<string>,
   skip: Set<string>,
 ): Promise<string[]> {
@@ -527,7 +660,7 @@ async function reresolveAffectedDocos(
     for (const row of rows) {
       if (row.path === null || skip.has(row.path) || seen.has(row.path)) continue;
       seen.add(row.path);
-      const resolved = await resolver.resolve(row.path);
+      const resolved = await resolveSitemap(row.path);
       if (!sitemapEqual(resolved, row.sitemap as Sitemap | null)) {
         await updateLatestVersionSitemap(row.docoId, resolved);
         changed.push(row.path);

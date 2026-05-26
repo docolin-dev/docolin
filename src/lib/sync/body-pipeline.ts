@@ -23,10 +23,15 @@ export interface BodyPipelineOptions {
   // archival to R2 happens inside this callback.
   rewriteImageUrl: (sourceUrl: string) => Promise<string>;
 
-  // Maps a relative .md link to its destination docolin URL. Only invoked for
-  // links that look like relative markdown references; everything else passes
+  // Maps a relative .md/.mdx link to its destination docolin URL. Only invoked
+  // for links that look like relative markdown references; everything else passes
   // through unchanged.
   rewriteRelativeLink: (sourceUrl: string) => string;
+
+  // Maps a Mintlify root-absolute doc link (`/devtools/mcp`, relative to the docs
+  // root) to its docolin URL. Only set for Mintlify imports; omitted for docolin
+  // repos, where a leading `/` is a soft kind link or an intentional path.
+  rewriteAbsoluteLink?: (sourceUrl: string) => string;
 
   // Max concurrent image rewrites. Defaults to 8 (matches the sync engine's
   // overall jsDelivr/R2 budget).
@@ -40,7 +45,16 @@ function isRelativeMarkdownLink(url: string): boolean {
   if (trimmed.startsWith("mailto:")) return false;
   if (trimmed.startsWith("#")) return false;
   if (trimmed.startsWith("/")) return false;
-  return trimmed.endsWith(".md");
+  return trimmed.endsWith(".md") || trimmed.endsWith(".mdx");
+}
+
+// A root-absolute internal doc link (`/devtools/mcp`), as Mintlify authors them.
+// Excludes protocol-relative (`//host`), anchors, and the bare root.
+function isAbsoluteDocLink(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return false;
+  if (trimmed.startsWith("/#")) return false;
+  return trimmed.length > 1;
 }
 
 function imageRewritePlugin(opts: BodyPipelineOptions): Plugin<[], Root> {
@@ -65,6 +79,8 @@ function linkRewritePlugin(opts: BodyPipelineOptions): Plugin<[], Root> {
     visit(tree, "link", (node: Link) => {
       if (isRelativeMarkdownLink(node.url)) {
         node.url = opts.rewriteRelativeLink(node.url);
+      } else if (opts.rewriteAbsoluteLink !== undefined && isAbsoluteDocLink(node.url)) {
+        node.url = opts.rewriteAbsoluteLink(node.url);
       }
     });
   };

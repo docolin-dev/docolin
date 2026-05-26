@@ -1,7 +1,8 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "$lib/server/db";
 import { docos as docosTable, gitSources, orgs, projects, versions } from "$lib/server/db/schema";
 import { fromLtree } from "$lib/server/db/schema/types";
+import { stripDocExtension } from "$lib/doco-urls";
 
 // Shared (org, project) and doco-identity resolution. The public doco viewer
 // and the discussions routes both need to turn an `/{org}/{project}/{path}`
@@ -65,6 +66,11 @@ export async function resolveDocoIdentity(
   gitSourceId: string,
   pathInSource: string,
 ): Promise<ResolvedDocoIdentity | null> {
+  // Callers build the path with a `.md` extension (rebuildPathInSource), but the
+  // actual file may be `.mdx` (Mintlify import). One URL maps to one file, so
+  // matching both candidates is unambiguous.
+  const base = stripDocExtension(pathInSource);
+  const candidates = base === pathInSource ? [pathInSource] : [`${base}.md`, `${base}.mdx`];
   const rows = await db
     .select({
       docoId: docosTable.id,
@@ -73,7 +79,9 @@ export async function resolveDocoIdentity(
       latestPublishedVersionId: docosTable.latestPublishedVersionId,
     })
     .from(docosTable)
-    .where(and(eq(docosTable.gitSourceId, gitSourceId), eq(docosTable.pathInSource, pathInSource)))
+    .where(
+      and(eq(docosTable.gitSourceId, gitSourceId), inArray(docosTable.pathInSource, candidates)),
+    )
     .limit(1);
   return rows[0] ?? null;
 }

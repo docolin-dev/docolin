@@ -18,6 +18,7 @@ function normalizeSubpath(subpath: string | null): string {
 
 // `docs/intro.md` (with subpath "docs") → `intro`
 // `guides/install.md` (no subpath)      → `guides/install`
+// `devtools/mcp.mdx` (Mintlify import)  → `devtools/mcp`
 // `README.md` (no subpath)              → `README`
 export function pathFromSourcePath(pathInSource: string, subpath: string | null): string {
   const sub = normalizeSubpath(subpath);
@@ -25,10 +26,15 @@ export function pathFromSourcePath(pathInSource: string, subpath: string | null)
   if (sub.length > 0 && out.startsWith(`${sub}/`)) {
     out = out.slice(sub.length + 1);
   }
-  if (out.toLowerCase().endsWith(".md")) {
-    out = out.slice(0, -3);
-  }
-  return out;
+  return stripDocExtension(out);
+}
+
+// Drops a trailing `.md` or `.mdx` (Mintlify imports) extension, case-insensitive.
+export function stripDocExtension(path: string): string {
+  const lower = path.toLowerCase();
+  if (lower.endsWith(".mdx")) return path.slice(0, -4);
+  if (lower.endsWith(".md")) return path.slice(0, -3);
+  return path;
 }
 
 // Inverse direction. `intro` (subpath "docs") → `docs/intro.md`.

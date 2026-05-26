@@ -34,6 +34,10 @@ export interface ImageArchiverContext {
   ref: string;
   // The doco's path in the source repo, the base directory for relative URLs.
   docoPath: string;
+  // Base directory for root-absolute URLs (`/images/x`). Null = repo root (the
+  // docolin default). For a Mintlify import this is the docs root (the subpath),
+  // because Mintlify authors absolute asset paths relative to the docs root.
+  absoluteBase?: string | null;
   // Sink for per-file errors. Currently unused (archival is off) but kept so
   // re-enabling archival doesn't need to re-thread it through the orchestrator.
   onError: (err: SyncFileErrorRecord) => void;
@@ -57,13 +61,12 @@ function absolutize(rawUrl: string, ctx: ImageArchiverContext): string | null {
     return rawUrl;
   }
   if (rawUrl.startsWith("/")) {
-    // Absolute path within the repo. Strip the leading slash before joining.
-    return jsDelivrUrl({
-      owner: ctx.owner,
-      repo: ctx.repo,
-      ref: ctx.ref,
-      path: rawUrl.slice(1),
-    });
+    // Root-absolute path. Resolve against the configured base (repo root by
+    // default; the docs root for a Mintlify import), stripping the leading slash.
+    const rel = rawUrl.slice(1);
+    const base = ctx.absoluteBase;
+    const path = base !== null && base !== undefined && base.length > 0 ? `${base}/${rel}` : rel;
+    return jsDelivrUrl({ owner: ctx.owner, repo: ctx.repo, ref: ctx.ref, path });
   }
   if (isRelativePath(rawUrl)) {
     return jsDelivrUrl({

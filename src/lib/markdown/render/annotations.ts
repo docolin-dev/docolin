@@ -138,7 +138,7 @@ function annotateMarkers(
   const used = new Set<number>();
   visit(block, "text", (textNode: Text, index, parent) => {
     if (parent === undefined || index === undefined) return;
-    if (skipInlineCode && parent.tagName === "code") return;
+    if (skipInlineCode && parent.type === "element" && parent.tagName === "code") return;
     const segments = splitMarkers(textNode.value, max);
     if (segments === null) return;
     const replacement: ElementContent[] = segments.map((segment) => {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { afterNavigate } from "$app/navigation";
   import { page } from "$app/state";
   import { slide } from "svelte/transition";
   import { m } from "$paraglide/messages";
@@ -17,6 +18,7 @@
   import Trash2 from "@lucide/svelte/icons/trash-2";
   import PawPrint from "@lucide/svelte/icons/paw-print";
   import DocoViewerNavbar from "$lib/components/DocoViewerNavbar.svelte";
+  import { ScrollArea } from "$lib/components/ui/scroll-area";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
   import ReportDialog from "$lib/components/moderation/ReportDialog.svelte";
   import RequestDeletionDialog from "$lib/components/moderation/RequestDeletionDialog.svelte";
@@ -32,6 +34,20 @@
 
   let { data }: PageProps = $props();
   const doco = $derived(data.doco);
+
+  // The sidebar's ScrollArea viewport. The browser sometimes restores a stale
+  // scroll position on this nested scroller after a reload, leaving the sidebar
+  // scrolled to the middle; pin it to the top on load and on every navigation.
+  let sidebarViewport = $state<HTMLElement | null>(null);
+  function pinSidebarTop(): void {
+    if (sidebarViewport !== null) sidebarViewport.scrollTop = 0;
+    // Run again after paint to beat the browser's scroll restoration.
+    requestAnimationFrame(() => {
+      if (sidebarViewport !== null) sidebarViewport.scrollTop = 0;
+    });
+  }
+  onMount(pinSidebarTop);
+  afterNavigate(pinSidebarTop);
 
   // Discussions live under the doco URL as a sub-route (per-doco thread list).
   const discussionsHref = $derived(
@@ -619,19 +635,21 @@
   <!-- Sidebar column always rendered (empty when no sitemap) so the article
        column stays at the same horizontal position regardless of project
        config. Prevents layout shift between docos with and without sitemaps. -->
-  <aside class="hidden w-60 shrink-0 lg:block">
+  <aside class="sticky top-20 hidden h-[calc(100vh-6rem)] w-60 shrink-0 self-start lg:block">
     {#if sitemap.length > 0}
-      <nav class="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pb-6">
-        <p class="text-muted-foreground mb-3 font-mono text-xs tracking-[0.18em] uppercase">
-          {data.project.displayName ?? data.project.slug}
-        </p>
-        <ul class="flex flex-col gap-1 text-sm">
-          {#each sitemap as node, i (`${String(i)}-${node.title}`)}
-            <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -->
-            {@render sitemapNode(node, 0)}
-          {/each}
-        </ul>
-      </nav>
+      <ScrollArea bind:viewportRef={sidebarViewport} class="h-full">
+        <nav class="pr-3 pb-6">
+          <p class="text-muted-foreground mb-3 font-mono text-xs tracking-[0.18em] uppercase">
+            {data.project.displayName ?? data.project.slug}
+          </p>
+          <ul class="flex flex-col gap-1 text-sm">
+            {#each sitemap as node, i (`${String(i)}-${node.title}`)}
+              <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -->
+              {@render sitemapNode(node, 0)}
+            {/each}
+          </ul>
+        </nav>
+      </ScrollArea>
     {/if}
   </aside>
 
