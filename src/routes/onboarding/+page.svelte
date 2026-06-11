@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import { m } from "$paraglide/messages";
+  import { LIMITS } from "$lib/limits";
   import { localizeHref } from "$paraglide/runtime";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
@@ -81,7 +82,7 @@
     <div class="flex items-center gap-3">
       <LanguageSwitcher />
       <a
-        href="/signout"
+        href={localizeHref("/signout")}
         class="text-muted-foreground hover:text-foreground font-mono text-xs tracking-tight transition-colors"
       >
         {m.nav_sign_out()}
@@ -138,7 +139,7 @@
               name="displayName"
               type="text"
               bind:value={displayName}
-              maxlength={64}
+              maxlength={LIMITS.displayName}
               class="h-11"
             />
             <p class="text-muted-foreground mt-2 text-xs">

@@ -23,7 +23,7 @@
   );
   const color = $derived(
     status === "resolved"
-      ? "text-emerald-700"
+      ? "text-emerald-700 dark:text-emerald-400"
       : status === "closed"
         ? "text-muted-foreground"
         : "text-primary",
