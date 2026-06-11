@@ -634,8 +634,11 @@
 <div class="flex gap-10 px-6 pt-24 pb-10">
   <!-- Sidebar column always rendered (empty when no sitemap) so the article
        column stays at the same horizontal position regardless of project
-       config. Prevents layout shift between docos with and without sitemaps. -->
-  <aside class="sticky top-20 hidden h-[calc(100vh-6rem)] w-60 shrink-0 self-start lg:block">
+       config. Prevents layout shift between docos with and without sitemaps.
+       Height budget: 7.5rem = top-20 sticky offset (5rem) + the container's
+       pb-10 (2.5rem). A sticky element is confined to its parent's content
+       box; anything taller gets pushed up at the very bottom of the scroll. -->
+  <aside class="sticky top-20 hidden h-[calc(100vh-7.5rem)] w-60 shrink-0 self-start lg:block">
     {#if sitemap.length > 0}
       <ScrollArea bind:viewportRef={sidebarViewport} class="h-full">
         <nav class="pr-3 pb-6">
