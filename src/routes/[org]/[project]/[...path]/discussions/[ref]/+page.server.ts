@@ -15,6 +15,8 @@ import {
   type DiscussionStatus,
 } from "$lib/server/discussions";
 import { fileDeletionRequest, submitReport } from "$lib/server/moderation";
+import { getThreadReactions, toggleReaction } from "$lib/server/reactions";
+import { isReactionEmoji } from "$lib/reactions";
 import { LIMITS, isRequestBodyTooLarge } from "$lib/limits";
 import type { ModerationTargetType } from "$lib/moderation-reasons";
 import {
@@ -94,7 +96,12 @@ export const load: PageServerLoad = async ({ params, setHeaders, isDataRequest }
 
   setHeaders({ "cache-control": isDataRequest ? CACHE_DATA_REQUEST : CACHE_LATEST });
 
-  const header = await getDocoHeader(docoIdRow.latestPublishedVersionId);
+  const [header, reactions] = await Promise.all([
+    getDocoHeader(docoIdRow.latestPublishedVersionId),
+    // Counts are public and identical for every reader, so they belong in the
+    // cached payload; the toggle action purges these URLs like a reply does.
+    getThreadReactions(thread.id),
+  ]);
 
   return {
     org: { slug: proj.orgSlug, displayName: proj.orgDisplayName },
@@ -103,6 +110,7 @@ export const load: PageServerLoad = async ({ params, setHeaders, isDataRequest }
     docoTitle: header.title ?? params.path,
     kindSegments: header.kindSegments,
     thread,
+    reactions,
   };
 };
 
@@ -218,6 +226,37 @@ export const actions = {
       ]),
     );
     return { action: "reply", ok: true };
+  },
+
+  // Toggle one emoji on the original post (no replyId) or a reply. Signed-out
+  // clicks land at signin and return to the thread.
+  react: async ({ request, params, locals, platform }) => {
+    if (!locals.dbUser) {
+      const here = `/${params.org}/${params.project}/${params.path}/discussions/${params.ref}`;
+      redirect(303, localizeHref(`/signin?returnTo=${encodeURIComponent(here)}`));
+    }
+
+    const form = await request.formData();
+    const emoji = fieldStr(form, "emoji");
+    const rawReplyId = fieldStr(form, "replyId");
+    const replyId = rawReplyId.length > 0 ? rawReplyId : null;
+    if (!isReactionEmoji(emoji)) return fail(400, { action: "react", error: "generic" });
+
+    const ctx = await actionContext(params, locals.dbUser);
+    if (ctx === null) return fail(404, { action: "react", error: "generic" });
+
+    const ok = await toggleReaction({
+      discussionId: ctx.disc.id,
+      replyId,
+      emoji,
+      userId: locals.dbUser.id,
+    });
+    if (!ok) return fail(404, { action: "react", error: "generic" });
+
+    // Counts render into the cached thread HTML; purge it like a reply would.
+    // The list page doesn't show reactions, so the thread URLs suffice.
+    purgeThread(platform, params, ctx);
+    return { action: "react", ok: true };
   },
 
   editDiscussion: async ({ request, params, locals, platform }) => {

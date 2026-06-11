@@ -19,11 +19,14 @@
   import DocoViewerNavbar from "$lib/components/DocoViewerNavbar.svelte";
   import StatusBadge from "$lib/components/discussions/StatusBadge.svelte";
   import Composer from "$lib/components/discussions/Composer.svelte";
+  import ReactionBar from "$lib/components/discussions/ReactionBar.svelte";
   import ReportDialog from "$lib/components/moderation/ReportDialog.svelte";
   import RequestDeletionDialog from "$lib/components/moderation/RequestDeletionDialog.svelte";
   import DeleteConfirm from "$lib/components/moderation/DeleteConfirm.svelte";
   import type { ModerationTargetType } from "$lib/moderation-reasons";
   import { session } from "$lib/client/session.svelte";
+  import { SvelteSet } from "svelte/reactivity";
+  import type { ReactionEmoji } from "$lib/reactions";
   import { LIMITS } from "$lib/limits";
   import { relativeTime } from "$lib/relative-time";
   import { discussionRef } from "$lib/doco-urls";
@@ -57,6 +60,43 @@
       }
     })();
   });
+
+  // Which reactions are the viewer's own. Counts arrive in the cached page
+  // payload; this per-user overlay hydrates once per thread (same pattern as
+  // capabilities) and flips optimistically on toggle. Keys: "op:heart",
+  // "{replyId}:+1".
+  const myReactions = new SvelteSet<string>();
+  let reactionsFetched = false;
+  $effect(() => {
+    if (!session.loaded || session.value.dbUser === null || reactionsFetched) return;
+    reactionsFetched = true;
+    void (async () => {
+      const res = await fetch(`/api/discussions/${thread.id}/reactions`, {
+        credentials: "same-origin",
+      });
+      if (res.ok) {
+        const body = (await res.json()) as { mine: string[] };
+        for (const key of body.mine) myReactions.add(key);
+      }
+    })();
+  });
+
+  function mineFor(targetKey: string): ReadonlySet<string> {
+    const prefix = `${targetKey}:`;
+    const out = new SvelteSet<string>();
+    for (const key of myReactions) {
+      if (key.startsWith(prefix)) out.add(key.slice(prefix.length));
+    }
+    return out;
+  }
+
+  function toggleMine(targetKey: string): (emoji: ReactionEmoji) => void {
+    return (emoji) => {
+      const key = `${targetKey}:${emoji}`;
+      if (myReactions.has(key)) myReactions.delete(key);
+      else myReactions.add(key);
+    };
+  }
 
   const myHandle = $derived(session.value.dbUser?.handle ?? null);
   const signedIn = $derived(session.value.dbUser !== null);
@@ -575,6 +615,11 @@
           <!-- eslint-disable-next-line svelte/no-at-html-tags -- bodyHtml is sanitized server-side -->
           {@html thread.op.bodyHtml}
         </div>
+        <ReactionBar
+          counts={data.reactions.op ?? {}}
+          mine={mineFor("op")}
+          ontoggle={toggleMine("op")}
+        />
       {/if}
       {#if historyOpenFor === thread.op.id}
         <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -->
@@ -658,6 +703,12 @@
               <!-- eslint-disable-next-line svelte/no-at-html-tags -- bodyHtml is sanitized server-side -->
               {@html reply.bodyHtml}
             </div>
+            <ReactionBar
+              counts={data.reactions[reply.id] ?? {}}
+              mine={mineFor(reply.id)}
+              replyId={reply.id}
+              ontoggle={toggleMine(reply.id)}
+            />
           {/if}
           {#if historyOpenFor === reply.id}
             <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -->
