@@ -24,6 +24,7 @@
   import DeleteConfirm from "$lib/components/moderation/DeleteConfirm.svelte";
   import type { ModerationTargetType } from "$lib/moderation-reasons";
   import { session } from "$lib/client/session.svelte";
+  import { LIMITS } from "$lib/limits";
   import { relativeTime } from "$lib/relative-time";
   import { discussionRef } from "$lib/doco-urls";
   import type { ThreadReply } from "$lib/server/discussions";
@@ -183,6 +184,12 @@
     if (code === "reply_required") return m.discussion_error_reply_required();
     if (code === "title_required") return m.discussion_error_title_required();
     if (code === "body_required") return m.discussion_error_body_required();
+    if (code === "title_too_long") {
+      return m.discussion_error_title_too_long({ max: LIMITS.discussionTitle });
+    }
+    if (code === "body_too_long") {
+      return m.discussion_error_body_too_long({ max: LIMITS.discussionBody });
+    }
     if (code === "forbidden") return m.discussion_error_forbidden();
     if (code === undefined) return null;
     return m.discussion_error_generic();
@@ -535,7 +542,7 @@
           <Input
             name="title"
             value={thread.title}
-            maxlength={200}
+            maxlength={LIMITS.discussionTitle}
             required
             aria-label={m.discussion_compose_title_label()}
             class="h-10"
@@ -544,6 +551,7 @@
             name="body"
             value={thread.op.bodySource}
             rows={8}
+            maxlength={LIMITS.discussionBody}
             ariaLabel={m.discussion_compose_body_label()}
             placeholder={m.discussion_compose_body_placeholder()}
           />
@@ -626,6 +634,7 @@
                 name="body"
                 value={reply.bodySource}
                 rows={5}
+                maxlength={LIMITS.discussionBody}
                 ariaLabel={m.discussion_thread_reply_heading()}
                 placeholder={m.discussion_reply_placeholder()}
               />

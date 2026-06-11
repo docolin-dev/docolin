@@ -8,6 +8,7 @@
   import MarkdownEditor from "$lib/components/discussions/MarkdownEditor.svelte";
   import FormattingHint from "$lib/components/discussions/FormattingHint.svelte";
   import { session } from "$lib/client/session.svelte";
+  import { LIMITS } from "$lib/limits";
 
   // Shared write surface for both the create-discussion page (with title) and
   // the reply box (body only). The signed-in form vs the anonymous sign-in CTA
@@ -58,6 +59,10 @@
   // updates shouldn't clobber what the user has typed.
   let bodyValue = $state(untrack(() => initialBody));
   const signinHref = $derived(localizeHref(`/signin?returnTo=${encodeURIComponent(returnTo)}`));
+  // The counter only appears once the writer is within 10% of the body limit;
+  // it sits in the footer row whose height is fixed by the buttons, so its
+  // appearance cannot shift the layout.
+  const showCounter = $derived(bodyValue.length >= LIMITS.discussionBody * 0.9);
 </script>
 
 <div>
@@ -92,7 +97,7 @@
             name="title"
             value={initialTitle}
             placeholder={titlePlaceholder}
-            maxlength={200}
+            maxlength={LIMITS.discussionTitle}
             required
             class="h-10"
           />
@@ -108,6 +113,7 @@
           placeholder={bodyPlaceholder}
           ariaLabel={bodyLabel ?? bodyPlaceholder}
           rows={withTitle ? 8 : 5}
+          maxlength={LIMITS.discussionBody}
         />
       </div>
       {#if error}
@@ -116,7 +122,17 @@
       <!-- Footer: formatting help on the left, actions on the right with the
            primary (the "next" action) rightmost. Wraps on narrow screens. -->
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <FormattingHint />
+        <div class="flex items-center gap-3">
+          <FormattingHint />
+          {#if showCounter}
+            <span class="text-muted-foreground text-xs" aria-live="polite">
+              {m.discussion_composer_char_counter({
+                used: bodyValue.length,
+                max: LIMITS.discussionBody,
+              })}
+            </span>
+          {/if}
+        </div>
         <div class="flex items-center gap-2">
           {#if oncancel}
             <Button type="button" variant="ghost" class="h-10" onclick={oncancel}>

@@ -12,6 +12,7 @@
     type ModerationTargetType,
     type ReportReason,
   } from "$lib/moderation-reasons";
+  import { LIMITS } from "$lib/limits";
   import { applyEnhance } from "./dialog-enhance";
   import { reasonGroupLabel, reasonLabel } from "./reason-label";
 
@@ -120,6 +121,7 @@
           name="details"
           bind:value={details}
           rows={3}
+          maxlength={LIMITS.moderationDetails}
           placeholder={m.moderation_report_details_placeholder()}
         />
       </div>

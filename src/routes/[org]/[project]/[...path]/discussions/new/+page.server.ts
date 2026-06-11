@@ -2,6 +2,7 @@ import { error, fail, redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
 import { getDocoHeader, resolveDocoIdentity, resolveProjectBySlug } from "$lib/server/doco-resolve";
 import { createDiscussion } from "$lib/server/discussions";
+import { LIMITS, isRequestBodyTooLarge } from "$lib/limits";
 import { discussionRef, discussionUrls, rebuildPathInSource } from "$lib/doco-urls";
 import { purgeCacheUrls } from "$lib/sync/cache-purge";
 import { localizeHref } from "$paraglide/runtime";
@@ -51,11 +52,21 @@ export const actions = {
       );
     }
 
+    if (isRequestBodyTooLarge(request)) return fail(413, { error: "body_too_long" });
+
     const form = await request.formData();
     const title = fieldStr(form, "title").trim();
     // Body is optional (GitHub-issue style): a title-only discussion is fine.
     const body = fieldStr(form, "body").trim();
     if (title.length === 0) return fail(400, { error: "title_required", title, body });
+    // Over-limit input fails loudly instead of being truncated: this is authored
+    // content, and silently dropping someone's text is worse than an error.
+    if (title.length > LIMITS.discussionTitle) {
+      return fail(400, { error: "title_too_long", title, body });
+    }
+    if (body.length > LIMITS.discussionBody) {
+      return fail(400, { error: "body_too_long", title, body });
+    }
 
     const proj = await resolveProjectBySlug(params.org, params.project);
     if (proj === null) return fail(404, { error: "generic" });

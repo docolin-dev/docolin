@@ -12,6 +12,7 @@ import { pathFromSourcePath, rebuildPathInSource, parseVersionRef } from "$lib/d
 import { resolveAuthors, type ResolvedAuthor } from "$lib/server/authors";
 import { recordStamp } from "$lib/verification/ingest";
 import type { StampOutcome } from "$lib/verification/score";
+import { LIMITS } from "$lib/limits";
 // Dev-only markdown playground registry, shared with the link-preview endpoint.
 import { PANGO_PAGES, PANGO_SITEMAP } from "./pango/pages.ts";
 
@@ -413,7 +414,8 @@ export const actions = {
     const form = await request.formData();
     const targetId = fieldStr(form, "targetId");
     const reason = fieldStr(form, "reason");
-    const details = fieldStr(form, "details").trim();
+    // Moderator context, not authored content; truncating beats erroring.
+    const details = fieldStr(form, "details").trim().slice(0, LIMITS.moderationDetails);
     if (fieldStr(form, "targetType") !== "version" || targetId.length === 0) {
       return fail(400, { action: "report", error: "generic" });
     }
@@ -440,7 +442,8 @@ export const actions = {
     const form = await request.formData();
     const targetId = fieldStr(form, "targetId");
     const reason = fieldStr(form, "reason");
-    const details = fieldStr(form, "details").trim();
+    // Moderator context, not authored content; truncating beats erroring.
+    const details = fieldStr(form, "details").trim().slice(0, LIMITS.moderationDetails);
     if (
       fieldStr(form, "targetType") !== "version" ||
       targetId.length === 0 ||

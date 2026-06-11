@@ -5,6 +5,7 @@
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
   import DocoViewerNavbar from "$lib/components/DocoViewerNavbar.svelte";
   import Composer from "$lib/components/discussions/Composer.svelte";
+  import { LIMITS } from "$lib/limits";
   import type { PageProps } from "./$types";
 
   let { data, form }: PageProps = $props();
@@ -23,6 +24,12 @@
   function errorMessage(code: string | undefined): string | null {
     if (code === "title_required") return m.discussion_error_title_required();
     if (code === "body_required") return m.discussion_error_body_required();
+    if (code === "title_too_long") {
+      return m.discussion_error_title_too_long({ max: LIMITS.discussionTitle });
+    }
+    if (code === "body_too_long") {
+      return m.discussion_error_body_too_long({ max: LIMITS.discussionBody });
+    }
     if (code === undefined) return null;
     return m.discussion_error_generic();
   }

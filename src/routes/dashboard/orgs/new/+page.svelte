@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import { m } from "$paraglide/messages";
+  import { LIMITS } from "$lib/limits";
   import { localizeHref } from "$paraglide/runtime";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
@@ -170,7 +171,7 @@
           name="displayName"
           type="text"
           bind:value={displayName}
-          maxlength={64}
+          maxlength={LIMITS.displayName}
           class="h-11"
         />
         <p class="text-muted-foreground mt-2 text-xs">

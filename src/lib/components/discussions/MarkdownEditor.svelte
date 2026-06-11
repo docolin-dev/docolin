@@ -26,8 +26,16 @@
     placeholder: string;
     ariaLabel: string;
     rows?: number;
+    maxlength?: number;
   }
-  let { name, value = $bindable(""), placeholder, ariaLabel, rows = 6 }: Props = $props();
+  let {
+    name,
+    value = $bindable(""),
+    placeholder,
+    ariaLabel,
+    rows = 6,
+    maxlength,
+  }: Props = $props();
 
   let textarea = $state<HTMLTextAreaElement | null>(null);
   let tab = $state<"write" | "preview">("write");
@@ -225,6 +233,7 @@
     {name}
     {placeholder}
     {rows}
+    {maxlength}
     aria-label={ariaLabel}
     onkeydown={onKeydown}
     class:hidden={tab === "preview"}

@@ -6,8 +6,7 @@ import { users } from "$lib/server/db/schema";
 import { checkHandleAvailability } from "$lib/reserved-handles";
 import { provisionUser } from "$lib/server/onboarding";
 import { localizeHref } from "$paraglide/runtime";
-
-const MAX_DISPLAY_NAME = 64;
+import { LIMITS } from "$lib/limits";
 
 // Derive a sensible default handle from the user's email's local part. Strip
 // disallowed characters, fall back to "user" if nothing usable is left.
@@ -70,7 +69,7 @@ export const actions = {
 
     const handle = typeof rawHandle === "string" ? rawHandle.trim().toLowerCase() : "";
     const displayNameRaw =
-      typeof rawDisplayName === "string" ? rawDisplayName.trim().slice(0, MAX_DISPLAY_NAME) : "";
+      typeof rawDisplayName === "string" ? rawDisplayName.trim().slice(0, LIMITS.displayName) : "";
     const displayName = displayNameRaw.length > 0 ? displayNameRaw : null;
 
     if (!locals.auth.user) {

@@ -9,6 +9,7 @@ import {
   type SearchFacets,
   type SearchSort,
 } from "$lib/search/retrieve";
+import { LIMITS } from "$lib/limits";
 import { embedText } from "$lib/search/embed";
 import { toIsoString } from "$lib/search/serialize";
 import { pathFromSourcePath } from "$lib/doco-urls";
@@ -128,7 +129,10 @@ function parseSort(value: string | null): SearchSort {
 }
 
 export const GET: RequestHandler = async ({ url, platform, setHeaders }) => {
-  const q = (url.searchParams.get("q") ?? "").trim();
+  // Truncated silently, not rejected (see LIMITS.searchQuery): bounds the
+  // Workers AI embedding cost and the lexical tsquery size. This endpoint also
+  // backs the MCP search/lookup tools, so the cap covers those too.
+  const q = (url.searchParams.get("q") ?? "").trim().slice(0, LIMITS.searchQuery);
   const mode = url.searchParams.get("mode") === "lexical" ? "lexical" : "hybrid";
   const lang = url.searchParams.get("lang") ?? "en";
   // English is the one stemmed language; everything else parses language-neutral.

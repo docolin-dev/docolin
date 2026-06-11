@@ -7,8 +7,7 @@ import { db } from "$lib/server/db";
 import { claimRequests, orgs } from "$lib/server/db/schema";
 import { checkHandleAvailability } from "$lib/reserved-handles";
 import { provisionOrg } from "$lib/server/onboarding";
-
-const MAX_DISPLAY_NAME = 64;
+import { LIMITS } from "$lib/limits";
 
 // Edge-cacheable shell. The form is static (the user's handle, if needed for
 // any UI affordance, is available via the client-side session store), and
@@ -43,7 +42,7 @@ export const actions = {
 
     const slug = typeof rawSlug === "string" ? rawSlug.trim().toLowerCase() : "";
     const displayNameRaw =
-      typeof rawDisplayName === "string" ? rawDisplayName.trim().slice(0, MAX_DISPLAY_NAME) : "";
+      typeof rawDisplayName === "string" ? rawDisplayName.trim().slice(0, LIMITS.displayName) : "";
     const displayName = displayNameRaw.length > 0 ? displayNameRaw : null;
     const claimDetails =
       typeof rawDetails === "string" && rawDetails.trim().length > 0

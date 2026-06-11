@@ -15,6 +15,7 @@ import {
   type DiscussionStatus,
 } from "$lib/server/discussions";
 import { fileDeletionRequest, submitReport } from "$lib/server/moderation";
+import { LIMITS, isRequestBodyTooLarge } from "$lib/limits";
 import type { ModerationTargetType } from "$lib/moderation-reasons";
 import {
   discussionRef,
@@ -170,9 +171,16 @@ export const actions = {
       redirect(303, localizeHref(`/signin?returnTo=${encodeURIComponent(here)}`));
     }
 
+    if (isRequestBodyTooLarge(request)) {
+      return fail(413, { action: "reply", error: "body_too_long" });
+    }
+
     const form = await request.formData();
     const body = fieldStr(form, "body").trim();
     if (body.length === 0) return fail(400, { action: "reply", error: "reply_required", body });
+    if (body.length > LIMITS.discussionBody) {
+      return fail(400, { action: "reply", error: "body_too_long", body });
+    }
 
     const ctx = await actionContext(params, locals.dbUser);
     if (ctx === null) return fail(404, { action: "reply", error: "generic" });
@@ -214,11 +222,20 @@ export const actions = {
 
   editDiscussion: async ({ request, params, locals, platform }) => {
     if (!locals.dbUser) return fail(401, { action: "editDiscussion", error: "generic" });
+    if (isRequestBodyTooLarge(request)) {
+      return fail(413, { action: "editDiscussion", error: "body_too_long" });
+    }
     const form = await request.formData();
     const title = fieldStr(form, "title").trim();
     // Body stays optional on edit too, matching create.
     const body = fieldStr(form, "body").trim();
     if (title.length === 0) return fail(400, { action: "editDiscussion", error: "title_required" });
+    if (title.length > LIMITS.discussionTitle) {
+      return fail(400, { action: "editDiscussion", error: "title_too_long" });
+    }
+    if (body.length > LIMITS.discussionBody) {
+      return fail(400, { action: "editDiscussion", error: "body_too_long" });
+    }
 
     const ctx = await actionContext(params, locals.dbUser);
     if (ctx === null) return fail(404, { action: "editDiscussion", error: "generic" });
@@ -241,12 +258,18 @@ export const actions = {
 
   editReply: async ({ request, params, locals, platform }) => {
     if (!locals.dbUser) return fail(401, { action: "editReply", error: "generic" });
+    if (isRequestBodyTooLarge(request)) {
+      return fail(413, { action: "editReply", error: "body_too_long" });
+    }
     const form = await request.formData();
     const replyId = fieldStr(form, "replyId");
     const body = fieldStr(form, "body").trim();
     if (replyId.length === 0) return fail(400, { action: "editReply", error: "generic" });
     if (body.length === 0) {
       return fail(400, { action: "editReply", error: "reply_required", replyId });
+    }
+    if (body.length > LIMITS.discussionBody) {
+      return fail(400, { action: "editReply", error: "body_too_long", replyId, body });
     }
 
     const ctx = await actionContext(params, locals.dbUser);
@@ -349,7 +372,9 @@ export const actions = {
     const targetType = parseThreadTargetType(fieldStr(form, "targetType"));
     const targetId = fieldStr(form, "targetId");
     const reason = fieldStr(form, "reason");
-    const details = fieldStr(form, "details").trim();
+    // Details are context for moderators, not authored content; truncating
+    // instead of erroring keeps the report flow friction-free.
+    const details = fieldStr(form, "details").trim().slice(0, LIMITS.moderationDetails);
     if (targetType === null || targetId.length === 0) {
       return fail(400, { action: "report", error: "generic" });
     }
@@ -384,7 +409,8 @@ export const actions = {
     const targetType = parseThreadTargetType(fieldStr(form, "targetType"));
     const targetId = fieldStr(form, "targetId");
     const reason = fieldStr(form, "reason");
-    const details = fieldStr(form, "details").trim();
+    // Truncated like report details: moderator context, not authored content.
+    const details = fieldStr(form, "details").trim().slice(0, LIMITS.moderationDetails);
     if (targetType === null || targetId.length === 0 || reason.length === 0) {
       return fail(400, { action: "requestDeletion", error: "generic" });
     }
