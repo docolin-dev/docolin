@@ -30,10 +30,41 @@
   import { session } from "$lib/client/session.svelte";
   import { toast } from "svelte-sonner";
   import type { ModerationTargetType } from "$lib/moderation-reasons";
+  import { SITE_URL } from "$lib/site";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
   const doco = $derived(data.doco);
+
+  // SEO surface: every doco page is a landing page. The canonical always
+  // points at the unversioned URL (per locale), so pinned @version views
+  // consolidate their ranking onto the living doco.
+  const canonicalUrl = $derived(
+    `${SITE_URL}${localizeHref(`/${data.org.slug}/${data.project.slug}/${doco.pathFromProjectRoot}`)}`,
+  );
+  const articleJsonLd = $derived({
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    headline: doco.title,
+    ...(doco.description === null ? {} : { description: doco.description }),
+    inLanguage: doco.language,
+    datePublished: doco.publishedAt,
+    mainEntityOfPage: canonicalUrl,
+    url: canonicalUrl,
+    author: doco.authors.map((a) =>
+      a.kind === "user"
+        ? { "@type": "Person", name: a.displayName ?? a.handle, url: `${SITE_URL}/${a.handle}` }
+        : { "@type": "Person", name: a.name, ...(a.url === null ? {} : { url: a.url }) },
+    ),
+    publisher: { "@type": "Organization", name: "docolin", url: SITE_URL },
+  });
+  // Title/description/author names are user content; escape `<` so they can
+  // never close the script tag.
+  /* eslint-disable no-useless-escape */
+  const articleJsonLdHtml = $derived(
+    `<script type="application/ld+json">${JSON.stringify(articleJsonLd).split("<").join("\\u003c")}<\/script>`,
+  );
+  /* eslint-enable no-useless-escape */
 
   // The sidebar's ScrollArea viewport. The browser sometimes restores a stale
   // scroll position on this nested scroller after a reload, leaving the sidebar
@@ -624,7 +655,15 @@
   <title>{doco.title} · {data.project.displayName ?? data.project.slug} · docolin</title>
   {#if doco.description}
     <meta name="description" content={doco.description} />
+    <meta property="og:description" content={doco.description} />
   {/if}
+  <link rel="canonical" href={canonicalUrl} />
+  <meta property="og:title" content={doco.title} />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content={canonicalUrl} />
+  <meta property="og:site_name" content="docolin" />
+  <!-- eslint-disable-next-line svelte/no-at-html-tags -- JSON.stringify of our own data, `<` escaped above -->
+  {@html articleJsonLdHtml}
 </svelte:head>
 
 <DocoViewerNavbar {kindSegments} {atBottom} />
