@@ -35,7 +35,7 @@ export const GET: RequestHandler = async ({ url, setHeaders }) => {
 
   // Dev playground: resolve from the local pango registry (never in the database).
   if (dev && orgSlug === "pangos" && projectSlug === "jungle-gym") {
-    const { PANGO_PAGES } = await import("../../[org]/[project]/[...path]/pango/pages.ts");
+    const { PANGO_PAGES } = await import("../../[org=org]/[project]/[...path]/pango/pages.ts");
     const page = PANGO_PAGES.find((candidate) => candidate.slug === path);
     if (page === undefined) error(404);
     setHeaders({ "cache-control": "no-store" });
