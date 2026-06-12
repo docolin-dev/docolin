@@ -1,0 +1,2 @@
+ALTER TABLE "inbox_messages" DROP CONSTRAINT "inbox_messages_kind_check";--> statement-breakpoint
+ALTER TABLE "inbox_messages" ADD CONSTRAINT "inbox_messages_kind_check" CHECK ("inbox_messages"."kind" IN ('report_filed_against_you', 'report_resolved', 'content_hidden', 'content_redacted', 'content_unhidden', 'embargo_expired', 'deletion_approved', 'deletion_denied', 'mod_decision_reversed', 'mention', 'discussion_reply', 'claim_approved', 'claim_cancelled', 'org_member_added'));

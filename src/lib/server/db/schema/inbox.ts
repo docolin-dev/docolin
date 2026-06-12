@@ -35,6 +35,8 @@ export const inboxMessages = pgTable(
         | "discussion_reply"
         | "claim_approved"
         | "claim_cancelled"
+        | "org_member_added"
+        | "discussion_status_changed"
       >(),
     bodyMarkdown: text("body_markdown").notNull(),
     linkUrl: text("link_url"),
@@ -54,7 +56,7 @@ export const inboxMessages = pgTable(
       .where(sql`${t.readAt} IS NULL`),
     check(
       "inbox_messages_kind_check",
-      sql`${t.kind} IN ('report_filed_against_you', 'report_resolved', 'content_hidden', 'content_redacted', 'content_unhidden', 'embargo_expired', 'deletion_approved', 'deletion_denied', 'mod_decision_reversed', 'mention', 'discussion_reply', 'claim_approved', 'claim_cancelled')`,
+      sql`${t.kind} IN ('report_filed_against_you', 'report_resolved', 'content_hidden', 'content_redacted', 'content_unhidden', 'embargo_expired', 'deletion_approved', 'deletion_denied', 'mod_decision_reversed', 'mention', 'discussion_reply', 'claim_approved', 'claim_cancelled', 'org_member_added', 'discussion_status_changed')`,
     ),
   ],
 );

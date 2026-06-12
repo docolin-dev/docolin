@@ -261,11 +261,17 @@
       {/if}
     </div>
     {#if project}
-      <h1
-        class="text-foreground mt-4 text-3xl font-semibold tracking-tight text-balance sm:text-4xl"
-      >
-        {project.displayName ?? project.slug}
-      </h1>
+      <div class="mt-4 flex flex-wrap items-baseline justify-between gap-3">
+        <h1 class="text-foreground text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+          {project.displayName ?? project.slug}
+        </h1>
+        <a
+          href={localizeHref(`/dashboard/${orgSlug}/${projectSlug}/settings`)}
+          class="text-muted-foreground hover:text-foreground text-sm transition-colors"
+        >
+          {m.dashboard_settings_link()}
+        </a>
+      </div>
     {:else if loadError === null}
       <!-- h-9 matches text-3xl line-height (36px), sm:h-10 matches text-4xl
            (40px). Skeleton width approximates a typical displayName. -->

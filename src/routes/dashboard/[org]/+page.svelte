@@ -208,6 +208,13 @@
         {#if payload.org.memberCount === 1}
           · {m.dashboard_org_members_only_you()}
         {/if}
+        ·
+        <a
+          href={localizeHref(`/dashboard/${orgSlug}/settings`)}
+          class="text-primary hover:underline"
+        >
+          {m.dashboard_settings_link()}
+        </a>
       </p>
     {:else}
       <div class="bg-muted h-4 w-48 animate-pulse"></div>
