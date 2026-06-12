@@ -1,5 +1,4 @@
 import type { R2Bucket } from "@cloudflare/workers-types";
-import { jsDelivrUrl } from "$lib/git/jsdelivr";
 import { resolveRelativePath, isRelativePath } from "./path-resolve";
 
 // Image handling for docs synced from a git repo.
@@ -28,10 +27,10 @@ export interface SyncFileErrorRecord {
 export interface ImageArchiverContext {
   bucket: R2Bucket;
   projectId: string;
-  // Source repo coords used to absolutize relative URLs to jsDelivr URLs.
-  owner: string;
-  repo: string;
-  ref: string;
+  // Builds the public raw-content URL for a repo path (provider-specific:
+  // jsDelivr for GitHub, codeberg.org raw for Forgejo), used to absolutize
+  // relative image references.
+  rawUrl: (path: string) => string;
   // The doco's path in the source repo, the base directory for relative URLs.
   docoPath: string;
   // Base directory for root-absolute URLs (`/images/x`). Null = repo root (the
@@ -66,15 +65,10 @@ function absolutize(rawUrl: string, ctx: ImageArchiverContext): string | null {
     const rel = rawUrl.slice(1);
     const base = ctx.absoluteBase;
     const path = base !== null && base !== undefined && base.length > 0 ? `${base}/${rel}` : rel;
-    return jsDelivrUrl({ owner: ctx.owner, repo: ctx.repo, ref: ctx.ref, path });
+    return ctx.rawUrl(path);
   }
   if (isRelativePath(rawUrl)) {
-    return jsDelivrUrl({
-      owner: ctx.owner,
-      repo: ctx.repo,
-      ref: ctx.ref,
-      path: resolveRelativePath(ctx.docoPath, rawUrl),
-    });
+    return ctx.rawUrl(resolveRelativePath(ctx.docoPath, rawUrl));
   }
   return null;
 }

@@ -1,12 +1,11 @@
 import { fail, redirect } from "@sveltejs/kit";
 import { and, eq } from "drizzle-orm";
-import { env } from "$env/dynamic/private";
 import { localizeHref } from "$paraglide/runtime";
 import type { Actions, PageServerLoad } from "./$types";
 import { db } from "$lib/server/db";
 import { gitSources, orgs, orgMembers, projects } from "$lib/server/db/schema";
 import { checkProjectSlugAvailability } from "$lib/reserved-handles";
-import { canonicalGithubUrl, parseGithubUrl } from "$lib/git/github-url";
+import { verifyForgeRepo } from "$lib/server/repo-check";
 import { syncProject } from "$lib/sync/run";
 import { LIMITS } from "$lib/limits";
 
@@ -23,53 +22,6 @@ export const load: PageServerLoad = ({ setHeaders, isDataRequest }) => {
   });
   return {};
 };
-
-interface GithubRepoCheckOk {
-  ok: true;
-  owner: string;
-  repo: string;
-  defaultBranch: string;
-}
-interface GithubRepoCheckFail {
-  ok: false;
-  reason: "invalid_url" | "not_found" | "rate_limited" | "private" | "network";
-}
-type GithubRepoCheckResult = GithubRepoCheckOk | GithubRepoCheckFail;
-
-// Same shape as the /api/github-repo-check endpoint, called server-side on
-// submit as the authoritative guard. Repeating the implementation here
-// keeps the action self-contained and avoids a server-to-server roundtrip.
-async function verifyGithubRepo(repoUrl: string): Promise<GithubRepoCheckResult> {
-  const parsed = parseGithubUrl(repoUrl);
-  if (!parsed) return { ok: false, reason: "invalid_url" };
-
-  const headers: Record<string, string> = {
-    Accept: "application/vnd.github+json",
-    "User-Agent": "docolin",
-  };
-  if (env.GITHUB_TOKEN) headers.Authorization = `Bearer ${env.GITHUB_TOKEN}`;
-
-  try {
-    const res = await fetch(`https://api.github.com/repos/${parsed.owner}/${parsed.repo}`, {
-      headers,
-    });
-    if (res.status === 404) return { ok: false, reason: "not_found" };
-    if (res.status === 403 || res.status === 429) {
-      return { ok: false, reason: "rate_limited" };
-    }
-    if (!res.ok) return { ok: false, reason: "network" };
-    const data = (await res.json()) as { private?: boolean; default_branch?: string };
-    if (data.private === true) return { ok: false, reason: "private" };
-    return {
-      ok: true,
-      owner: parsed.owner,
-      repo: parsed.repo,
-      defaultBranch: data.default_branch ?? "main",
-    };
-  } catch {
-    return { ok: false, reason: "network" };
-  }
-}
 
 export const actions = {
   default: async ({ request, params, locals, platform }) => {
@@ -133,7 +85,7 @@ export const actions = {
     }
 
     if (sourceMode === "git") {
-      const repoCheck = await verifyGithubRepo(repoUrlRaw);
+      const repoCheck = await verifyForgeRepo(repoUrlRaw);
       if (!repoCheck.ok) {
         return fail(400, {
           error: repoCheck.reason,
@@ -160,11 +112,8 @@ export const actions = {
           const newId = insertedProject[0].id;
           await tx.insert(gitSources).values({
             projectId: newId,
-            provider: "github",
-            repoUrl: canonicalGithubUrl({
-              owner: repoCheck.owner,
-              repo: repoCheck.repo,
-            }),
+            provider: repoCheck.provider,
+            repoUrl: repoCheck.canonicalUrl,
             defaultBranch: repoCheck.defaultBranch,
             subpath,
           });

@@ -2,9 +2,8 @@ import { and, eq, isNull, like } from "drizzle-orm";
 import type { R2Bucket } from "@cloudflare/workers-types";
 import { db } from "$lib/server/db";
 import { projects, orgs, gitSources, syncFileErrors, docos, versions } from "$lib/server/db/schema";
-import { parseGithubUrl } from "$lib/git/github-url";
-import { fetchTree, fetchCompare, fetchTags, type GitHubResult } from "$lib/git/github-api";
-import { fetchFileFromJsDelivr } from "$lib/git/jsdelivr";
+import { forgeFor, isForgeProvider, parseForgeRepoUrl, type Forge } from "$lib/git/forge";
+import type { GitHubResult } from "$lib/git/github-api";
 import { createSitemapResolver, isDocoSitemapFile, dirOf, type SitemapResolver } from "./sitemap";
 import type { Sitemap } from "./sitemap-schema";
 import { isDocoFile } from "./file-scope";
@@ -99,8 +98,7 @@ export async function syncProject(
   }
   const r = rows[0];
 
-  if (r.provider !== "github") {
-    // Only GitHub is wired up in v1. Other providers come later.
+  if (!isForgeProvider(r.provider)) {
     return await markError(
       r.gitSourceId,
       `Provider ${r.provider} is not supported yet`,
@@ -108,14 +106,15 @@ export async function syncProject(
     );
   }
 
-  const parsed = parseGithubUrl(r.repoUrl);
+  const parsed = parseForgeRepoUrl(r.provider, r.repoUrl);
   if (parsed === null) {
     return await markError(
       r.gitSourceId,
-      `Could not parse GitHub repo URL: ${r.repoUrl}`,
+      `Could not parse repo URL for provider ${r.provider}: ${r.repoUrl}`,
       ZERO_COUNTS,
     );
   }
+  const forge = forgeFor(r.provider, parsed.owner, parsed.repo);
 
   // Mark syncing. From here on, every exit path either transitions to idle
   // (success / no-change), error (unrecoverable), or rate_limited (defer).
@@ -130,24 +129,22 @@ export async function syncProject(
   if (r.lastSyncedCommit === null || force) {
     return await runInitialSync({
       bucket,
+      forge,
       projectId: r.projectId,
       projectSlug: r.projectSlug,
       orgSlug: r.orgSlug,
       gitSourceId: r.gitSourceId,
-      owner: parsed.owner,
-      repo: parsed.repo,
       branch: r.defaultBranch,
       subpath: r.subpath,
     });
   }
   return await runIncrementalSync({
     bucket,
+    forge,
     projectId: r.projectId,
     projectSlug: r.projectSlug,
     orgSlug: r.orgSlug,
     gitSourceId: r.gitSourceId,
-    owner: parsed.owner,
-    repo: parsed.repo,
     branch: r.defaultBranch,
     subpath: r.subpath,
     base: r.lastSyncedCommit,
@@ -158,18 +155,17 @@ export async function syncProject(
 
 interface ModeBase {
   bucket: R2Bucket;
+  forge: Forge;
   projectId: string;
   projectSlug: string;
   orgSlug: string;
   gitSourceId: string;
-  owner: string;
-  repo: string;
   branch: string;
   subpath: string | null;
 }
 
 async function runInitialSync(ctx: ModeBase): Promise<SyncRunResult> {
-  const tree = await fetchTree(ctx.owner, ctx.repo, ctx.branch);
+  const tree = await ctx.forge.fetchTree(ctx.branch);
   if (!tree.ok) return await handleGitHubFailure(ctx.gitSourceId, tree, ZERO_COUNTS);
 
   const resolvedSha = tree.value.sha;
@@ -189,7 +185,7 @@ async function runInitialSync(ctx: ModeBase): Promise<SyncRunResult> {
     else if (mintlify === null && isDocoSitemapFile(path, ctx2.subpath)) sitemapFiles.push(path);
   }
 
-  const versionTag = await resolveTagForSha(ctx.owner, ctx.repo, resolvedSha);
+  const versionTag = await resolveTagForSha(ctx.forge, resolvedSha);
   let resolveSitemap: (docoPath: string) => Promise<Sitemap | null>;
   if (mintlify !== null) {
     const navSitemap = mintlify.sitemap;
@@ -221,7 +217,7 @@ async function runInitialSync(ctx: ModeBase): Promise<SyncRunResult> {
 function makeResolver(ctx: ModeBase, ref: string): SitemapResolver {
   return createSitemapResolver({
     subpath: ctx.subpath,
-    fetchFile: (path) => fetchFileFromJsDelivr({ owner: ctx.owner, repo: ctx.repo, ref, path }),
+    fetchFile: (path) => ctx.forge.fetchFile(ref, path),
   });
 }
 
@@ -264,12 +260,7 @@ async function resolveMintlify(
       .where(eq(gitSources.id, ctx.gitSourceId));
   }
 
-  const fetched = await fetchFileFromJsDelivr({
-    owner: ctx.owner,
-    repo: ctx.repo,
-    ref,
-    path: configPath,
-  });
+  const fetched = await ctx.forge.fetchFile(ref, configPath);
   let sitemap: Sitemap | null = null;
   let iconLibrary: MintlifyIconLibrary = "fontawesome";
   if (fetched.ok) {
@@ -288,7 +279,7 @@ async function resolveMintlify(
 
 async function findConfigByFetch(ctx: ModeBase, ref: string): Promise<string | null> {
   for (const path of configPathsFor(ctx.subpath)) {
-    const fetched = await fetchFileFromJsDelivr({ owner: ctx.owner, repo: ctx.repo, ref, path });
+    const fetched = await ctx.forge.fetchFile(ref, path);
     if (fetched.ok) return path;
   }
   return null;
@@ -313,7 +304,7 @@ async function validateSitemapFiles(
 }
 
 async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<SyncRunResult> {
-  const compare = await fetchCompare(ctx.owner, ctx.repo, ctx.base, ctx.branch);
+  const compare = await ctx.forge.fetchCompare(ctx.base, ctx.branch);
   if (!compare.ok) return await handleGitHubFailure(ctx.gitSourceId, compare, ZERO_COUNTS);
 
   if (compare.value.truncated) {
@@ -322,7 +313,7 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
     // later. Per sync-engine spec this is rare in practice.
     return await markError(
       ctx.gitSourceId,
-      "GitHub compare response was truncated (>250 commits or >300 files). Run a full re-sync.",
+      "The forge's compare response was truncated. Run a full re-sync.",
       ZERO_COUNTS,
     );
   }
@@ -475,7 +466,7 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
     resolveSitemap = (path) => r.resolve(path);
   }
 
-  const versionTag = await resolveTagForSha(ctx2.owner, ctx2.repo, resolvedSha);
+  const versionTag = await resolveTagForSha(ctx2.forge, resolvedSha);
   const { counts, changedPaths } = await processFiles(
     toProcess,
     toRename,
@@ -534,8 +525,8 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
 // null on tag fetch failure: tag display is a nice-to-have, never block a
 // sync over it. First matching tag wins when multiple point at the same
 // commit (rare; can refine later if a real repo needs deterministic picks).
-async function resolveTagForSha(owner: string, repo: string, sha: string): Promise<string | null> {
-  const tags = await fetchTags(owner, repo);
+async function resolveTagForSha(forge: Forge, sha: string): Promise<string | null> {
+  const tags = await forge.fetchTags();
   if (!tags.ok) return null;
   for (const tag of tags.value) {
     if (tag.commitSha === sha) return tag.name;
@@ -566,10 +557,9 @@ async function processFiles(
 
   const fileCtx: ProcessFileContext = {
     bucket: ctx.bucket,
+    forge: ctx.forge,
     projectId: ctx.projectId,
     gitSourceId: ctx.gitSourceId,
-    owner: ctx.owner,
-    repo: ctx.repo,
     ref: resolvedSha,
     versionTag,
     orgSlug: ctx.orgSlug,

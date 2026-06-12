@@ -16,7 +16,7 @@
   import { Button } from "$lib/components/ui/button/index.js";
   import { buildPerFilePrompt, buildAllErrorsPrompt, type PromptIssue } from "$lib/sync/ai-prompt";
   import { pathFromSourcePath } from "$lib/doco-urls";
-  import { githubEditUrl } from "$lib/git/github-url";
+  import { forgeEditUrl } from "$lib/git/edit-url";
 
   // URL-derived identity for the immediate-render header.
   const orgSlug = $derived(page.params.org ?? "");
@@ -475,7 +475,7 @@
                 {/if}
                 <div class="flex flex-wrap items-center gap-2 text-xs">
                   <a
-                    href={githubEditUrl(gitSource.repoUrl, gitSource.defaultBranch, fe.filePath)}
+                    href={forgeEditUrl(gitSource.repoUrl, gitSource.defaultBranch, fe.filePath)}
                     target="_blank"
                     rel="noopener noreferrer"
                     class="border-foreground/20 hover:border-foreground/40 text-foreground inline-flex items-center gap-1.5 border px-2.5 py-1 transition-colors"

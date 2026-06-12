@@ -3,7 +3,7 @@ import type { R2Bucket } from "@cloudflare/workers-types";
 import { db } from "$lib/server/db";
 import { docos, versions } from "$lib/server/db/schema";
 import { toLtree } from "$lib/server/db/schema/types";
-import { fetchFileFromJsDelivr } from "$lib/git/jsdelivr";
+import type { Forge } from "$lib/git/forge";
 import { parseDocoFile, type ParsedDoco } from "./parse";
 import { convertBody } from "./body-pipeline";
 import { makeImageArchiver, type SyncFileErrorRecord } from "./media-archive";
@@ -24,10 +24,9 @@ import type { Sitemap } from "./sitemap-schema";
 
 export interface ProcessFileContext {
   bucket: R2Bucket;
+  forge: Forge;
   projectId: string;
   gitSourceId: string;
-  owner: string;
-  repo: string;
   ref: string;
   // Tag name pointing at `ref`, if any. Used as the display label for
   // versions; falls back to the short SHA when null.
@@ -62,18 +61,13 @@ export async function processFile(
   filePath: string,
   ctx: ProcessFileContext,
 ): Promise<ProcessFileResult> {
-  // 1. Fetch the file content from jsDelivr.
-  const fetched = await fetchFileFromJsDelivr({
-    owner: ctx.owner,
-    repo: ctx.repo,
-    ref: ctx.ref,
-    path: filePath,
-  });
+  // 1. Fetch the file content from the forge's raw-content path.
+  const fetched = await ctx.forge.fetchFile(ctx.ref, filePath);
   if (!fetched.ok) {
     return {
       status: "errored",
       errorCode: "fetch_failed",
-      errorMessage: `Could not fetch ${filePath} from jsDelivr: ${fetched.message}`,
+      errorMessage: `Could not fetch ${filePath} from the source repo: ${fetched.message}`,
       errorDetails: { reason: fetched.reason },
     };
   }
@@ -113,9 +107,7 @@ export async function processFile(
   const imageArchiver = makeImageArchiver({
     bucket: ctx.bucket,
     projectId: ctx.projectId,
-    owner: ctx.owner,
-    repo: ctx.repo,
-    ref: ctx.ref,
+    rawUrl: (path) => ctx.forge.rawFileUrl(ctx.ref, path),
     docoPath: filePath,
     // Mintlify authors `/images/x` relative to the docs root, not the repo root.
     absoluteBase: ctx.mintlify ? ctx.subpath : null,

@@ -24,7 +24,7 @@
   import RequestDeletionDialog from "$lib/components/moderation/RequestDeletionDialog.svelte";
   import PangoScoreRail from "$lib/components/doco/PangoScoreRail.svelte";
   import StampPrompt from "$lib/components/doco/StampPrompt.svelte";
-  import { githubEditUrl } from "$lib/git/github-url";
+  import { forgeEditUrl } from "$lib/git/edit-url";
   import { trackDwell } from "$lib/client/track-dwell";
   import { recordSetup } from "$lib/client/setup-profile";
   import { session } from "$lib/client/session.svelte";
@@ -179,7 +179,7 @@
   // docos clear it), so guard against that.
   const editHref = $derived(
     data.pathInSource !== null
-      ? githubEditUrl(data.gitSource.repoUrl, data.gitSource.defaultBranch, data.pathInSource)
+      ? forgeEditUrl(data.gitSource.repoUrl, data.gitSource.defaultBranch, data.pathInSource)
       : null,
   );
 
