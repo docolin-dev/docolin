@@ -12,6 +12,13 @@ import { TAXONOMY_ROOTS } from "$lib/reserved-handles";
 //     checks looked fine while clicking "Sign in" broke.
 //   - Taxonomy roots, which belong to the kind browse route (see kind.ts);
 //     reserved-handles guarantees they can never be real org slugs.
+//   - Never-content path roots. OAuth clients (the claude.ai MCP broker
+//     among them) probe POST /register and GET /.well-known/oauth-* to
+//     decide whether a server requires auth; the authless signal is a clean
+//     404. When the org page route caught /register, SvelteKit answered the
+//     POST with 405 and the broker read it as a broken sign-in service
+//     (anthropics/claude-ai-mcp#262). reserved-handles blocks `register`
+//     as a slug; `.well-known` is an RFC 8615 namespace, never content.
 const ENDPOINT_ONLY_SEGMENTS = new Set([
   "api",
   "signin",
@@ -20,6 +27,8 @@ const ENDPOINT_ONLY_SEGMENTS = new Set([
   "raw",
   "sitemap.xml",
   "robots.txt",
+  "register",
+  ".well-known",
 ]);
 
 export const match: ParamMatcher = (param) =>
