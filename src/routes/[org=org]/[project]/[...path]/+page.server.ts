@@ -59,7 +59,22 @@ export const load: PageServerLoad = async ({ params, setHeaders, isDataRequest }
     const page = PANGO_PAGES.find((candidate) => candidate.slug === slug);
     if (page === undefined) error(404);
     const now = new Date().toISOString();
+    // Three authors on purpose, one per byline branch: a docolin user (links
+    // to their profile), an external author with a URL (links out), and a
+    // plain external name. Also exercises the ", " and " & " separators.
     const playgroundAuthors: ResolvedAuthor[] = [
+      {
+        kind: "user",
+        userId: "playground-user",
+        handle: "imgajeed",
+        displayName: "Oliver Seifert",
+      },
+      {
+        kind: "external",
+        name: "Ada Externling",
+        username: "ada",
+        url: "https://example.com/ada",
+      },
       { kind: "external", name: "Pango", username: null, url: null },
     ];
     return {
