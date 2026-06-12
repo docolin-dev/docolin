@@ -2,7 +2,7 @@
 title: Writing docs with docolin
 description: A guided tour of everything you can put in a docolin doco, taught by example through a pangolin and his jungle gym.
 authors:
-  - name: Oliver Seifert
+  - handle: imgajeed
 
 docolin:
   schema_version: 1

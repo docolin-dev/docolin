@@ -2,7 +2,7 @@
 title: Content tabs
 description: Group alternatives behind a single set of labels, with code tabs that stay in sync across the whole page.
 authors:
-  - name: Oliver Seifert
+  - handle: imgajeed
 
 docolin:
   schema_version: 1

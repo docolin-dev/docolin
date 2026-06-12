@@ -2,7 +2,7 @@
 title: Footnotes & annotations
 description: Footnote references collected at the bottom of the page, and inline annotations that pin a note to an exact spot.
 authors:
-  - name: Oliver Seifert
+  - handle: imgajeed
 
 docolin:
   schema_version: 1

@@ -2,7 +2,7 @@
 title: Math
 description: Inline and display math written in LaTeX, rendered to HTML on the server with KaTeX.
 authors:
-  - name: Oliver Seifert
+  - handle: imgajeed
 
 docolin:
   schema_version: 1

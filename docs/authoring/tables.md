@@ -2,7 +2,7 @@
 title: Tables
 description: GFM tables, with column alignment and rich cells, and the trick that turns one into a chart.
 authors:
-  - name: Oliver Seifert
+  - handle: imgajeed
 
 docolin:
   schema_version: 1

@@ -2,7 +2,7 @@
 title: Code blocks
 description: Fenced, syntax-highlighted code with titles, line numbers, author highlights, reader-shareable line selection, and inline annotations.
 authors:
-  - name: Oliver Seifert
+  - handle: imgajeed
 
 docolin:
   schema_version: 1

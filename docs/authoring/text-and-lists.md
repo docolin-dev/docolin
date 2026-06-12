@@ -2,7 +2,7 @@
 title: Text, lists, and links
 description: The everyday Markdown, headings, emphasis, lists, quotes, links, images, and inline icons, that the rest of a doco hangs from.
 authors:
-  - name: Oliver Seifert
+  - handle: imgajeed
 
 docolin:
   schema_version: 1

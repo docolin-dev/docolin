@@ -2,7 +2,7 @@
 title: Callouts
 description: Notes, tips, and warnings that readers cannot skim past, plus collapsible hatches for the long stuff.
 authors:
-  - name: Oliver Seifert
+  - handle: imgajeed
 
 docolin:
   schema_version: 1

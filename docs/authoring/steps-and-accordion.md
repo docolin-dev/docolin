@@ -2,7 +2,7 @@
 title: Steps & accordion
 description: Numbered vertical steppers for sequences, and exclusive collapsible rows for question-and-answer content.
 authors:
-  - name: Oliver Seifert
+  - handle: imgajeed
 
 docolin:
   schema_version: 1

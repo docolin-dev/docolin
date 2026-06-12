@@ -2,7 +2,7 @@
 title: Connect your AI agent over MCP
 description: Add docolin to Claude Code, Cursor, VS Code, ChatGPT, and any other MCP client, so your agent grounds its answers in verified, attributed docs.
 authors:
-  - name: Oliver Seifert
+  - handle: imgajeed
 
 docolin:
   schema_version: 1

@@ -2,7 +2,7 @@
 title: Charts
 description: Add one line under a Markdown table and it renders as a bar, line, area, pie, or donut chart, with the table kept underneath as the data.
 authors:
-  - name: Oliver Seifert
+  - handle: imgajeed
 
 docolin:
   schema_version: 1

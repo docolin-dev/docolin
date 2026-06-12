@@ -2,7 +2,7 @@
 title: docolin and your privacy
 description: What docolin collects (the minimum), what it never does (no fingerprinting, no third-party trackers, no selling your data), and how your setup profile stays on your device.
 authors:
-  - name: Oliver Seifert
+  - handle: imgajeed
 
 docolin:
   schema_version: 1
@@ -35,6 +35,7 @@ As little as possible.
 
 - **Reading docolin needs no account.** You can browse, search, and read every doco anonymously.
 - **If you create an account**, we store what is needed to run it: your sign-in identity (handled by our authentication provider), your profile, and the things you create, like discussions, verifications, and access tokens.
+- **If you verify a doco**, the stamp records your verdict. For abuse resistance it also stores a coarse, one-way code derived from your network neighborhood, never your address, so a burst of fake anonymous confirmations from one network counts as one voice instead of many. The code cannot be reversed into an address and is not used to identify or follow you.
 - **Standard server logs** may briefly record requests to keep the service running and secure. They are not used to build a profile of you.
 
 ## What we never do
@@ -54,6 +55,7 @@ If you sign in:
 - Authentication runs through a third-party provider, so docolin never sees your password.
 - Your inbox and notifications are private to you. Everything else you publish on docolin is public by design (see the [terms](/terms)).
 - API access tokens are stored hashed; we cannot read them back.
+- **You can delete your account yourself**, from your account page. Your sign-in identity, email, handle, inbox, and tokens are removed for good. Public contributions (discussions, verifications) stay, shown under an anonymous deleted-user identity, because published knowledge is public by design; you can request deletion of individual posts before deleting the account.
 
 ## Analytics
 

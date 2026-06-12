@@ -2,7 +2,7 @@
 title: Frontmatter
 description: The YAML block at the top of every doco that says what it is, who wrote it, and where it belongs in docolin.
 authors:
-  - name: Oliver Seifert
+  - handle: imgajeed
 
 docolin:
   schema_version: 1

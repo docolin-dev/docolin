@@ -2,7 +2,7 @@
 title: Your first doco
 description: Write a complete docolin doco from an empty file to a publishable page, one piece at a time.
 authors:
-  - name: Oliver Seifert
+  - handle: imgajeed
 
 docolin:
   schema_version: 1

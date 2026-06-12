@@ -2,7 +2,7 @@
 title: Writing well
 description: Choosing the right structure and constructs, writing accessibly, remembering that docos are public, and authoring in other formats.
 authors:
-  - name: Oliver Seifert
+  - handle: imgajeed
 
 docolin:
   schema_version: 1

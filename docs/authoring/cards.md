@@ -2,7 +2,7 @@
 title: Cards
 description: A list inside !!! cards becomes a responsive grid of linked, typed, illustrated cards.
 authors:
-  - name: Oliver Seifert
+  - handle: imgajeed
 
 docolin:
   schema_version: 1

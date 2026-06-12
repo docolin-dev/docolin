@@ -2,7 +2,7 @@
 title: docolin moderation policy
 description: How docolin handles reports, removals, and content moderation.
 authors:
-  - name: Oliver Seifert
+  - handle: imgajeed
 
 docolin:
   schema_version: 1
