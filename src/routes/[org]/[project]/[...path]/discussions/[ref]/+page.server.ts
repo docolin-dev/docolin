@@ -8,7 +8,9 @@ import {
   editReply,
   getDiscussionRef,
   getThread,
+  notifyMentions,
   notifyNewReply,
+  notifyStatusChange,
   setAnswer,
   setDiscussionStatus,
   setPinned,
@@ -205,11 +207,20 @@ export const actions = {
     const replyUrl = `${ctx.threadUrl}#comment-${res.id}`;
     platform?.context.waitUntil(
       Promise.all([
-        notifyNewReply({
+        // Mentions first: a mentioned participant gets the mention, not both.
+        notifyMentions({
           discussionId: ctx.disc.id,
+          bodyText: body,
           threadUrl: replyUrl,
           actorUserId: userId,
-        }),
+        }).then((mentioned) =>
+          notifyNewReply({
+            discussionId: ctx.disc.id,
+            threadUrl: replyUrl,
+            actorUserId: userId,
+            excludeUserIds: mentioned,
+          }),
+        ),
         purgeCacheUrls([
           ...discussionUrls({
             orgSlug: params.org,
@@ -350,6 +361,14 @@ export const actions = {
         error: res.reason,
       });
     }
+    platform?.context.waitUntil(
+      notifyStatusChange({
+        discussionId: ctx.disc.id,
+        status,
+        threadUrl: ctx.threadUrl,
+        actorUserId: locals.dbUser.id,
+      }),
+    );
     purgeThread(platform, params, ctx);
     return { action: "setStatus", ok: true };
   },

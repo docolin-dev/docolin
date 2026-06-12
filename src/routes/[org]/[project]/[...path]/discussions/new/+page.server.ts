@@ -1,7 +1,7 @@
 import { error, fail, redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
 import { getDocoHeader, resolveDocoIdentity, resolveProjectBySlug } from "$lib/server/doco-resolve";
-import { createDiscussion } from "$lib/server/discussions";
+import { createDiscussion, notifyMentions } from "$lib/server/discussions";
 import { LIMITS, isRequestBodyTooLarge } from "$lib/limits";
 import { discussionRef, discussionUrls, rebuildPathInSource } from "$lib/doco-urls";
 import { purgeCacheUrls } from "$lib/sync/cache-purge";
@@ -76,24 +76,34 @@ export const actions = {
     );
     if (docoIdRow === null) return fail(404, { error: "generic" });
 
-    const { number } = await createDiscussion({
+    const { id, number } = await createDiscussion({
       docoId: docoIdRow.docoId,
       title,
       bodyText: body,
       userId: locals.dbUser.id,
     });
 
-    // New thread appears in the (cached) list; purge it. Best-effort.
+    const threadUrl = `${discussionsPath}/${discussionRef(number, title)}`;
+    // New thread appears in the (cached) list; purge it. Best-effort, like the
+    // @mention fan-out (title counts too: "see @alice's question" headlines).
     platform?.context.waitUntil(
-      purgeCacheUrls(
-        discussionUrls({
-          orgSlug: proj.orgSlug,
-          projectSlug: proj.projectSlug,
-          pathFromProjectRoot: params.path,
+      Promise.all([
+        notifyMentions({
+          discussionId: id,
+          bodyText: `${title}\n${body}`,
+          threadUrl,
+          actorUserId: locals.dbUser.id,
         }),
-      ),
+        purgeCacheUrls(
+          discussionUrls({
+            orgSlug: proj.orgSlug,
+            projectSlug: proj.projectSlug,
+            pathFromProjectRoot: params.path,
+          }),
+        ),
+      ]),
     );
 
-    redirect(303, localizeHref(`${discussionsPath}/${discussionRef(number, title)}`));
+    redirect(303, localizeHref(threadUrl));
   },
 } satisfies Actions;

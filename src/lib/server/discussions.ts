@@ -10,6 +10,7 @@ import {
   users,
 } from "$lib/server/db/schema";
 import { renderMarkdown } from "$lib/server/markdown";
+import { extractMentionHandles } from "$lib/mentions";
 
 // Data + mutation layer for doco discussions. Discussions are GitHub-issues
 // for a doco: a titled thread opened by a user, with a flat (never nested)
@@ -640,41 +641,136 @@ export async function setPinned(args: {
 // replied earlier, minus the actor. Plain-text stored copy (matching the
 // claim-notification convention); linkUrl is the raw path, localized at
 // render time. Run via waitUntil so it never blocks the write response.
-export async function notifyNewReply(args: {
-  discussionId: string;
-  threadUrl: string;
-  actorUserId: string;
-}): Promise<void> {
+// The thread's participants (the original poster + everyone who replied),
+// minus the acting user: the recipient set for thread-level notifications.
+async function threadParticipants(
+  discussionId: string,
+  actorUserId: string,
+): Promise<{ title: string; recipients: Set<string> } | null> {
   const dRows = await db
     .select({ author: discussions.createdByUserId, title: discussions.title })
     .from(discussions)
-    .where(eq(discussions.id, args.discussionId))
+    .where(eq(discussions.id, discussionId))
     .limit(1);
-  if (dRows.length === 0) return;
+  if (dRows.length === 0) return null;
 
   const priorAuthors = await db
     .selectDistinct({ u: discussionReplies.createdByUserId })
     .from(discussionReplies)
-    .where(eq(discussionReplies.discussionId, args.discussionId));
+    .where(eq(discussionReplies.discussionId, discussionId));
 
   const recipients = new Set<string>([dRows[0].author]);
   for (const r of priorAuthors) recipients.add(r.u);
-  recipients.delete(args.actorUserId);
-  if (recipients.size === 0) return;
+  recipients.delete(actorUserId);
+  return { title: dRows[0].title, recipients };
+}
+
+export async function notifyNewReply(args: {
+  discussionId: string;
+  threadUrl: string;
+  actorUserId: string;
+  /** Users already notified about this post another way (e.g. mentioned in
+   *  it); the more specific notification wins, never both. */
+  excludeUserIds?: ReadonlySet<string>;
+}): Promise<void> {
+  const thread = await threadParticipants(args.discussionId, args.actorUserId);
+  if (thread === null) return;
+  for (const id of args.excludeUserIds ?? []) thread.recipients.delete(id);
+  if (thread.recipients.size === 0) return;
 
   const bodyMarkdown = `A new reply was posted in this discussion.
 
 [Open the discussion](${args.threadUrl}){ .md-button .md-button--primary }`;
 
   await db.insert(inboxMessages).values(
-    [...recipients].map((userId) => ({
+    [...thread.recipients].map((userId) => ({
       userId,
       kind: "discussion_reply" as const,
-      subject: `New reply: ${dRows[0].title}`,
+      subject: `New reply: ${thread.title}`,
       preview: "Someone replied to a discussion you're part of.",
       bodyMarkdown,
       linkUrl: args.threadUrl,
       relatedRecordId: args.discussionId,
     })),
   );
+}
+
+// Reader-facing wording per status; "open" arrives via the reopen action.
+const STATUS_CHANGE_LABEL: Record<DiscussionStatus, string> = {
+  open: "reopened",
+  closed: "closed",
+  resolved: "marked resolved",
+};
+
+/** Notifies the thread's participants that it was closed / resolved / reopened. */
+export async function notifyStatusChange(args: {
+  discussionId: string;
+  status: DiscussionStatus;
+  threadUrl: string;
+  actorUserId: string;
+}): Promise<void> {
+  const thread = await threadParticipants(args.discussionId, args.actorUserId);
+  if (thread === null || thread.recipients.size === 0) return;
+
+  const label = STATUS_CHANGE_LABEL[args.status];
+  const bodyMarkdown = `This discussion was ${label}.
+
+[Open the discussion](${args.threadUrl}){ .md-button .md-button--primary }`;
+
+  await db.insert(inboxMessages).values(
+    [...thread.recipients].map((userId) => ({
+      userId,
+      kind: "discussion_status_changed" as const,
+      subject: `Discussion ${label}: ${thread.title}`,
+      preview: `A discussion you're part of was ${label}.`,
+      bodyMarkdown,
+      linkUrl: args.threadUrl,
+      relatedRecordId: args.discussionId,
+    })),
+  );
+}
+
+/** Notifies users @mentioned in a new post or reply. Returns the notified
+ *  user ids so the thread-level fan-out can skip them (the mention is the
+ *  more specific signal). Mentions of the actor or unknown handles no-op. */
+export async function notifyMentions(args: {
+  discussionId: string;
+  bodyText: string;
+  threadUrl: string;
+  actorUserId: string;
+}): Promise<Set<string>> {
+  const handles = extractMentionHandles(args.bodyText);
+  if (handles.length === 0) return new Set();
+
+  const userRows = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(inArray(users.handle, handles), isNull(users.deletedAt)));
+  const mentioned = new Set(userRows.map((r) => r.id));
+  mentioned.delete(args.actorUserId);
+  if (mentioned.size === 0) return new Set();
+
+  const dRows = await db
+    .select({ title: discussions.title })
+    .from(discussions)
+    .where(eq(discussions.id, args.discussionId))
+    .limit(1);
+  if (dRows.length === 0) return new Set();
+
+  const bodyMarkdown = `Someone mentioned you in a discussion.
+
+[Open the discussion](${args.threadUrl}){ .md-button .md-button--primary }`;
+
+  await db.insert(inboxMessages).values(
+    [...mentioned].map((userId) => ({
+      userId,
+      kind: "mention" as const,
+      subject: `You were mentioned: ${dRows[0].title}`,
+      preview: "Someone mentioned you in a discussion.",
+      bodyMarkdown,
+      linkUrl: args.threadUrl,
+      relatedRecordId: args.discussionId,
+    })),
+  );
+  return mentioned;
 }
