@@ -1,4 +1,0 @@
-ALTER TABLE "discussion_reactions" DROP CONSTRAINT "discussion_reactions_discussion_reply_id_discussion_replies_id_fk";
---> statement-breakpoint
-ALTER TABLE "discussion_reactions" ADD CONSTRAINT "discussion_reactions_reply_discussion_fk" FOREIGN KEY ("discussion_reply_id","discussion_id") REFERENCES "public"."discussion_replies"("id","discussion_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-CREATE UNIQUE INDEX "discussion_replies_id_discussion_unique" ON "discussion_replies" USING btree ("id","discussion_id");

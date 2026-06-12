@@ -173,8 +173,15 @@
     {
       "idx": 24,
       "version": "7",
-      "when": 1781291342420,
-      "tag": "0024_lethal_paladin",
+      "when": 1781291656190,
+      "tag": "0024_volatile_scorpion",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1781291670110,
+      "tag": "0025_absurd_the_initiative",
       "breakpoints": true
     }
   ]

@@ -1,6 +1,6 @@
 {
-  "id": "9624f41e-197b-474a-89c1-fcc0f4557947",
-  "prevId": "15251750-4c48-4924-9af3-d54a86c105cf",
+  "id": "c7f46240-370c-433e-be5a-48a002e6b687",
+  "prevId": "9624f41e-197b-474a-89c1-fcc0f4557947",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1916,6 +1916,15 @@
           "tableTo": "users",
           "columnsFrom": ["created_by_user_id"],
           "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "discussion_reactions_reply_discussion_fk": {
+          "name": "discussion_reactions_reply_discussion_fk",
+          "tableFrom": "discussion_reactions",
+          "tableTo": "discussion_replies",
+          "columnsFrom": ["discussion_reply_id", "discussion_id"],
+          "columnsTo": ["id", "discussion_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }

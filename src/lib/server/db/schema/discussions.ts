@@ -210,7 +210,9 @@ export const discussionReactions = pgTable(
       .nullsNotDistinct(),
     // (reply, discussion) -> the reply's own (id, discussion_id): a reaction
     // can never point a reply at a foreign thread. MATCH SIMPLE skips the
-    // check when reply id is null (an original-post reaction).
+    // check when reply id is null (an original-post reaction). Split across
+    // two migrations (0024 creates the target unique index first; the FK
+    // statement fails if it lands in the same file ahead of the index).
     foreignKey({
       name: "discussion_reactions_reply_discussion_fk",
       columns: [t.discussionReplyId, t.discussionId],

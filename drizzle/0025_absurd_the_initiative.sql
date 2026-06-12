@@ -1,0 +1,1 @@
+ALTER TABLE "discussion_reactions" ADD CONSTRAINT "discussion_reactions_reply_discussion_fk" FOREIGN KEY ("discussion_reply_id","discussion_id") REFERENCES "public"."discussion_replies"("id","discussion_id") ON DELETE cascade ON UPDATE no action;
