@@ -3,15 +3,15 @@ import type { PageServerLoad } from "./$types";
 import { db } from "$lib/server/db";
 import { kinds } from "$lib/server/db/schema";
 import { TAXONOMY_ROOTS_LIST } from "$lib/reserved-handles";
+import { getBrowseFeed } from "$lib/server/browse";
 
-// The browse landing: the taxonomy's top-level kinds as a single alphabetical
-// card grid, the entry point into the per-kind browse pages. The root list is
-// a compile-time constant (reserved-handles), so the only data the page needs
-// is per-root doco counts and the registry descriptions, both of which move
-// slowly. That keeps the response reader-independent and safe to cache hard at
-// the edge: the queries below run on a cache miss, not per reader, and a count
-// being a few hours stale is fine for a directory. New roots only ship with a
-// code change, which busts the cache anyway.
+// The browse landing: what's moving on docolin (trending by verification +
+// discussion activity, fresh publishes, a daily serendipity pool), with the
+// taxonomy root index demoted to a compact directory below. Everything is
+// reader-independent, one cached payload for all; the "for your setup" slice
+// is picked client-side from the shipped pool. Activity moves faster than the
+// old directory did, so the edge TTL is an hour (was a day), still cache-miss
+// economics, never per-reader compute.
 
 export interface RootCard {
   root: string;
@@ -23,13 +23,14 @@ export const load: PageServerLoad = async ({ setHeaders, isDataRequest }) => {
   setHeaders({
     "cache-control": isDataRequest
       ? "private, no-store"
-      : "public, max-age=0, s-maxage=86400, stale-while-revalidate=604800",
+      : "public, max-age=0, s-maxage=3600, stale-while-revalidate=604800",
   });
 
   // One grouped scan for counts (each version rolled up to its top-level ancestor
   // via subpath), plus the registry rows for the roots. The "listable doco"
   // predicate matches search/facets so the numbers agree across the site.
-  const [countResult, descRows] = await Promise.all([
+  const [feed, countResult, descRows] = await Promise.all([
+    getBrowseFeed(),
     db.execute(sql`
       SELECT subpath(v.kind, 0, 1)::text AS root, count(*)::int AS count
       FROM versions v
@@ -56,5 +57,5 @@ export const load: PageServerLoad = async ({ setHeaders, isDataRequest }) => {
     count: counts.get(root) ?? 0,
   }));
 
-  return { roots };
+  return { feed, roots };
 };

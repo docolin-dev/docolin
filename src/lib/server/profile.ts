@@ -11,8 +11,7 @@ import {
   stamps,
   users,
 } from "$lib/server/db/schema";
-import { fromLtree } from "$lib/server/db/schema/types";
-import { pathFromSourcePath } from "$lib/doco-urls";
+import { listedDocoSelection, toListedDoco, type ListedDoco } from "$lib/server/doco-rows";
 
 // Public profile data for /{slug}. The slug namespace is shared: every user's
 // personal org carries their handle as its slug, so one lookup serves both
@@ -30,15 +29,8 @@ const DOCO_LIMIT = 30;
 // each project's true total carried in docoCount.
 const ORG_DOCO_FETCH_LIMIT = 100;
 
-export interface ProfileDoco {
-  title: string;
-  description: string | null;
-  href: string;
-  kind: string;
-  pangoScore: number | null;
-  publishedAt: string;
-  projectLabel: string;
-}
+// Profiles list docos in the shared listing shape (see $lib/server/doco-rows).
+export type ProfileDoco = ListedDoco;
 
 export interface UserProfileStats {
   docos: number;
@@ -75,45 +67,6 @@ export type Profile =
       projects: ProfileProject[];
     };
 
-const docoSelection = {
-  title: latestVersions.title,
-  description: latestVersions.description,
-  kind: latestVersions.kind,
-  pangoScore: latestVersions.verificationScore,
-  publishedAt: latestVersions.publishedAt,
-  pathInSource: docos.pathInSource,
-  subpath: gitSources.subpath,
-  orgSlug: orgs.slug,
-  projectSlug: projects.slug,
-  projectDisplayName: projects.displayName,
-};
-
-interface DocoRow {
-  title: string;
-  description: string | null;
-  kind: string;
-  pangoScore: number | null;
-  publishedAt: Date;
-  pathInSource: string | null;
-  subpath: string | null;
-  orgSlug: string;
-  projectSlug: string;
-  projectDisplayName: string | null;
-}
-
-function toProfileDoco(row: DocoRow): ProfileDoco {
-  const path = pathFromSourcePath(row.pathInSource ?? "", row.subpath);
-  return {
-    title: row.title,
-    description: row.description,
-    href: `/${row.orgSlug}/${row.projectSlug}/${path}`,
-    kind: fromLtree(row.kind),
-    pangoScore: row.pangoScore,
-    publishedAt: row.publishedAt.toISOString(),
-    projectLabel: row.projectDisplayName ?? row.projectSlug,
-  };
-}
-
 // authors is jsonb of entries like {"userId": "..."}; containment finds the
 // user anywhere in the array. No GIN index yet; fine at current volume, add
 // one if profiles get hot.
@@ -130,7 +83,7 @@ async function userDocos(userId: string, personalOrgId: string | null): Promise<
       ? authoredBy(userId)
       : sql`(${authoredBy(userId)} OR ${projects.ownerOrgId} = ${personalOrgId})`;
   const rows = await db
-    .select(docoSelection)
+    .select(listedDocoSelection)
     .from(latestVersions)
     .innerJoin(docos, and(eq(docos.id, latestVersions.docoId), isNull(docos.deletedAt)))
     .innerJoin(projects, eq(projects.id, docos.projectId))
@@ -139,7 +92,7 @@ async function userDocos(userId: string, personalOrgId: string | null): Promise<
     .where(where)
     .orderBy(desc(latestVersions.publishedAt))
     .limit(DOCO_LIMIT);
-  return rows.map(toProfileDoco);
+  return rows.map(toListedDoco);
 }
 
 async function orgProjects(orgId: string): Promise<ProfileProject[]> {
@@ -166,7 +119,7 @@ async function orgProjects(orgId: string): Promise<ProfileProject[]> {
       )
       .groupBy(projects.slug),
     db
-      .select(docoSelection)
+      .select(listedDocoSelection)
       .from(latestVersions)
       .innerJoin(docos, and(eq(docos.id, latestVersions.docoId), isNull(docos.deletedAt)))
       .innerJoin(projects, eq(projects.id, docos.projectId))
@@ -181,7 +134,7 @@ async function orgProjects(orgId: string): Promise<ProfileProject[]> {
   const docosBySlug = new Map<string, ProfileDoco[]>();
   for (const row of docoRows) {
     const list = docosBySlug.get(row.projectSlug) ?? [];
-    list.push(toProfileDoco(row));
+    list.push(toListedDoco(row));
     docosBySlug.set(row.projectSlug, list);
   }
 
