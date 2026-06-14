@@ -2,6 +2,7 @@ import { highlightCode } from "$lib/markdown/highlight";
 import {
   createMarkdownRenderer,
   extractToc,
+  extractReadingMinutes,
   RENDERER_VERSION,
   type TocEntry,
 } from "$lib/markdown/render";
@@ -20,7 +21,7 @@ import {
 // versions, discussions). Keep this the only server path that produces HTML so
 // upgrades stay one-line and consistent everywhere.
 
-export { RENDERER_VERSION };
+export { RENDERER_VERSION, extractReadingMinutes };
 export type { TocEntry };
 
 const render = createMarkdownRenderer(highlightCode);
@@ -31,27 +32,3 @@ export function renderMarkdown(source: string): Promise<string> {
 
 /** Top-level h2/h3 headings for the doco viewer's table of contents. */
 export const extractDocoToc = extractToc;
-
-// Average adult silent reading speed for technical prose, the same number every
-// other "min read" estimator on the internet uses. Lower bound, so a 1-word page
-// rounds up to 1 minute (a "0 min read" badge reads as broken).
-const WPM = 200;
-
-/** Estimated reading minutes for a doco body, derived from the word count.
- *  Whitespace-token split is good enough; the rendered HTML reorders words but
- *  doesn't add or remove enough of them to move the rounded result. Always
- *  returns at least 1, so even a stub doco shows a sensible value. */
-export function extractReadingMinutes(source: string): number {
-  let words = 0;
-  let inWord = false;
-  for (const c of source) {
-    const isSpace = c === " " || c === "\t" || c === "\n" || c === "\r";
-    if (isSpace) {
-      inWord = false;
-    } else if (!inWord) {
-      inWord = true;
-      words += 1;
-    }
-  }
-  return Math.max(1, Math.round(words / WPM));
-}

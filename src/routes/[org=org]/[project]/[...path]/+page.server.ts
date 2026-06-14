@@ -10,6 +10,9 @@ import { resolveDocoIdentity, resolveProjectBySlug } from "$lib/server/doco-reso
 import { fileDeletionRequest, submitReport } from "$lib/server/moderation";
 import { pathFromSourcePath, rebuildPathInSource, parseVersionRef } from "$lib/doco-urls";
 import { resolveAuthors, type ResolvedAuthor } from "$lib/server/authors";
+import type { DocoViewData, ResolvedNavLink } from "$lib/doco/viewer-data";
+import { resolveLink, splitFragment } from "$lib/doco/resolve-link";
+import { isRelativePath, resolveRelativePath } from "$lib/sync/path-resolve";
 import { recordStamp } from "$lib/verification/ingest";
 import { stampNetworkBucket } from "$lib/server/stamp-bucket";
 import type { StampOutcome } from "$lib/verification/score";
@@ -128,7 +131,7 @@ export const load: PageServerLoad = async ({ params, setHeaders, isDataRequest }
           },
         ],
       },
-    };
+    } satisfies DocoViewData;
   }
 
   // Find project + source for the (org, project) URL pair. Native projects
@@ -241,21 +244,19 @@ export const load: PageServerLoad = async ({ params, setHeaders, isDataRequest }
   // relative paths and same-project hard URLs become {title, href, kindPath}.
   // Anything else (cross-project, soft kind URLs, external) falls back to
   // the raw string so the user still sees and can follow the link.
+  const navCtx: NavLinkContext = {
+    orgSlug: proj.orgSlug,
+    projectSlug: proj.projectSlug,
+    gitSourceId: proj.gitSourceId,
+    subpath: proj.subpath,
+    currentPathInSource: doco.pathInSource ?? "",
+    repoUrl: proj.repoUrl,
+    commitSha: doco.commitSha,
+    defaultBranch: proj.defaultBranch,
+  };
   const [prevNav, nextNav] = await Promise.all([
-    resolveNavLink(doco.prevLink, {
-      orgSlug: proj.orgSlug,
-      projectSlug: proj.projectSlug,
-      gitSourceId: proj.gitSourceId,
-      subpath: proj.subpath,
-      currentPathInSource: doco.pathInSource ?? "",
-    }),
-    resolveNavLink(doco.nextLink, {
-      orgSlug: proj.orgSlug,
-      projectSlug: proj.projectSlug,
-      gitSourceId: proj.gitSourceId,
-      subpath: proj.subpath,
-      currentPathInSource: doco.pathInSource ?? "",
-    }),
+    resolveNavLink(doco.prevLink, navCtx),
+    resolveNavLink(doco.nextLink, navCtx),
   ]);
 
   return {
@@ -315,16 +316,8 @@ export const load: PageServerLoad = async ({ params, setHeaders, isDataRequest }
         pangoScore: v.pangoScore,
       })),
     },
-  };
+  } satisfies DocoViewData;
 };
-
-// Rich prev/next nav target. Resolved entries carry the destination's title
-// and kind so the card can render with real content; raw entries fall back
-// to the original link string when resolution fails (external URLs, kind-
-// based soft URLs, or cross-project links we don't index yet).
-export type ResolvedNavLink =
-  | { kind: "resolved"; title: string; kindPath: string; href: string }
-  | { kind: "raw"; href: string };
 
 interface NavLinkContext {
   orgSlug: string;
@@ -332,6 +325,11 @@ interface NavLinkContext {
   gitSourceId: string;
   subpath: string | null;
   currentPathInSource: string;
+  // For routing a prev/next link through resolveLink: a non-doco target
+  // resolves to the forge file, pinned to this doco's synced commit.
+  repoUrl: string;
+  commitSha: string | null;
+  defaultBranch: string;
 }
 
 async function resolveNavLink(
@@ -340,26 +338,42 @@ async function resolveNavLink(
 ): Promise<ResolvedNavLink | null> {
   if (raw === null) return null;
 
-  // Relative path in the same project: ./foo.md, ../bar.md
-  if (raw.startsWith("./") || raw.startsWith("../")) {
-    const targetPath = joinRelativePath(ctx.currentPathInSource, raw);
-    return await lookupNavTarget(targetPath, ctx);
+  // Ground truth at read time: does this point at an existing doco in this
+  // project? The DB is more accurate than an extension heuristic and handles
+  // `.md` and Mintlify `.mdx` alike. Compute a candidate source path for
+  // relative and same-project-absolute links (resolveRelativePath preserves the
+  // extension, so an .mdx target is found).
+  const { path: pathPart } = splitFragment(raw);
+  const sameProjectPrefix = `/${ctx.orgSlug}/${ctx.projectSlug}/`;
+  let candidate: string | null = null;
+  if (isRelativePath(pathPart)) {
+    candidate = resolveRelativePath(ctx.currentPathInSource, pathPart);
+  } else if (pathPart.startsWith(sameProjectPrefix)) {
+    candidate = rebuildPathInSource(pathPart.slice(sameProjectPrefix.length), ctx.subpath);
+  }
+  if (candidate !== null) {
+    const card = await lookupNavTarget(candidate, ctx);
+    if (card !== null) return card;
   }
 
-  // Hard URL: /{org}/{project}/{path-from-project-root}. Same-project case
-  // resolves; cross-project would need a wider query and is deferred.
-  if (raw.startsWith("/")) {
-    const parts = raw.slice(1).split("/");
-    if (parts.length >= 3 && parts[0] === ctx.orgSlug && parts[1] === ctx.projectSlug) {
-      const pathFromRoot = parts.slice(2).join("/");
-      const targetPath = rebuildPathInSource(pathFromRoot, ctx.subpath);
-      const resolved = await lookupNavTarget(targetPath, ctx);
-      if (resolved !== null) return resolved;
-    }
-  }
-
-  // External, cross-project, or soft kind URL: pass through unchanged.
-  return { kind: "raw", href: raw };
+  // Not an existing doco: route through the shared link model so a relative repo
+  // file becomes a forge link (pinned to the commit) and external / soft kind
+  // URLs pass through. allowMdx tracks the project type (a Mintlify project's
+  // docos are .mdx), inferred from this doco's own extension.
+  return {
+    kind: "raw",
+    href: resolveLink(raw, {
+      docoPath: ctx.currentPathInSource,
+      subpath: ctx.subpath,
+      allowMdx: ctx.currentPathInSource.toLowerCase().endsWith(".mdx"),
+      websiteBase: `/${ctx.orgSlug}/${ctx.projectSlug}`,
+      forge: {
+        kind: "repo",
+        repoUrl: ctx.repoUrl,
+        ref: ctx.commitSha !== null ? { commit: ctx.commitSha } : { branch: ctx.defaultBranch },
+      },
+    }),
+  };
 }
 
 async function lookupNavTarget(
@@ -392,23 +406,6 @@ async function lookupNavTarget(
     kindPath: fromLtree(target.kind),
     href: `/${ctx.orgSlug}/${ctx.projectSlug}/${pathFromRoot}`,
   };
-}
-
-// Resolves "./foo.md" or "../bar/baz.md" against a current pathInSource.
-// String ops only; no path library needed for this shape.
-function joinRelativePath(currentPath: string, relative: string): string {
-  const lastSlash = currentPath.lastIndexOf("/");
-  let base = lastSlash === -1 ? "" : currentPath.slice(0, lastSlash);
-
-  let rel = relative;
-  while (rel.startsWith("./")) rel = rel.slice(2);
-  while (rel.startsWith("../")) {
-    rel = rel.slice(3);
-    const baseLastSlash = base.lastIndexOf("/");
-    base = baseLastSlash === -1 ? "" : base.slice(0, baseLastSlash);
-  }
-
-  return base.length === 0 ? rel : `${base}/${rel}`;
 }
 
 function fieldStr(form: FormData, key: string): string {

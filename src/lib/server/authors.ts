@@ -1,17 +1,14 @@
 import { inArray } from "drizzle-orm";
 import { db } from "$lib/server/db";
 import { users } from "$lib/server/db/schema";
+import type { ResolvedAuthor } from "$lib/doco/viewer-data";
 
 // Resolves a version's `authors` jsonb (the frontmatter dual shape: docolin
 // user {userId} or external {name, username?, url?}) into display-ready entries.
 // Shared by the doco viewer, the raw routes, and the MCP tools so attribution is
-// rendered the same everywhere.
-
-// Resolved author entry, discriminated by which side of the union the source
-// had: docolin user vs external attribution.
-export type ResolvedAuthor =
-  | { kind: "user"; userId: string; handle: string; displayName: string | null }
-  | { kind: "external"; name: string; username: string | null; url: string | null };
+// rendered the same everywhere. The ResolvedAuthor type lives in the shared
+// viewer-data module (client-safe); re-exported here for existing consumers.
+export type { ResolvedAuthor };
 
 export async function resolveAuthors(raw: unknown): Promise<ResolvedAuthor[]> {
   if (!Array.isArray(raw)) return [];

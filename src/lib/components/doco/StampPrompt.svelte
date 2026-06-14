@@ -18,7 +18,15 @@
     versionId,
     score,
     signedIn,
-  }: { versionId: string; score: number | null; signedIn: boolean } = $props();
+    preview = false,
+  }: {
+    versionId: string;
+    score: number | null;
+    signedIn: boolean;
+    // Local-folder preview: the doco isn't published, so verification can't
+    // record. Show the prompt one-to-one but disabled, with a note.
+    preview?: boolean;
+  } = $props();
 
   let submitting = $state(false);
   let chosen = $state<string | null>(null);
@@ -100,44 +108,50 @@
     </p>
   </div>
 
-  <form method="POST" action="?/stamp" use:enhance={submit} class="mt-3 flex flex-wrap gap-2">
-    <input type="hidden" name="versionId" value={versionId} />
-    <button
-      type="submit"
-      name="outcome"
-      value="worked"
-      disabled={submitting}
-      class={buttonClass("worked")}
-    >
-      <Check class="size-4" />
-      {m.doco_stamp_worked()}
-    </button>
-    <button
-      type="submit"
-      name="outcome"
-      value="worked_with_caveats"
-      disabled={submitting}
-      class={buttonClass("worked_with_caveats")}
-    >
-      <CircleAlert class="size-4" />
-      {m.doco_stamp_caveats()}
-    </button>
-    <button
-      type="submit"
-      name="outcome"
-      value="didnt_work"
-      disabled={submitting}
-      class={buttonClass("didnt_work")}
-    >
-      <X class="size-4" />
-      {m.doco_stamp_didnt_work()}
-    </button>
-  </form>
+  <!-- In preview the wrapping div carries the tooltip: a disabled <button>
+       doesn't fire hover events, so a title on it wouldn't show. -->
+  <div title={preview ? m.preview_action_disabled() : undefined}>
+    <form method="POST" action="?/stamp" use:enhance={submit} class="mt-3 flex flex-wrap gap-2">
+      <input type="hidden" name="versionId" value={versionId} />
+      <button
+        type="submit"
+        name="outcome"
+        value="worked"
+        disabled={submitting || preview}
+        class={buttonClass("worked")}
+      >
+        <Check class="size-4" />
+        {m.doco_stamp_worked()}
+      </button>
+      <button
+        type="submit"
+        name="outcome"
+        value="worked_with_caveats"
+        disabled={submitting || preview}
+        class={buttonClass("worked_with_caveats")}
+      >
+        <CircleAlert class="size-4" />
+        {m.doco_stamp_caveats()}
+      </button>
+      <button
+        type="submit"
+        name="outcome"
+        value="didnt_work"
+        disabled={submitting || preview}
+        class={buttonClass("didnt_work")}
+      >
+        <X class="size-4" />
+        {m.doco_stamp_didnt_work()}
+      </button>
+    </form>
+  </div>
 
   <!-- Only an error (rare) or the anonymous sign-in nudge surface here; the
        chosen-button fill is the confirmation, so there is no success message. -->
   <div class="mt-2 text-xs empty:hidden" aria-live="polite">
-    {#if errored}
+    {#if preview}
+      <span class="text-muted-foreground">{m.preview_verify_note()}</span>
+    {:else if errored}
       <span class="text-destructive">{m.doco_stamp_error()}</span>
     {:else if !signedIn}
       <a

@@ -1,35 +1,36 @@
-import matter from "gray-matter";
-import { inArray } from "drizzle-orm";
-import { db } from "$lib/server/db";
-import { users } from "$lib/server/db/schema";
+import { parse as parseYaml } from "yaml";
 import { docoFrontmatterSchema, type DocoFrontmatter } from "./frontmatter-schema";
 import { parseTimeEstimate, type TimeEstimateRange } from "./time-estimate";
 
-// Storage-shape author entry. Handles are resolved to userIds at parse time;
-// external entries are stored exactly as written. Discriminated by which
-// fields are present (userId vs name).
+// Storage-shape author entry. Handles are resolved to userIds at sync time (see
+// resolve-authors.ts); external entries are stored exactly as written.
+// Discriminated by which fields are present (userId vs name).
 export type StoredAuthor = { userId: string } | { name: string; username?: string; url?: string };
 
 export interface ParsedDoco {
   frontmatter: DocoFrontmatter;
   body: string;
-  authors: StoredAuthor[];
   timeEstimate: TimeEstimateRange | null;
 }
 
 export interface ParseError {
-  code: "yaml_parse_error" | "frontmatter_invalid" | "handle_not_found";
+  code: "yaml_parse_error" | "frontmatter_invalid";
   message: string;
   details: Record<string, unknown>;
 }
 
 export type ParseResult = { ok: true; parsed: ParsedDoco } | { ok: false; error: ParseError };
 
-export async function parseDocoFile(source: string): Promise<ParseResult> {
-  // 1. Split frontmatter from body. gray-matter throws on malformed YAML.
-  let split: matter.GrayMatterFile<string>;
+// Pure frontmatter + body parse: no DB access, so it runs in the browser (the
+// local-folder preview) exactly as at sync time. Resolving author `{handle}`
+// entries to userIds is a separate server step (resolve-authors.ts); the local
+// preview uses the frontmatter authors directly.
+export function parseDocoFile(source: string): ParseResult {
+  // 1. Split the `---` fenced frontmatter from the body. Browser-safe (no
+  // gray-matter, which pulls in Node's Buffer and crashes in the local preview).
+  let fm: { data: unknown; body: string };
   try {
-    split = matter(source);
+    fm = splitFrontmatter(source);
   } catch (err) {
     return {
       ok: false,
@@ -42,7 +43,7 @@ export async function parseDocoFile(source: string): Promise<ParseResult> {
   }
 
   // 2. Validate the parsed object against the docolin frontmatter schema.
-  const schemaResult = docoFrontmatterSchema.safeParse(split.data);
+  const schemaResult = docoFrontmatterSchema.safeParse(fm.data);
   if (!schemaResult.success) {
     return {
       ok: false,
@@ -62,63 +63,7 @@ export async function parseDocoFile(source: string): Promise<ParseResult> {
 
   const frontmatter = schemaResult.data;
 
-  // 3. Resolve `{handle: ...}` author entries to userIds. Missing handles are
-  // a validation failure: we want authors to either be real docolin users or
-  // explicit external attribution, never silently dropped.
-  const handles: string[] = [];
-  for (const a of frontmatter.authors) {
-    if (a.handle !== undefined) handles.push(a.handle);
-  }
-
-  const handleToUserId = new Map<string, string>();
-  if (handles.length > 0) {
-    const found = await db
-      .select({ handle: users.handle, id: users.id })
-      .from(users)
-      .where(inArray(users.handle, handles));
-
-    for (const row of found) {
-      handleToUserId.set(row.handle, row.id);
-    }
-
-    const missing: string[] = [];
-    for (const h of handles) {
-      if (!handleToUserId.has(h)) missing.push(h);
-    }
-    if (missing.length > 0) {
-      return {
-        ok: false,
-        error: {
-          code: "handle_not_found",
-          message: `Author handle(s) don't exist on docolin: ${missing.join(", ")}`,
-          details: { missingHandles: missing },
-        },
-      };
-    }
-  }
-
-  // 4. Build the storage shape of the authors list.
-  const authors: StoredAuthor[] = frontmatter.authors.map((a) => {
-    if (a.handle !== undefined) {
-      const userId = handleToUserId.get(a.handle);
-      // Unreachable: handles missing from the map would have failed above.
-      if (userId === undefined) {
-        throw new Error(`internal: handle ${a.handle} missing after resolution`);
-      }
-      return { userId };
-    }
-    if (a.name === undefined) {
-      // Schema guarantees exactly one of handle or name is set. Unreachable
-      // unless the schema and this branch drift apart.
-      throw new Error("internal: author has neither handle nor name");
-    }
-    const entry: StoredAuthor = { name: a.name };
-    if (a.username !== undefined) entry.username = a.username;
-    if (a.url !== undefined) entry.url = a.url;
-    return entry;
-  });
-
-  // 5. Parse the author-written time_estimate string to min/max minutes.
+  // 3. Parse the author-written time_estimate string to min/max minutes.
   const timeEstimate =
     frontmatter.docolin.time_estimate !== undefined
       ? parseTimeEstimate(frontmatter.docolin.time_estimate)
@@ -128,9 +73,30 @@ export async function parseDocoFile(source: string): Promise<ParseResult> {
     ok: true,
     parsed: {
       frontmatter,
-      body: split.content,
-      authors,
+      body: fm.body,
       timeEstimate,
     },
   };
+}
+
+// Splits a leading `---` fenced YAML frontmatter block from the body. docolin
+// only uses the `---` fence form, so a plain line scan covers it without
+// gray-matter. Throws (via parseYaml) on malformed YAML.
+function splitFrontmatter(source: string): { data: unknown; body: string } {
+  const text = source.charCodeAt(0) === 0xfeff ? source.slice(1) : source; // strip BOM
+  const lines = text.split("\n");
+  if (lines.length === 0 || lines[0].trimEnd() !== "---") return { data: {}, body: text };
+  let end = -1;
+  for (let i = 1; i < lines.length; i++) {
+    const t = lines[i].trimEnd();
+    if (t === "---" || t === "...") {
+      end = i;
+      break;
+    }
+  }
+  if (end === -1) return { data: {}, body: text };
+  const yamlText = lines.slice(1, end).join("\n");
+  const body = lines.slice(end + 1).join("\n");
+  const data: unknown = yamlText.trim() === "" ? {} : parseYaml(yamlText);
+  return { data, body };
 }

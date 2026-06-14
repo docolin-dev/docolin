@@ -277,3 +277,27 @@ export function extractToc(source: string): TocEntry[] {
   }
   return out;
 }
+
+// Average adult silent reading speed for technical prose, the same number every
+// other "min read" estimator uses. Lower bound, so a 1-word page rounds up to 1
+// minute (a "0 min read" badge reads as broken).
+const WORDS_PER_MINUTE = 200;
+
+/** Estimated reading minutes for a doco body, derived from the word count. A
+ *  whitespace-token split is good enough; the rendered HTML reorders words but
+ *  doesn't add or remove enough to move the rounded result. Always at least 1.
+ *  Lives here (not the server wrapper) so the client preview reuses it. */
+export function extractReadingMinutes(source: string): number {
+  let words = 0;
+  let inWord = false;
+  for (const c of source) {
+    const isSpace = c === " " || c === "\t" || c === "\n" || c === "\r";
+    if (isSpace) {
+      inWord = false;
+    } else if (!inWord) {
+      inWord = true;
+      words += 1;
+    }
+  }
+  return Math.max(1, Math.round(words / WORDS_PER_MINUTE));
+}

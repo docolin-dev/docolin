@@ -125,10 +125,17 @@ export function parseSitemapFileText(raw: string): SitemapFileResult {
 
 // ---------- cascade resolver ----------
 
+// A resolved cascade sitemap plus the file it came from, so relative urls in
+// the sitemap can be resolved against the right base (its own directory).
+export interface SitemapResolution {
+  sitemap: Sitemap;
+  sourcePath: string;
+}
+
 export interface SitemapResolver {
   // Resolve the cascade sitemap for a doco (the frontmatter override is applied
   // separately by resolveDocoSitemap). Null means "no sidebar."
-  resolve(docoPath: string): Promise<Sitemap | null>;
+  resolve(docoPath: string): Promise<SitemapResolution | null>;
   // The parse result for a specific directory's sitemap file (cached). The
   // orchestrator uses this to validate changed sitemap files and surface errors.
   resultForDir(dir: string): Promise<SitemapFileResult>;
@@ -152,10 +159,12 @@ export function createSitemapResolver(opts: {
     return pending;
   }
 
-  async function resolve(docoPath: string): Promise<Sitemap | null> {
+  async function resolve(docoPath: string): Promise<SitemapResolution | null> {
     for (const dir of ancestorDirs(docoPath, opts.subpath)) {
       const res = await resultForDir(dir);
-      if (res.status === "found") return res.sitemap;
+      if (res.status === "found") {
+        return { sitemap: res.sitemap, sourcePath: sitemapPathForDir(dir) };
+      }
       // An empty file is a definite answer: explicit no-sidebar, nearest wins.
       if (res.status === "empty") return null;
       // "missing" and "invalid" fall through to the parent directory. An invalid
@@ -183,10 +192,13 @@ async function loadDir(dir: string, fetchFile: SitemapFileFetch): Promise<Sitema
 // override if present, otherwise the cascade result. Null means "no sidebar."
 export function resolveDocoSitemap(
   perDoco: Sitemap | undefined,
-  cascade: Sitemap | null,
-): Sitemap | null {
+  docoPath: string,
+  cascade: SitemapResolution | null,
+): SitemapResolution | null {
+  // A frontmatter override resolves its relative urls against the doco itself;
+  // the cascade resolves against the doco_sitemap.yaml it came from.
   if (perDoco !== undefined) {
-    return perDoco.length === 0 ? null : perDoco;
+    return perDoco.length === 0 ? null : { sitemap: perDoco, sourcePath: docoPath };
   }
   return cascade;
 }

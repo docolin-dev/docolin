@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { convertBody } from "./body-pipeline";
+import { resolveLink } from "$lib/doco/resolve-link";
 
 // The sync-time body pipeline round-trips markdown (parse -> rewrite -> stringify).
 // It must preserve docomd constructs (admonitions, tabs, cards, steps, accordions),
@@ -10,7 +11,7 @@ import { convertBody } from "./body-pipeline";
 
 const passthrough = {
   rewriteImageUrl: (url: string) => Promise.resolve(url),
-  rewriteRelativeLink: (url: string) => url,
+  rewriteLink: (url: string) => url,
 };
 
 describe("convertBody preserves docomd constructs", () => {
@@ -88,7 +89,7 @@ describe("convertBody still rewrites images and links", () => {
   it("rewrites a relative link inside an admonition", async () => {
     const out = await convertBody("!!! note\n    See [other](./other.md).\n", {
       rewriteImageUrl: (url) => Promise.resolve(url),
-      rewriteRelativeLink: (url) => (url === "./other.md" ? "/org/project/other" : url),
+      rewriteLink: (url) => (url === "./other.md" ? "/org/project/other" : url),
     });
     expect(out).toContain("/org/project/other");
     expect(out).not.toContain("./other.md");
@@ -97,7 +98,7 @@ describe("convertBody still rewrites images and links", () => {
   it("rewrites an image url", async () => {
     const out = await convertBody("![alt](./pic.png)\n", {
       rewriteImageUrl: (url) => Promise.resolve(url === "./pic.png" ? "https://cdn/pic.png" : url),
-      rewriteRelativeLink: (url) => url,
+      rewriteLink: (url) => url,
     });
     expect(out).toContain("https://cdn/pic.png");
   });
@@ -105,7 +106,7 @@ describe("convertBody still rewrites images and links", () => {
   it("rewrites a relative .mdx link (Mintlify imports)", async () => {
     const out = await convertBody("See [mcp](./mcp.mdx).\n", {
       rewriteImageUrl: (url) => Promise.resolve(url),
-      rewriteRelativeLink: (url) => (url === "./mcp.mdx" ? "/notra/notra/devtools/mcp" : url),
+      rewriteLink: (url) => (url === "./mcp.mdx" ? "/notra/notra/devtools/mcp" : url),
     });
     expect(out).toContain("/notra/notra/devtools/mcp");
     expect(out).not.toContain("./mcp.mdx");
@@ -114,7 +115,7 @@ describe("convertBody still rewrites images and links", () => {
   it("rewrites a Mintlify root-absolute link when rewriteAbsoluteLink is set", async () => {
     const out = await convertBody("See [mcp](/devtools/mcp).\n", {
       rewriteImageUrl: (url) => Promise.resolve(url),
-      rewriteRelativeLink: (url) => url,
+      rewriteLink: (url) => url,
       rewriteAbsoluteLink: (url) => `/notra/notra${url}`,
     });
     expect(out).toContain("/notra/notra/devtools/mcp");
@@ -123,8 +124,14 @@ describe("convertBody still rewrites images and links", () => {
   it("rewrites a relative link that carries a fragment, keeping the fragment", async () => {
     const out = await convertBody("See [inline code](./text-and-lists.md#inline-code).\n", {
       rewriteImageUrl: (url) => Promise.resolve(url),
-      rewriteRelativeLink: (url) =>
-        url === "./text-and-lists.md" ? "/org/project/text-and-lists" : url,
+      rewriteLink: (url) =>
+        resolveLink(url, {
+          docoPath: "docs/a.md",
+          subpath: "docs",
+          allowMdx: true,
+          websiteBase: "/org/project",
+          forge: { kind: "repo", repoUrl: "https://github.com/o/r", ref: { commit: "x" } },
+        }),
     });
     expect(out).toContain("/org/project/text-and-lists#inline-code");
     expect(out).not.toContain(".md#");
@@ -133,7 +140,7 @@ describe("convertBody still rewrites images and links", () => {
   it("rewrites a Mintlify root-absolute link with a fragment, keeping the fragment", async () => {
     const out = await convertBody("See [setup](/devtools/mcp#setup).\n", {
       rewriteImageUrl: (url) => Promise.resolve(url),
-      rewriteRelativeLink: (url) => url,
+      rewriteLink: (url) => url,
       rewriteAbsoluteLink: (url) => `/notra/notra${url}`,
     });
     expect(out).toContain("/notra/notra/devtools/mcp#setup");
@@ -143,7 +150,7 @@ describe("convertBody still rewrites images and links", () => {
   it("leaves root-absolute links alone without rewriteAbsoluteLink (docolin repos)", async () => {
     const out = await convertBody("See [fw](/network/firewall/setup).\n", {
       rewriteImageUrl: (url) => Promise.resolve(url),
-      rewriteRelativeLink: (url) => url,
+      rewriteLink: (url) => url,
     });
     expect(out).toContain("/network/firewall/setup");
   });

@@ -4,7 +4,13 @@ import { db } from "$lib/server/db";
 import { projects, orgs, gitSources, syncFileErrors, docos, versions } from "$lib/server/db/schema";
 import { forgeFor, isForgeProvider, parseForgeRepoUrl, type Forge } from "$lib/git/forge";
 import type { GitHubResult } from "$lib/git/github-api";
-import { createSitemapResolver, isDocoSitemapFile, dirOf, type SitemapResolver } from "./sitemap";
+import {
+  createSitemapResolver,
+  isDocoSitemapFile,
+  dirOf,
+  type SitemapResolver,
+  type SitemapResolution,
+} from "./sitemap";
 import type { Sitemap } from "./sitemap-schema";
 import { isDocoFile } from "./file-scope";
 import {
@@ -23,6 +29,7 @@ import {
   type ProcessFileResult,
 } from "./process-file";
 import { pathFromSourcePath, publicLatestUrls } from "$lib/doco-urls";
+import { resolveSitemapLinks } from "$lib/doco/resolve-link";
 import { purgeCacheUrls } from "./cache-purge";
 
 // Top-level sync orchestrator. Invoked by the cron handler, the webhook
@@ -130,6 +137,7 @@ export async function syncProject(
     return await runInitialSync({
       bucket,
       forge,
+      repoUrl: r.repoUrl,
       projectId: r.projectId,
       projectSlug: r.projectSlug,
       orgSlug: r.orgSlug,
@@ -141,6 +149,7 @@ export async function syncProject(
   return await runIncrementalSync({
     bucket,
     forge,
+    repoUrl: r.repoUrl,
     projectId: r.projectId,
     projectSlug: r.projectSlug,
     orgSlug: r.orgSlug,
@@ -156,6 +165,7 @@ export async function syncProject(
 interface ModeBase {
   bucket: R2Bucket;
   forge: Forge;
+  repoUrl: string;
   projectId: string;
   projectSlug: string;
   orgSlug: string;
@@ -186,10 +196,14 @@ async function runInitialSync(ctx: ModeBase): Promise<SyncRunResult> {
   }
 
   const versionTag = await resolveTagForSha(ctx.forge, resolvedSha);
-  let resolveSitemap: (docoPath: string) => Promise<Sitemap | null>;
+  let resolveSitemap: (docoPath: string) => Promise<SitemapResolution | null>;
   if (mintlify !== null) {
     const navSitemap = mintlify.sitemap;
-    resolveSitemap = () => Promise.resolve(navSitemap);
+    // The Mintlify nav has no source file and its urls are already absolute, so
+    // the base is irrelevant; anchor it at the docs root.
+    const navResolution: SitemapResolution | null =
+      navSitemap === null ? null : { sitemap: navSitemap, sourcePath: ctx2.subpath ?? "" };
+    resolveSitemap = () => Promise.resolve(navResolution);
   } else {
     const resolver = makeResolver(ctx2, resolvedSha);
     await validateSitemapFiles(ctx2.projectId, resolver, sitemapFiles);
@@ -478,11 +492,13 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
 
   // Sitemap source: the nav (a constant) for Mintlify; the doco_sitemap.yaml
   // cascade resolver otherwise.
-  let resolveSitemap: (docoPath: string) => Promise<Sitemap | null>;
+  let resolveSitemap: (docoPath: string) => Promise<SitemapResolution | null>;
   let resolver: SitemapResolver | null = null;
   if (mintlify !== null) {
     const navSitemap = mintlify.sitemap;
-    resolveSitemap = () => Promise.resolve(navSitemap);
+    const navResolution: SitemapResolution | null =
+      navSitemap === null ? null : { sitemap: navSitemap, sourcePath: ctx2.subpath ?? "" };
+    resolveSitemap = () => Promise.resolve(navResolution);
   } else {
     const r = makeResolver(ctx2, resolvedSha);
     resolver = r;
@@ -513,6 +529,8 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
         resolveSitemap,
         new Set([""]),
         new Set(toProcess),
+        resolvedSha,
+        true,
       );
     }
   } else if (resolver !== null) {
@@ -532,6 +550,8 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
       resolveSitemap,
       new Set([...changedSitemaps.keys()].map(dirOf)),
       new Set(toProcess),
+      resolvedSha,
+      false,
     );
   }
 
@@ -568,7 +588,7 @@ async function processFiles(
   ctx: ModeBase,
   resolvedSha: string,
   versionTag: string | null,
-  resolveSitemap: (docoPath: string) => Promise<Sitemap | null>,
+  resolveSitemap: (docoPath: string) => Promise<SitemapResolution | null>,
   mintlify: boolean,
   mintlifyIconLibrary: MintlifyIconLibrary,
 ): Promise<{ counts: SyncRunCounts; changedPaths: string[] }> {
@@ -581,6 +601,7 @@ async function processFiles(
   const fileCtx: ProcessFileContext = {
     bucket: ctx.bucket,
     forge: ctx.forge,
+    repoUrl: ctx.repoUrl,
     projectId: ctx.projectId,
     gitSourceId: ctx.gitSourceId,
     ref: resolvedSha,
@@ -646,9 +667,11 @@ async function applyFileResult(
 // resolution with their new version row.
 async function reresolveAffectedDocos(
   ctx: ModeBase,
-  resolveSitemap: (docoPath: string) => Promise<Sitemap | null>,
+  resolveSitemap: (docoPath: string) => Promise<SitemapResolution | null>,
   dirs: Set<string>,
   skip: Set<string>,
+  resolvedSha: string,
+  allowMdx: boolean,
 ): Promise<string[]> {
   const changed: string[] = [];
   const seen = new Set<string>();
@@ -673,7 +696,19 @@ async function reresolveAffectedDocos(
     for (const row of rows) {
       if (row.path === null || skip.has(row.path) || seen.has(row.path)) continue;
       seen.add(row.path);
-      const resolved = await resolveSitemap(row.path);
+      const resolution = await resolveSitemap(row.path);
+      // Resolve sitemap urls the same way processFile does, so the stored form
+      // (and this equality check) match instead of drifting to raw urls.
+      const resolved =
+        resolution === null
+          ? null
+          : resolveSitemapLinks(resolution.sitemap, {
+              docoPath: resolution.sourcePath,
+              subpath: ctx.subpath,
+              allowMdx,
+              websiteBase: `/${ctx.orgSlug}/${ctx.projectSlug}`,
+              forge: { kind: "repo", repoUrl: ctx.repoUrl, ref: { commit: resolvedSha } },
+            });
       if (!sitemapEqual(resolved, row.sitemap as Sitemap | null)) {
         await updateLatestVersionSitemap(row.docoId, resolved);
         changed.push(row.path);

@@ -143,13 +143,15 @@ describe("createSitemapResolver (cascade)", () => {
         "docs/auth/doco_sitemap.yaml": NESTED,
       }),
     });
-    expect(await resolver.resolve("docs/auth/signin.md")).toEqual([
-      { title: "Nested", url: "./nested.md" },
-    ]);
+    expect(await resolver.resolve("docs/auth/signin.md")).toEqual({
+      sitemap: [{ title: "Nested", url: "./nested.md" }],
+      sourcePath: "docs/auth/doco_sitemap.yaml",
+    });
     // A sibling subtree with no nearer file inherits the docs-root sitemap.
-    expect(await resolver.resolve("docs/guides/intro.md")).toEqual([
-      { title: "Root", url: "./root.md" },
-    ]);
+    expect(await resolver.resolve("docs/guides/intro.md")).toEqual({
+      sitemap: [{ title: "Root", url: "./root.md" }],
+      sourcePath: "docs/doco_sitemap.yaml",
+    });
   });
 
   it("inherits from an ancestor when no nearer file exists", async () => {
@@ -157,9 +159,10 @@ describe("createSitemapResolver (cascade)", () => {
       subpath: "docs",
       fetchFile: fakeFetcher({ "docs/doco_sitemap.yaml": ROOT }),
     });
-    expect(await resolver.resolve("docs/a/b/c/deep.md")).toEqual([
-      { title: "Root", url: "./root.md" },
-    ]);
+    expect(await resolver.resolve("docs/a/b/c/deep.md")).toEqual({
+      sitemap: [{ title: "Root", url: "./root.md" }],
+      sourcePath: "docs/doco_sitemap.yaml",
+    });
   });
 
   it("lets an empty nested file opt a subtree out (shadows the parent)", async () => {
@@ -187,7 +190,10 @@ describe("createSitemapResolver (cascade)", () => {
       subpath: null,
       fetchFile: fakeFetcher({ "doco_sitemap.yaml": ROOT }),
     });
-    expect(await resolver.resolve("a/b/x.md")).toEqual([{ title: "Root", url: "./root.md" }]);
+    expect(await resolver.resolve("a/b/x.md")).toEqual({
+      sitemap: [{ title: "Root", url: "./root.md" }],
+      sourcePath: "doco_sitemap.yaml",
+    });
   });
 
   it("falls through an invalid ancestor to a valid parent", async () => {
@@ -199,29 +205,36 @@ describe("createSitemapResolver (cascade)", () => {
       }),
     });
     // The broken nested file is skipped; the subtree keeps the parent's sidebar.
-    expect(await resolver.resolve("docs/auth/signin.md")).toEqual([
-      { title: "Root", url: "./root.md" },
-    ]);
+    expect(await resolver.resolve("docs/auth/signin.md")).toEqual({
+      sitemap: [{ title: "Root", url: "./root.md" }],
+      sourcePath: "docs/doco_sitemap.yaml",
+    });
   });
 });
 
 describe("resolveDocoSitemap", () => {
-  const cascade = [{ title: "Root", url: "./root.md" }];
+  const cascade = {
+    sitemap: [{ title: "Root", url: "./root.md" }],
+    sourcePath: "docs/doco_sitemap.yaml",
+  };
 
-  it("uses the per-doco override when present", () => {
+  it("uses the per-doco override, based at the doco's own path", () => {
     const perDoco = [{ title: "Custom", url: "./custom.md" }];
-    expect(resolveDocoSitemap(perDoco, cascade)).toEqual(perDoco);
+    expect(resolveDocoSitemap(perDoco, "docs/a.md", cascade)).toEqual({
+      sitemap: perDoco,
+      sourcePath: "docs/a.md",
+    });
   });
 
   it("treats an empty per-doco override as no-sidebar", () => {
-    expect(resolveDocoSitemap([], cascade)).toBeNull();
+    expect(resolveDocoSitemap([], "docs/a.md", cascade)).toBeNull();
   });
 
   it("falls through to the cascade when no per-doco override exists", () => {
-    expect(resolveDocoSitemap(undefined, cascade)).toEqual(cascade);
+    expect(resolveDocoSitemap(undefined, "docs/a.md", cascade)).toEqual(cascade);
   });
 
   it("returns null when the cascade resolved to nothing", () => {
-    expect(resolveDocoSitemap(undefined, null)).toBeNull();
+    expect(resolveDocoSitemap(undefined, "docs/a.md", null)).toBeNull();
   });
 });

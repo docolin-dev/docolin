@@ -4,13 +4,14 @@ import { db } from "$lib/server/db";
 import { docos, versions } from "$lib/server/db/schema";
 import { toLtree } from "$lib/server/db/schema/types";
 import type { Forge } from "$lib/git/forge";
-import { parseDocoFile, type ParsedDoco } from "./parse";
+import { parseDocoFile, type ParsedDoco, type StoredAuthor } from "./parse";
+import { resolveStoredAuthors } from "./resolve-authors";
 import { convertBody } from "./body-pipeline";
 import { makeImageArchiver, type SyncFileErrorRecord } from "./media-archive";
-import { resolveDocoSitemap } from "./sitemap";
+import { resolveDocoSitemap, type SitemapResolution } from "./sitemap";
 import { mintlifyMdxToDocoSource, hasDocolinFrontmatter } from "./mintlify/convert";
 import type { MintlifyIconLibrary } from "./mintlify/detect";
-import { resolveRelativePath } from "./path-resolve";
+import { resolveLink, resolveSitemapLinks, type LinkResolveContext } from "$lib/doco/resolve-link";
 import { pathFromSourcePath } from "$lib/doco-urls";
 import type { Sitemap } from "./sitemap-schema";
 
@@ -25,6 +26,8 @@ import type { Sitemap } from "./sitemap-schema";
 export interface ProcessFileContext {
   bucket: R2Bucket;
   forge: Forge;
+  // Canonical https repo URL, for building forge file links in resolveLink.
+  repoUrl: string;
   projectId: string;
   gitSourceId: string;
   ref: string;
@@ -39,7 +42,7 @@ export interface ProcessFileContext {
   // Resolves the cascade sitemap (nearest doco_sitemap.yaml) for a doco by its
   // source path. The per-doco frontmatter override is applied on top below. For
   // a Mintlify project this returns the nav-derived sidebar for every file.
-  resolveSitemap: (docoPath: string) => Promise<Sitemap | null>;
+  resolveSitemap: (docoPath: string) => Promise<SitemapResolution | null>;
   // When true, the file is a Mintlify `.mdx`: its body is converted to docomd
   // before parsing, and the maintainer must supply the docolin frontmatter.
   mintlify: boolean;
@@ -78,8 +81,8 @@ export async function processFile(
     ? mintlifyMdxToDocoSource(fetched.content, ctx.mintlifyIconLibrary)
     : fetched.content;
 
-  // 3. Parse + validate frontmatter (also resolves author handles to userIds).
-  const parseResult = await parseDocoFile(source);
+  // 3. Parse + validate frontmatter (pure; author handles are resolved next).
+  const parseResult = parseDocoFile(source);
   if (!parseResult.ok) {
     // A Mintlify page that hasn't had docolin frontmatter added yet: tell the
     // maintainer exactly what to add instead of dumping a raw schema error.
@@ -101,6 +104,19 @@ export async function processFile(
   }
   const parsed = parseResult.parsed;
 
+  // Resolve author handles to userIds (server-only). A handle that isn't a real
+  // docolin user errors the file rather than silently dropping attribution.
+  const authorsResult = await resolveStoredAuthors(parsed.frontmatter.authors);
+  if (!authorsResult.ok) {
+    return {
+      status: "errored",
+      errorCode: "handle_not_found",
+      errorMessage: `Author handle(s) don't exist on docolin: ${authorsResult.missing.join(", ")}`,
+      errorDetails: { missingHandles: authorsResult.missing },
+    };
+  }
+  const storedAuthors = authorsResult.authors;
+
   // 4. Convert the body. Image archival errors get collected here; they don't
   // fail the file since the markdown still renders with the source URL.
   const assetErrors: SyncFileErrorRecord[] = [];
@@ -113,10 +129,10 @@ export async function processFile(
     absoluteBase: ctx.mintlify ? ctx.subpath : null,
     onError: (err) => assetErrors.push(err),
   });
-  const linkRewriter = makeLinkRewriter(filePath, ctx.orgSlug, ctx.projectSlug, ctx.subpath);
+  const docoLinkCtx = linkContextFor(ctx, filePath);
   const convertedBody = await convertBody(parsed.body, {
     rewriteImageUrl: imageArchiver,
-    rewriteRelativeLink: linkRewriter,
+    rewriteLink: (url) => resolveLink(url, docoLinkCtx),
     // Mintlify links are root-absolute to the docs root (`/devtools/mcp`); map
     // them to this project's URL space. docolin repos leave `/` links alone.
     rewriteAbsoluteLink: ctx.mintlify
@@ -128,7 +144,13 @@ export async function processFile(
   // 5. Resolve which sitemap applies to this doco: the nearest doco_sitemap.yaml
   // walking up from this file, unless the doco's frontmatter overrides it.
   const cascade = await ctx.resolveSitemap(filePath);
-  const sitemap = resolveDocoSitemap(parsed.frontmatter.docolin.sitemap, cascade);
+  const chosenSitemap = resolveDocoSitemap(parsed.frontmatter.docolin.sitemap, filePath, cascade);
+  // Resolve sitemap urls through the same link model as body links, against the
+  // sitemap's own source location (its file dir, or the doco for an override).
+  const sitemap =
+    chosenSitemap === null
+      ? null
+      : resolveSitemapLinks(chosenSitemap.sitemap, linkContextFor(ctx, chosenSitemap.sourcePath));
 
   // 6. Find or create the doco row, then write the version.
   const existing = await db
@@ -138,9 +160,23 @@ export async function processFile(
     .limit(1);
 
   if (existing.length === 0) {
-    return await createDocoAndFirstVersion(filePath, parsed, convertedBody, sitemap, ctx);
+    return await createDocoAndFirstVersion(
+      filePath,
+      parsed,
+      storedAuthors,
+      convertedBody,
+      sitemap,
+      ctx,
+    );
   }
-  return await addVersionToExistingDoco(existing[0].id, parsed, convertedBody, sitemap, ctx);
+  return await addVersionToExistingDoco(
+    existing[0].id,
+    parsed,
+    storedAuthors,
+    convertedBody,
+    sitemap,
+    ctx,
+  );
 }
 
 // Per-file rename: doco identity follows the file path. Only updates the
@@ -193,6 +229,7 @@ async function markLatestVersion(
 async function createDocoAndFirstVersion(
   filePath: string,
   parsed: ParsedDoco,
+  authors: StoredAuthor[],
   convertedBody: string,
   sitemap: Sitemap | null,
   ctx: ProcessFileContext,
@@ -214,6 +251,7 @@ async function createDocoAndFirstVersion(
       ctx.ref,
       ctx.versionTag,
       parsed,
+      authors,
       convertedBody,
       sitemap,
     );
@@ -232,6 +270,7 @@ async function createDocoAndFirstVersion(
 async function addVersionToExistingDoco(
   docoId: string,
   parsed: ParsedDoco,
+  authors: StoredAuthor[],
   convertedBody: string,
   sitemap: Sitemap | null,
   ctx: ProcessFileContext,
@@ -252,7 +291,15 @@ async function addVersionToExistingDoco(
     let versionId: string;
     if (existing.length > 0) {
       versionId = existing[0].id;
-      await updateVersionRow(tx, versionId, ctx.versionTag, parsed, convertedBody, sitemap);
+      await updateVersionRow(
+        tx,
+        versionId,
+        ctx.versionTag,
+        parsed,
+        authors,
+        convertedBody,
+        sitemap,
+      );
     } else {
       // Explicit count rather than racing; the unique (doco_id, version_number)
       // index protects against a concurrent writer.
@@ -267,6 +314,7 @@ async function addVersionToExistingDoco(
         ctx.ref,
         ctx.versionTag,
         parsed,
+        authors,
         convertedBody,
         sitemap,
       );
@@ -294,6 +342,7 @@ async function insertVersionRow(
   commitSha: string,
   versionTag: string | null,
   parsed: ParsedDoco,
+  authors: StoredAuthor[],
   convertedBody: string,
   sitemap: Sitemap | null,
 ): Promise<string> {
@@ -323,7 +372,7 @@ async function insertVersionRow(
       nextLink: doc.next ?? null,
       supersededBy: doc.superseded_by ?? null,
       references: doc.references,
-      authors: parsed.authors,
+      authors,
       sitemap,
       bodyText: convertedBody,
       bodyFormat: "commonmark",
@@ -341,6 +390,7 @@ async function updateVersionRow(
   versionId: string,
   versionTag: string | null,
   parsed: ParsedDoco,
+  authors: StoredAuthor[],
   convertedBody: string,
   sitemap: Sitemap | null,
 ): Promise<void> {
@@ -367,7 +417,7 @@ async function updateVersionRow(
       nextLink: doc.next ?? null,
       supersededBy: doc.superseded_by ?? null,
       references: doc.references,
-      authors: parsed.authors,
+      authors,
       sitemap,
       bodyText: convertedBody,
       bodyFormat: "commonmark",
@@ -375,19 +425,15 @@ async function updateVersionRow(
     .where(eq(versions.id, versionId));
 }
 
-function makeLinkRewriter(
-  docoPath: string,
-  orgSlug: string,
-  projectSlug: string,
-  subpath: string | null,
-): (sourceUrl: string) => string {
-  return (sourceUrl: string) => {
-    // body-pipeline.ts only calls this for relative `.md` links already. Resolve
-    // against the doco's file path, then map to the public path-from-project-root,
-    // which drops the docs subpath (e.g. "docs/") and the ".md", matching the URL
-    // the viewer serves. Without the subpath strip, links 404 under /…/docs/….
-    const resolved = resolveRelativePath(docoPath, sourceUrl);
-    const pathFromRoot = pathFromSourcePath(resolved, subpath);
-    return `/${orgSlug}/${projectSlug}/${pathFromRoot}`;
+// Builds the link-resolution context for a doco at `docoPath` (or a sitemap at
+// its source path). Body links, sitemap urls, and prev/next all resolve through
+// this same context so they can't drift; the commit pin is the version's ref.
+function linkContextFor(ctx: ProcessFileContext, docoPath: string): LinkResolveContext {
+  return {
+    docoPath,
+    subpath: ctx.subpath,
+    allowMdx: ctx.mintlify,
+    websiteBase: `/${ctx.orgSlug}/${ctx.projectSlug}`,
+    forge: { kind: "repo", repoUrl: ctx.repoUrl, ref: { commit: ctx.ref } },
   };
 }
