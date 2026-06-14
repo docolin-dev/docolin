@@ -62,11 +62,16 @@
     if (busy) return;
     if (caps.fileSystemAccess) {
       busy = true;
-      const picked = await pickDirectoryPending();
-      busy = false;
-      if (picked === null) return; // picker dismissed
-      pending = picked;
-      dialogOpen = true;
+      try {
+        const picked = await pickDirectoryPending();
+        if (picked === null) return; // picker dismissed
+        pending = picked;
+        dialogOpen = true;
+      } finally {
+        // Always clear busy, even if listing the picked folder throws, so the
+        // open action can't get stuck disabled.
+        busy = false;
+      }
     } else {
       uploadInput?.click();
     }

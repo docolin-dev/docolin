@@ -94,7 +94,7 @@ docolin:
 (Every page in this guide uses them; that is the row of links below.)
 
 !!! tip "Prefer relative paths inside your project"
-    A relative `./other.md` (or a hard URL to your own project) that points at a published doco renders as a rich card with the target's title and description. Everything else still works but renders as a plain link, since docolin can't resolve a title for it up front: soft links, cross-project links, external URLs, a relative link to a repo file (which resolves to the file on the forge), or a doco that hasn't been published yet.
+    A relative `./other.md` (or a hard URL to your own project) that points at a published doco renders as a rich card with the target's title and kind path. Everything else still works but renders as a plain link, since docolin can't resolve a title for it up front: soft links, cross-project links, external URLs, a relative link to a repo file (which resolves to the file on the forge), or a doco that hasn't been published yet.
 
 ## The sidebar
 

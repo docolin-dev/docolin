@@ -752,7 +752,7 @@
   "preview_brave_step1": "Kopiere diese URL und füge sie in Braves Adressleiste ein.",
   "preview_brave_copy": "Kopieren",
   "preview_brave_step1_note": "Browser lassen Websites nicht auf interne Seiten verlinken, also füge sie selbst ein.",
-  "preview_brave_step2": "Stelle File System Access API auf Enabled.",
+  "preview_brave_step2": "Stelle die File System Access API auf Aktiviert.",
   "preview_brave_step3": "Klicke unten auf der Seite auf Relaunch.",
   "preview_brave_step4": "Komm hierher zurück und versuch es erneut.",
   "preview_brave_retry": "Erneut versuchen",

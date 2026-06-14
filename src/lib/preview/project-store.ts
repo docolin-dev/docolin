@@ -82,7 +82,8 @@ function isProjectMeta(v: unknown): v is PreviewProjectMeta {
     typeof o.name === "string" &&
     (o.subpath === null || typeof o.subpath === "string") &&
     (o.mode === "fs" || o.mode === "upload") &&
-    typeof o.lastOpenedAt === "number"
+    typeof o.lastOpenedAt === "number" &&
+    (o.lastPath === undefined || typeof o.lastPath === "string")
   );
 }
 

@@ -81,8 +81,15 @@ interface PermissionCapableHandle {
 
 async function ensureReadPermission(handle: FileSystemDirectoryHandle): Promise<boolean> {
   const h = handle as unknown as PermissionCapableHandle;
-  if ((await h.queryPermission({ mode: "read" })) === "granted") return true;
-  // requestPermission must be called from a user gesture; the render route only
-  // reaches here via the user clicking the project, which satisfies that.
-  return (await h.requestPermission({ mode: "read" })) === "granted";
+  try {
+    if ((await h.queryPermission({ mode: "read" })) === "granted") return true;
+    // requestPermission must be called from a user gesture; the render route only
+    // reaches here via the user clicking the project, which satisfies that.
+    return (await h.requestPermission({ mode: "read" })) === "granted";
+  } catch {
+    // Some browsers reject requestPermission when it isn't tied to a user gesture
+    // (e.g. reached via the focus poll); treat that as not-granted so the UI
+    // prompts a re-open instead of the promise rejecting.
+    return false;
+  }
 }

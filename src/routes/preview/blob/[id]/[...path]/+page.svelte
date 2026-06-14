@@ -15,22 +15,28 @@
   $effect(() => {
     failed = false;
     void (async () => {
-      const result = await reopenSession(id);
-      if (result.status !== "ok") {
+      try {
+        const result = await reopenSession(id);
+        if (result.status !== "ok") {
+          failed = true;
+          return;
+        }
+        const blob = await result.session.source.readBlob(filePath);
+        if (blob === null) {
+          failed = true;
+          return;
+        }
+        // Source files often get a wrong or empty type from the OS (a .ts is
+        // sometimes "video/mp2t"); force text/* for code so it displays instead of
+        // downloading, and trust the type only for images/pdf.
+        const type = displayType(filePath, blob.type);
+        const url = URL.createObjectURL(type === blob.type ? blob : new Blob([blob], { type }));
+        window.location.replace(url);
+      } catch {
+        // A failed handle re-acquire or file read must not leave the page stuck
+        // on "loading"; show the failure UI instead.
         failed = true;
-        return;
       }
-      const blob = await result.session.source.readBlob(filePath);
-      if (blob === null) {
-        failed = true;
-        return;
-      }
-      // Source files often get a wrong or empty type from the OS (a .ts is
-      // sometimes "video/mp2t"); force text/* for code so it displays instead of
-      // downloading, and trust the type only for images/pdf.
-      const type = displayType(filePath, blob.type);
-      const url = URL.createObjectURL(type === blob.type ? blob : new Blob([blob], { type }));
-      window.location.replace(url);
     })();
   });
 
