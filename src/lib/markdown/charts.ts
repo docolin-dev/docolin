@@ -37,19 +37,26 @@ async function mountChart(figure: HTMLElement): Promise<void> {
   // Claim before the await so a second IntersectionObserver tick can't double-mount
   // the same figure while the dynamic import is in flight.
   claimed.add(figure);
-  const { default: MarkdownChart } = await import("$lib/components/markdown/MarkdownChart.svelte");
-  const app = mount(MarkdownChart as Component, {
-    target: canvas,
-    props: {
-      type: figure.dataset.docoChart ?? "bar",
-      stacked: figure.hasAttribute("data-stacked"),
-      legend: figure.hasAttribute("data-legend"),
-      horizontal: figure.hasAttribute("data-horizontal"),
-      data: model.data,
-      series: model.series,
-    },
-  });
-  apps.set(figure, app);
+  try {
+    const { default: MarkdownChart } =
+      await import("$lib/components/markdown/MarkdownChart.svelte");
+    const app = mount(MarkdownChart as Component, {
+      target: canvas,
+      props: {
+        type: figure.dataset.docoChart ?? "bar",
+        stacked: figure.hasAttribute("data-stacked"),
+        legend: figure.hasAttribute("data-legend"),
+        horizontal: figure.hasAttribute("data-horizontal"),
+        data: model.data,
+        series: model.series,
+      },
+    });
+    apps.set(figure, app);
+  } catch (error) {
+    // A chart that throws while mounting (bad data, a LayerChart API change) must
+    // not vanish silently behind a blank box; surface it for whoever's debugging.
+    console.error("docolin: chart failed to mount", error, { headers, rows });
+  }
 }
 
 function teardownAll(): void {

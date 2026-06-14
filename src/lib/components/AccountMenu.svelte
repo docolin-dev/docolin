@@ -58,6 +58,15 @@
           </a>
         {/snippet}
       </DropdownMenu.Item>
+      <!-- Local-folder preview is desktop-only (File System Access / folder
+           upload), so it's hidden on mobile. -->
+      <DropdownMenu.Item class="hidden md:block">
+        {#snippet child({ props })}
+          <a href={localizeHref("/preview")} {...props}>
+            {m.nav_preview()}
+          </a>
+        {/snippet}
+      </DropdownMenu.Item>
       {#if dbUser.isPlatformAdmin}
         <DropdownMenu.Item>
           {#snippet child({ props })}

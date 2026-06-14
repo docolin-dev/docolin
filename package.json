@@ -84,6 +84,7 @@
     "drizzle-orm": "^0.45.2",
     "gray-matter": "^4.0.3",
     "hastscript": "^9.0.1",
+    "idb": "^8.0.3",
     "isomorphic-dompurify": "^3.13.0",
     "katex": "^0.17.0",
     "lucide": "^1.16.0",
