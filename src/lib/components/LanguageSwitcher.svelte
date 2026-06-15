@@ -4,7 +4,7 @@
   import { getLocale, isLocale, localizeHref, locales } from "$paraglide/runtime";
   import * as Select from "$lib/components/ui/select";
 
-  const LOCALE_LABELS: Record<string, string> = { en: "English", de: "Deutsch" };
+  const LOCALE_LABELS: Record<string, string> = { en: "English", de: "Deutsch", fr: "Français" };
 
   // Hard navigate (not goto) because the reroute hook collapses /de/foo and
   // /foo onto the same route, so SvelteKit would see no route change and
