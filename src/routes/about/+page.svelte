@@ -14,9 +14,8 @@
   import pangolin640 from "$lib/assets/pangolin-sitting-640.webp";
   import { SITE_NAME, SITE_URL, SITE_REPO } from "$lib/site";
 
-  // The "why docolin exists" narrative. A public marketing surface, so it wears
-  // the light chrome (Navbar + Footer) like the homepage and /mcp; the themed
-  // light + dark experience begins inside the app.
+  // The "why docolin exists" narrative. A public marketing surface that themes
+  // light + dark like the rest of the site (the Navbar carries the toggle).
 
   const pageUrl = $derived(`${SITE_URL}${page.url.pathname}`);
 
@@ -52,7 +51,7 @@
   {@html orgJsonLdHtml}
 </svelte:head>
 
-<div class="light bg-background text-foreground flex min-h-screen flex-col">
+<div class="bg-background text-foreground flex min-h-screen flex-col">
   <Navbar />
   <main class="flex-grow">
     <!-- Hero -->
@@ -266,23 +265,22 @@
         <p class="text-muted-foreground mt-6 max-w-2xl text-lg leading-relaxed">
           {m.about_involved_body()}
         </p>
+        <!-- A reader who scrolled this far is in learning mode, so the bottom
+             leads with the read path (Browse), which is also the body's first
+             "way to help": read a guide and stamp whether it worked. The
+             maintainer path follows; sponsor + GitHub stay reachable in the footer. -->
         <div class="mt-10 flex flex-wrap gap-3">
-          <Button href={localizeHref("/for-projects")} size="lg" class="group h-11 gap-2 px-5">
-            {m.about_involved_cta_projects()}
+          <Button href={localizeHref("/browse")} size="lg" class="group h-11 gap-2 px-5">
+            {m.about_hero_cta_browse()}
             <ArrowRight class="size-4 transition-transform group-hover:translate-x-0.5" />
           </Button>
-          <Button href={localizeHref("/sponsor")} variant="outline" size="lg" class="h-11 px-5">
-            {m.about_involved_cta_sponsor()}
-          </Button>
           <Button
-            href={SITE_REPO}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={localizeHref("/for-projects")}
             variant="outline"
             size="lg"
             class="h-11 px-5"
           >
-            {m.about_involved_cta_github()}
+            {m.about_involved_cta_projects()}
           </Button>
         </div>
       </div>

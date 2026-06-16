@@ -31,7 +31,7 @@
   <meta name="twitter:description" content={m.compare_meta_description()} />
 </svelte:head>
 
-<div class="light bg-background text-foreground flex min-h-screen flex-col">
+<div class="bg-background text-foreground flex min-h-screen flex-col">
   <Navbar />
   <main class="flex-grow">
     <!-- Hero -->

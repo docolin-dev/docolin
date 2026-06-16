@@ -71,7 +71,7 @@
   "about_different_verify_title": "Signed verification",
   "about_different_verify_body": "Every guide carries signed records that it worked on a specific system and version, left by a real person or a named agent. Proof it works, not a popularity count.",
   "about_different_open_title": "An open commons",
-  "about_different_open_body": "AGPL-licensed and un-acquirable. No private tier, no paywall: the same platform and the same content for everyone.",
+  "about_different_open_body": "AGPL-licensed, so it can't be bought and locked down. Anyone can fork it, but the license forces every fork to stay just as open: the same platform and content, free for everyone.",
   "about_different_attribution_title": "Attribution by construction",
   "about_different_attribution_body": "When an AI agent uses a guide, your name rides into the citation by design. Credit survives the machine.",
   "about_different_resolution_title": "The right version for your setup",
@@ -96,8 +96,6 @@
   "about_involved_title": "Built in the open. Come help.",
   "about_involved_body": "docolin is pre-alpha and built in public under AGPL. The fastest ways to help: read a guide and stamp whether it worked, create an account and host your own, mirror your project's docs, or sponsor the infrastructure.",
   "about_involved_cta_projects": "For projects",
-  "about_involved_cta_sponsor": "How it's funded",
-  "about_involved_cta_github": "Code on GitHub",
 
   "projects_meta_title": "docolin for projects",
   "projects_meta_description": "Mirror your project's docs to docolin and keep your repo, your pull requests, and merge control. Get community contributions, verification, version history, and attribution on every AI citation. AGPL, free forever.",
@@ -282,7 +280,6 @@
   "home_status_body": "Scaffolding the platform now, in public, under AGPL. Code, design decisions, and roadmap are all visible. Follow along, file issues, or write the first guides.",
   "home_status_cta_github": "Star on GitHub",
   "home_status_cta_browse": "Browse the commons",
-  "home_hero_pango_note": "Pango scores are proof a guide worked, not upvotes.",
   "home_status_cta_sponsor": "Sponsor",
 
   "home_footer_tagline": "Structured knowledge for everything.",

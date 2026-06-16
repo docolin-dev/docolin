@@ -10,7 +10,7 @@
   import { SITE_URL, SITE_CONTACT_EMAIL } from "$lib/site";
 
   // The "how docolin is funded" page. Replaces a pricing page (there is none).
-  // Public marketing surface: light chrome.
+  // A public marketing surface; themes light + dark with the rest of the site.
   const pageUrl = $derived(`${SITE_URL}${page.url.pathname}`);
 </script>
 
@@ -27,7 +27,7 @@
   <meta name="twitter:description" content={m.sponsor_meta_description()} />
 </svelte:head>
 
-<div class="light bg-background text-foreground flex min-h-screen flex-col">
+<div class="bg-background text-foreground flex min-h-screen flex-col">
   <Navbar />
   <main class="flex-grow">
     <!-- Hero -->

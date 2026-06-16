@@ -4,9 +4,21 @@
   import { goto } from "$app/navigation";
   import { localizeHref, getLocale } from "$paraglide/runtime";
   import { commandPalette } from "$lib/client/command-palette.svelte";
-  import savanna1920 from "$lib/assets/hero/savanna-1920.webp";
-  import savanna1280 from "$lib/assets/hero/savanna-1280.webp";
-  import savanna768 from "$lib/assets/hero/savanna-768.webp";
+  // Two paired heroes: a daytime savanna for light mode, a starlit one for dark.
+  // Both are prerendered into the DOM and CSS picks which shows (dark:hidden /
+  // hidden dark:block), so flipping the theme swaps the art instantly with no
+  // fetch. A tiny LQIP (Vite base64-inlines assets under 4KB) paints with the HTML
+  // so a blurred frame shows immediately, then the full-quality image lands on top:
+  // smaller first, quality over load time. mode-watcher sets `.dark` before first
+  // paint, so the correct image is chosen on frame one with no flash.
+  import dayLqip from "$lib/assets/hero/savanna-day-lqip.webp";
+  import day768 from "$lib/assets/hero/savanna-day-768.webp";
+  import day1280 from "$lib/assets/hero/savanna-day-1280.webp";
+  import day2048 from "$lib/assets/hero/savanna-day-2048.webp";
+  import nightLqip from "$lib/assets/hero/savanna-night-lqip.webp";
+  import night768 from "$lib/assets/hero/savanna-night-768.webp";
+  import night1280 from "$lib/assets/hero/savanna-night-1280.webp";
+  import night2048 from "$lib/assets/hero/savanna-night-2048.webp";
   import { HOME_SEARCH_INPUT_ID } from "$lib/constants/home";
   import PawPrint from "@lucide/svelte/icons/paw-print";
   import CornerDownLeft from "@lucide/svelte/icons/corner-down-left";
@@ -168,21 +180,55 @@
 </script>
 
 <section class="relative isolate overflow-hidden">
-  <picture aria-hidden="true" class="pointer-events-none absolute inset-0 -z-20 select-none">
-    <source media="(min-width: 1280px)" srcset={savanna1920} />
-    <source media="(min-width: 768px)" srcset={savanna1280} />
-    <img
-      src={savanna768}
-      alt=""
-      class="h-full w-full object-cover object-center"
-      fetchpriority="high"
-      decoding="async"
-    />
-  </picture>
+  <div aria-hidden="true" class="pointer-events-none absolute inset-0 -z-20 select-none">
+    <!-- Daytime savanna (light mode). The blurred LQIP sits behind the full image
+         and shows until it lands; scale-110 hides the blur's soft edges.
+         object-bottom anchors Pango + the horizon, so a tall viewport crops the
+         empty sky off the top rather than cutting the pangolin off the bottom. -->
+    <div class="absolute inset-0 dark:hidden">
+      <div
+        class="absolute inset-0 scale-110 bg-cover bg-bottom blur-2xl"
+        style="background-image: url('{dayLqip}')"
+      ></div>
+      <picture>
+        <source media="(min-width: 1280px)" srcset={day2048} />
+        <source media="(min-width: 768px)" srcset={day1280} />
+        <img
+          src={day768}
+          alt=""
+          class="absolute inset-0 h-full w-full object-cover object-bottom"
+          fetchpriority="high"
+          decoding="async"
+        />
+      </picture>
+    </div>
+    <!-- Starlit savanna (dark mode). -->
+    <div class="absolute inset-0 hidden dark:block">
+      <div
+        class="absolute inset-0 scale-110 bg-cover bg-bottom blur-2xl"
+        style="background-image: url('{nightLqip}')"
+      ></div>
+      <picture>
+        <source media="(min-width: 1280px)" srcset={night2048} />
+        <source media="(min-width: 768px)" srcset={night1280} />
+        <img
+          src={night768}
+          alt=""
+          class="absolute inset-0 h-full w-full object-cover object-bottom"
+          fetchpriority="high"
+          decoding="async"
+        />
+      </picture>
+    </div>
+  </div>
 
+  <!-- Softens the top of the bright day sky under the floating navbar. Hidden in
+       dark mode: the night sky is already near-background there, so the fade is
+       invisible anyway, and a dark-to-transparent gradient visibly bands in the
+       dark tonal range (CSS gradient banding, not the image). -->
   <div
     aria-hidden="true"
-    class="from-background pointer-events-none absolute inset-x-0 top-0 -z-10 h-32 bg-gradient-to-b to-transparent sm:h-40"
+    class="from-background pointer-events-none absolute inset-x-0 top-0 -z-10 h-32 bg-gradient-to-b to-transparent sm:h-40 dark:hidden"
   ></div>
 
   <div class="relative flex min-h-[105svh] flex-col items-center px-6 pt-[20svh] pb-16 text-center">
@@ -299,15 +345,6 @@
               <CornerDownLeft class="size-4 shrink-0" />
               <span class="truncate">{m.search_palette_view_all({ query: trimmed })}</span>
             </a>
-
-            {#if results.length > 0}
-              <p
-                class="text-muted-foreground/70 border-foreground/10 flex items-center gap-1.5 border-t px-4 py-2 text-[11px]"
-              >
-                <PawPrint class="text-primary/70 size-3 shrink-0" />
-                {m.home_hero_pango_note()}
-              </p>
-            {/if}
           </div>
         {/if}
       </div>

@@ -66,9 +66,7 @@
   {@html howToJsonLdHtml}
 </svelte:head>
 
-<!-- `light` keeps the public marketing surface unified with the home page; the
-     themed (light + dark) experience begins inside the app. -->
-<div class="light bg-background text-foreground flex min-h-screen flex-col">
+<div class="bg-background text-foreground flex min-h-screen flex-col">
   <Navbar />
   <main class="flex-grow">
     <McpHero endpoint={data.endpoint} />

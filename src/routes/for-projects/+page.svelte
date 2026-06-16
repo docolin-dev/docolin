@@ -14,8 +14,8 @@
   import History from "@lucide/svelte/icons/history";
   import { SITE_URL, SITE_REPO } from "$lib/site";
 
-  // The maintainer pitch. Public marketing surface: light chrome, themed
-  // experience begins inside the app.
+  // The maintainer pitch. A public marketing surface; themes light + dark with
+  // the rest of the site (the Navbar carries the toggle).
   const pageUrl = $derived(`${SITE_URL}${page.url.pathname}`);
 </script>
 
@@ -32,7 +32,7 @@
   <meta name="twitter:description" content={m.projects_meta_description()} />
 </svelte:head>
 
-<div class="light bg-background text-foreground flex min-h-screen flex-col">
+<div class="bg-background text-foreground flex min-h-screen flex-col">
   <Navbar />
   <main class="flex-grow">
     <!-- Hero -->
