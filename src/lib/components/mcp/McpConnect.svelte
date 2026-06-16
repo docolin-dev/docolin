@@ -18,7 +18,10 @@
   }
 </script>
 
-<section class="bg-muted/20 border-foreground/10 border-y px-6 py-20 sm:py-24">
+<section
+  id="connect"
+  class="bg-muted/20 border-foreground/10 scroll-mt-24 border-y px-6 py-20 sm:py-24"
+>
   <div class="mx-auto max-w-3xl">
     <p class="text-muted-foreground mb-3 font-mono text-xs tracking-[0.18em] uppercase">
       {m.mcp_landing_connect_eyebrow()}

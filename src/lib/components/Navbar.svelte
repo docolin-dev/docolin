@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { m } from "$paraglide/messages";
   import { localizeHref } from "$paraglide/runtime";
   import { Button } from "$lib/components/ui/button";
@@ -7,12 +6,11 @@
   import Github from "$lib/components/icons/Github.svelte";
   import InboxBell from "$lib/components/InboxBell.svelte";
   import LanguageSwitcher from "$lib/components/LanguageSwitcher.svelte";
-  import { SITE_REPO, SITE_REPO_OWNER, SITE_REPO_NAME } from "$lib/site";
+  import { SITE_REPO } from "$lib/site";
 
   let scrollY = $state(0);
   let viewportHeight = $state(0);
   let documentHeight = $state(0);
-  let stars = $state<number | null>(null);
 
   $effect(() => {
     let rafScheduled = false;
@@ -78,36 +76,13 @@
   const hairlineStyle = $derived(
     `opacity: ${navProgress.toFixed(2)}; transform: scaleX(${pageProgress.toFixed(4)});`,
   );
-
-  onMount(async () => {
-    try {
-      const res = await fetch(`https://api.github.com/repos/${SITE_REPO_OWNER}/${SITE_REPO_NAME}`);
-      if (!res.ok) return;
-      const data: unknown = await res.json();
-      if (
-        data !== null &&
-        typeof data === "object" &&
-        "stargazers_count" in data &&
-        typeof data.stargazers_count === "number"
-      ) {
-        stars = data.stargazers_count;
-      }
-    } catch {
-      // GitHub API unreachable; star count just stays hidden.
-    }
-  });
-
-  function formatStars(n: number): string {
-    if (n < 1000) return n.toString();
-    const k = Math.round((n / 1000) * 10) / 10;
-    const rounded = k === Math.floor(k) ? Math.floor(k) : k;
-    return `${rounded.toString()}k`;
-  }
 </script>
 
 <header class="fixed top-0 right-0 left-0 z-50" style={headerStyle}>
   <div class="border-foreground/12 relative mx-auto w-full backdrop-blur-md" style={containerStyle}>
-    <nav class="grid grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 py-2 sm:px-6">
+    <nav
+      class="grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-2 sm:px-6 md:grid-cols-[1fr_auto_1fr]"
+    >
       <a
         href={localizeHref("/")}
         class="flex items-center gap-2 justify-self-start text-base font-semibold tracking-tight whitespace-nowrap"
@@ -149,9 +124,6 @@
           class="h-9 gap-2"
           aria-label={m.nav_github_aria()}
         >
-          {#if stars !== null}
-            <span class="text-sm leading-none tabular-nums">{formatStars(stars)}</span>
-          {/if}
           <Github class="size-4" />
         </Button>
         <div class="hidden sm:block">

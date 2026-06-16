@@ -7,6 +7,7 @@
   import { Button } from "$lib/components/ui/button";
   import ArrowRight from "@lucide/svelte/icons/arrow-right";
   import ShieldCheck from "@lucide/svelte/icons/shield-check";
+  import Check from "@lucide/svelte/icons/check";
   import Scale from "@lucide/svelte/icons/scale";
   import AtSign from "@lucide/svelte/icons/at-sign";
   import Layers from "@lucide/svelte/icons/layers";
@@ -59,42 +60,55 @@
         <h2 class="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
           {m.compare_only_title()}
         </h2>
-        <div class="mt-10 grid gap-6 sm:grid-cols-2">
-          <div class="border-foreground/12 bg-card flex flex-col border p-6">
-            <ShieldCheck class="text-primary size-5" />
-            <h3 class="text-foreground mt-4 text-lg font-medium tracking-tight">
+        <div class="mt-10 flex flex-col gap-6">
+          <!-- Signed verification is the one thing no other docs platform has,
+               so it leads as a full-width hero rather than one of four equals. -->
+          <div class="border-primary/30 bg-primary/5 flex flex-col border p-8">
+            <div class="flex items-center gap-3">
+              <ShieldCheck class="text-primary size-6 shrink-0" />
+              <span
+                class="border-primary/30 text-primary inline-flex items-center gap-1.5 border px-2 py-0.5 font-mono text-[10px] tracking-tight"
+              >
+                <Check class="size-3" />
+                {m.home_what_verified_outcome()}
+              </span>
+            </div>
+            <h3 class="text-foreground mt-5 text-2xl font-medium tracking-tight">
               {m.compare_only_verify_title()}
             </h3>
-            <p class="text-muted-foreground mt-2 text-sm leading-relaxed">
+            <p class="text-muted-foreground mt-3 max-w-2xl leading-relaxed">
               {m.compare_only_verify_body()}
             </p>
           </div>
-          <div class="border-foreground/12 bg-card flex flex-col border p-6">
-            <Scale class="text-primary size-5" />
-            <h3 class="text-foreground mt-4 text-lg font-medium tracking-tight">
-              {m.compare_only_open_title()}
-            </h3>
-            <p class="text-muted-foreground mt-2 text-sm leading-relaxed">
-              {m.compare_only_open_body()}
-            </p>
-          </div>
-          <div class="border-foreground/12 bg-card flex flex-col border p-6">
-            <AtSign class="text-primary size-5" />
-            <h3 class="text-foreground mt-4 text-lg font-medium tracking-tight">
-              {m.compare_only_attribution_title()}
-            </h3>
-            <p class="text-muted-foreground mt-2 text-sm leading-relaxed">
-              {m.compare_only_attribution_body()}
-            </p>
-          </div>
-          <div class="border-foreground/12 bg-card flex flex-col border p-6">
-            <Layers class="text-primary size-5" />
-            <h3 class="text-foreground mt-4 text-lg font-medium tracking-tight">
-              {m.compare_only_version_title()}
-            </h3>
-            <p class="text-muted-foreground mt-2 text-sm leading-relaxed">
-              {m.compare_only_version_body()}
-            </p>
+
+          <div class="grid gap-6 sm:grid-cols-3">
+            <div class="border-foreground/12 bg-card flex flex-col border p-6">
+              <Scale class="text-primary size-5" />
+              <h3 class="text-foreground mt-4 text-lg font-medium tracking-tight">
+                {m.compare_only_open_title()}
+              </h3>
+              <p class="text-muted-foreground mt-2 text-sm leading-relaxed">
+                {m.compare_only_open_body()}
+              </p>
+            </div>
+            <div class="border-foreground/12 bg-card flex flex-col border p-6">
+              <AtSign class="text-primary size-5" />
+              <h3 class="text-foreground mt-4 text-lg font-medium tracking-tight">
+                {m.compare_only_attribution_title()}
+              </h3>
+              <p class="text-muted-foreground mt-2 text-sm leading-relaxed">
+                {m.compare_only_attribution_body()}
+              </p>
+            </div>
+            <div class="border-foreground/12 bg-card flex flex-col border p-6">
+              <Layers class="text-primary size-5" />
+              <h3 class="text-foreground mt-4 text-lg font-medium tracking-tight">
+                {m.compare_only_version_title()}
+              </h3>
+              <p class="text-muted-foreground mt-2 text-sm leading-relaxed">
+                {m.compare_only_version_body()}
+              </p>
+            </div>
           </div>
         </div>
       </div>

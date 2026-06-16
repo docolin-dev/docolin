@@ -54,6 +54,9 @@
             {m.home_search_for_your_system()}
           </span>
         </div>
+        <p class="text-foreground/45 mt-2.5 font-mono text-[10px]">
+          {m.home_search_left_receipts()}
+        </p>
       </article>
 
       <div
@@ -83,6 +86,9 @@
             {m.home_search_for_your_system()}
           </span>
         </div>
+        <p class="text-foreground/45 mt-2.5 font-mono text-[10px]">
+          {m.home_search_right_receipts()}
+        </p>
       </article>
     </div>
   </div>
