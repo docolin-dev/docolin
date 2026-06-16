@@ -107,7 +107,7 @@
 
 <header class="fixed top-0 right-0 left-0 z-50" style={headerStyle}>
   <div class="border-foreground/12 relative mx-auto w-full backdrop-blur-md" style={containerStyle}>
-    <nav class="grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 py-2.5 sm:px-6">
+    <nav class="grid grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 py-2 sm:px-6">
       <a
         href={localizeHref("/")}
         class="flex items-center gap-2 justify-self-start text-base font-semibold tracking-tight whitespace-nowrap"
