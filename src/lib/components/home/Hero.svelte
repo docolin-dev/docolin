@@ -299,6 +299,15 @@
               <CornerDownLeft class="size-4 shrink-0" />
               <span class="truncate">{m.search_palette_view_all({ query: trimmed })}</span>
             </a>
+
+            {#if results.length > 0}
+              <p
+                class="text-muted-foreground/70 border-foreground/10 flex items-center gap-1.5 border-t px-4 py-2 text-[11px]"
+              >
+                <PawPrint class="text-primary/70 size-3 shrink-0" />
+                {m.home_hero_pango_note()}
+              </p>
+            {/if}
           </div>
         {/if}
       </div>

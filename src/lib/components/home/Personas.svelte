@@ -1,6 +1,11 @@
 <script lang="ts">
   import { m } from "$paraglide/messages";
   import Check from "@lucide/svelte/icons/check";
+
+  // The two readers of the commons: humans and AI agents. The writer-side
+  // audiences (contributors, projects) get their own depth on /for-projects, so
+  // the homepage keeps this section to the two who *read* and shows both flows
+  // in one glance.
 </script>
 
 <section class="px-6 py-24 sm:py-32">
@@ -30,105 +35,14 @@
             <span class="bg-primary/15 text-primary inline-flex size-5 items-center justify-center">
               <Check class="size-3" />
             </span>
-            <span class="text-foreground/70 text-[11px]">verified by 87 readers</span>
+            <span class="text-foreground/70 text-[11px]"
+              >{m.home_personas_readers_mock_count()}</span
+            >
           </div>
         </div>
         <h3 class="text-lg font-medium tracking-tight">{m.home_personas_readers_title()}</h3>
         <p class="text-muted-foreground mt-3 leading-relaxed">
           {m.home_personas_readers_body()}
-        </p>
-      </article>
-
-      <article class="bg-background flex flex-col p-6 sm:p-8">
-        <div class="border-foreground/10 bg-muted/30 mb-6 flex min-h-48 flex-col border p-5">
-          <div class="font-mono text-xs leading-relaxed">
-            <div class="flex gap-3">
-              <span class="text-foreground/30 select-none">1</span>
-              <span class="text-foreground/85"># Install NVIDIA drivers</span>
-            </div>
-            <div class="flex gap-3">
-              <span class="text-foreground/30 select-none">2</span>
-              <span class="text-foreground/60"></span>
-            </div>
-            <div class="flex gap-3">
-              <span class="text-foreground/30 select-none">3</span>
-              <span class="text-foreground/75">On Ubuntu 24.04, run:</span>
-            </div>
-            <div class="flex gap-3">
-              <span class="text-foreground/30 select-none">4</span>
-              <span class="text-primary">`sudo ubuntu-drivers install`</span>
-            </div>
-          </div>
-          <div
-            class="border-foreground/10 mt-auto flex items-center justify-between border-t pt-3 text-[11px]"
-          >
-            <span class="text-foreground/55">
-              {m.home_personas_contributors_mock_by()}
-              <span class="text-primary">{m.home_personas_contributors_mock_byline()}</span>
-            </span>
-            <span class="text-foreground/45 font-mono text-[10px]">
-              {m.home_personas_contributors_mock_citations()}
-            </span>
-          </div>
-        </div>
-        <h3 class="text-lg font-medium tracking-tight">{m.home_personas_contributors_title()}</h3>
-        <p class="text-muted-foreground mt-3 leading-relaxed">
-          {m.home_personas_contributors_body()}
-        </p>
-      </article>
-
-      <article class="bg-background flex flex-col p-6 sm:p-8">
-        <div class="border-foreground/10 bg-muted/30 mb-6 flex min-h-48 flex-col border p-5">
-          <div
-            class="text-foreground/55 mb-4 flex items-center gap-2 font-mono text-[10px] leading-none"
-          >
-            <span class="bg-foreground/30 inline-block size-2 -translate-y-0.5"></span>
-            <span>{m.home_personas_projects_mock_label()}</span>
-          </div>
-
-          <div class="space-y-2.5">
-            <div>
-              <div class="text-foreground/55 mb-1 text-[10px] leading-none">
-                {m.home_personas_projects_mock_url_label()}
-              </div>
-              <div
-                class="border-foreground/15 bg-background text-foreground/85 border px-2 py-1.5 font-mono text-[11px]"
-              >
-                github.com/myproject/docs
-              </div>
-            </div>
-            <div class="flex gap-2">
-              <div class="flex-1">
-                <div class="text-foreground/55 mb-1 text-[10px] leading-none">
-                  {m.home_personas_projects_mock_branch_label()}
-                </div>
-                <div
-                  class="border-foreground/15 bg-background text-foreground/85 border px-2 py-1.5 font-mono text-[11px]"
-                >
-                  main
-                </div>
-              </div>
-              <div class="flex-1">
-                <div class="text-foreground/55 mb-1 text-[10px] leading-none">
-                  {m.home_personas_projects_mock_path_label()}
-                </div>
-                <div
-                  class="border-foreground/15 bg-background text-foreground/85 border px-2 py-1.5 font-mono text-[11px]"
-                >
-                  /docs
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <p class="text-primary mt-auto pt-3 text-[10px] leading-none">
-            <span class="font-mono">✓ 47 markdown files</span>
-            {m.home_personas_projects_mock_status()}
-          </p>
-        </div>
-        <h3 class="text-lg font-medium tracking-tight">{m.home_personas_projects_title()}</h3>
-        <p class="text-muted-foreground mt-3 leading-relaxed">
-          {m.home_personas_projects_body()}
         </p>
       </article>
 

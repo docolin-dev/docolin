@@ -30,9 +30,9 @@
       {m.mcp_landing_hero_subtitle()}
     </p>
 
-    <div class="mt-10 flex flex-col gap-3 sm:flex-row">
+    <div class="mt-10 flex flex-col gap-3">
       <div
-        class="border-foreground/15 bg-muted/40 flex h-11 min-w-0 items-center gap-3 border px-3 sm:flex-1"
+        class="border-foreground/15 bg-muted/40 flex h-11 min-w-0 items-center gap-3 border px-3"
       >
         <code class="text-foreground min-w-0 flex-1 truncate font-mono text-sm">{endpoint}</code>
         <Button
@@ -46,14 +46,15 @@
           {m.mcp_landing_copy()}
         </Button>
       </div>
-      <Button
-        href={localizeHref("/dashboard/mcp")}
-        size="lg"
-        class="group h-11 shrink-0 gap-2 px-5"
-      >
-        {m.mcp_landing_hero_cta_token()}
-        <ArrowRight class="size-4 transition-transform group-hover:translate-x-0.5" />
-      </Button>
+      <div class="flex flex-col gap-3 sm:flex-row">
+        <Button href="#connect" size="lg" class="group h-11 gap-2 px-5">
+          {m.mcp_landing_hero_cta_connect()}
+          <ArrowRight class="size-4 transition-transform group-hover:translate-x-0.5" />
+        </Button>
+        <Button href={localizeHref("/dashboard/mcp")} variant="outline" size="lg" class="h-11 px-5">
+          {m.mcp_landing_hero_cta_token()}
+        </Button>
+      </div>
     </div>
     <p class="text-muted-foreground/80 mt-3 text-xs">{m.mcp_landing_hero_cta_note()}</p>
   </div>

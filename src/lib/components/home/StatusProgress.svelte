@@ -4,11 +4,10 @@
   import { Button } from "$lib/components/ui/button";
   import { SITE_REPO } from "$lib/site";
   import ArrowRight from "@lucide/svelte/icons/arrow-right";
-  import Heart from "@lucide/svelte/icons/heart";
   import Github from "$lib/components/icons/Github.svelte";
 
-  // Star button above already links to the repo; the explicit "Follow the
-  // build" line would just duplicate that CTA.
+  // After the whole page, give the visitor a way to USE docolin (browse the
+  // commons) as the primary action, with the GitHub star as the secondary nod.
 </script>
 
 <section class="relative overflow-hidden px-6 py-24 sm:py-32">
@@ -27,27 +26,20 @@
     <p class="text-muted-foreground mx-auto mt-5 leading-relaxed">{m.home_status_body()}</p>
 
     <div class="mt-10 flex flex-wrap items-center justify-center gap-3">
+      <Button href={localizeHref("/browse")} size="lg" class="group h-12 gap-2 px-5 text-base">
+        {m.home_status_cta_browse()}
+        <ArrowRight class="size-4 transition-transform group-hover:translate-x-1" />
+      </Button>
       <Button
         href={SITE_REPO}
         target="_blank"
         rel="noopener noreferrer"
+        variant="outline"
         size="lg"
-        class="group h-12 gap-2 px-5 text-base"
+        class="h-12 gap-2 px-5 text-base"
       >
         <Github class="size-4" />
         {m.home_status_cta_github()}
-        <ArrowRight class="size-4 transition-transform group-hover:translate-x-1" />
-      </Button>
-      <Button
-        href={localizeHref("/sponsor")}
-        variant="outline"
-        size="lg"
-        class="group/sponsor h-12 gap-2 px-5 text-base"
-      >
-        <Heart
-          class="group-hover/sponsor:fill-primary group-hover/sponsor:text-primary size-4 transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover/sponsor:scale-125"
-        />
-        {m.home_status_cta_sponsor()}
       </Button>
     </div>
   </div>

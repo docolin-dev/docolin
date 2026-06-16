@@ -52,7 +52,7 @@
             {m.projects_hero_cta_primary()}
             <ArrowRight class="size-4 transition-transform group-hover:translate-x-0.5" />
           </Button>
-          <Button href={localizeHref("/sponsor")} variant="outline" size="lg" class="h-11 px-5">
+          <Button href="#how" variant="outline" size="lg" class="h-11 px-5">
             {m.projects_hero_cta_secondary()}
           </Button>
         </div>
@@ -62,7 +62,7 @@
     <div class="px-6"><hr class="border-foreground/10 mx-auto max-w-3xl" /></div>
 
     <!-- How docs get in -->
-    <section class="px-6 py-20 sm:py-24">
+    <section id="how" class="scroll-mt-24 px-6 py-20 sm:py-24">
       <div class="mx-auto max-w-5xl">
         <p class="text-muted-foreground mb-4 font-mono text-xs tracking-[0.18em] uppercase">
           {m.projects_how_eyebrow()}
