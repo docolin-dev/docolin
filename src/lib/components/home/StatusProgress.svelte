@@ -26,7 +26,7 @@
     <p class="text-muted-foreground mx-auto mt-5 leading-relaxed">{m.home_status_body()}</p>
 
     <div class="mt-10 flex flex-wrap items-center justify-center gap-3">
-      <Button href={localizeHref("/browse")} size="lg" class="group h-12 gap-2 px-5 text-base">
+      <Button href={localizeHref("/browse")} size="lg" class="group h-11 gap-2 px-5 text-base">
         {m.home_status_cta_browse()}
         <ArrowRight class="size-4 transition-transform group-hover:translate-x-1" />
       </Button>
@@ -36,7 +36,7 @@
         rel="noopener noreferrer"
         variant="outline"
         size="lg"
-        class="h-12 gap-2 px-5 text-base"
+        class="h-11 gap-2 px-5 text-base"
       >
         <Github class="size-4" />
         {m.home_status_cta_github()}
