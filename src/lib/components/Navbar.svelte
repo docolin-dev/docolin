@@ -6,6 +6,7 @@
   import Github from "$lib/components/icons/Github.svelte";
   import InboxBell from "$lib/components/InboxBell.svelte";
   import LanguageSwitcher from "$lib/components/LanguageSwitcher.svelte";
+  import ThemeToggle from "$lib/components/ThemeToggle.svelte";
   import { SITE_REPO } from "$lib/site";
 
   let scrollY = $state(0);
@@ -68,7 +69,7 @@
       `border-left-width: ${(1 - navProgress).toFixed(2)}px`,
       `border-right-width: ${(1 - navProgress).toFixed(2)}px`,
       `border-bottom-width: 1px`,
-      `background-color: oklch(1 0 0 / ${(0.6 + 0.25 * navProgress).toFixed(3)})`,
+      `background-color: color-mix(in oklch, var(--background) ${(60 + 25 * navProgress).toFixed(1)}%, transparent)`,
       `box-shadow: 0 4px 16px -8px rgb(0 0 0 / ${(0.16 * (1 - navProgress)).toFixed(3)})`,
     ].join("; "),
   );
@@ -126,6 +127,7 @@
         >
           <Github class="size-4" />
         </Button>
+        <ThemeToggle />
         <div class="hidden sm:block">
           <LanguageSwitcher />
         </div>

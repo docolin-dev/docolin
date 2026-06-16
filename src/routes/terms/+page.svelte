@@ -6,7 +6,7 @@
   import Footer from "$lib/components/Footer.svelte";
   import { SITE_URL, SITE_SUPPORT_EMAIL } from "$lib/site";
 
-  // Plain-English terms of use. Public marketing surface: light chrome.
+  // Plain-English terms of use. A public marketing surface; themes light + dark.
   const pageUrl = $derived(`${SITE_URL}${page.url.pathname}`);
 </script>
 
@@ -20,7 +20,7 @@
   <meta property="og:locale" content={getLocale()} />
 </svelte:head>
 
-<div class="light bg-background text-foreground flex min-h-screen flex-col">
+<div class="bg-background text-foreground flex min-h-screen flex-col">
   <Navbar />
   <main class="flex-grow">
     <!-- Hero -->

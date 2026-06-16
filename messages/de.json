@@ -71,7 +71,7 @@
   "about_different_verify_title": "Signierte Verifizierung",
   "about_different_verify_body": "Jede Anleitung trägt signierte Nachweise, dass sie auf einem bestimmten System und einer bestimmten Version funktioniert hat, hinterlassen von einer echten Person oder einem benannten Agenten. Beweis, dass es funktioniert, keine Beliebtheitszahl.",
   "about_different_open_title": "Ein offenes Gemeingut",
-  "about_different_open_body": "AGPL-lizenziert und unkäuflich. Keine private Stufe, keine Bezahlschranke: dieselbe Plattform und dieselben Inhalte für alle.",
+  "about_different_open_body": "Unter AGPL lizenziert und damit nicht aufkaufbar oder abschottbar. Jeder kann es forken, aber die Lizenz zwingt jeden Fork, genauso offen zu bleiben: dieselbe Plattform und dieselben Inhalte, frei für alle.",
   "about_different_attribution_title": "Namensnennung von Natur aus",
   "about_different_attribution_body": "Wenn ein KI-Agent eine Anleitung nutzt, reist dein Name per Konstruktion in die Zitation mit. Anerkennung, die die Maschine übersteht.",
   "about_different_resolution_title": "Die richtige Version für dein Setup",
@@ -96,8 +96,6 @@
   "about_involved_title": "Offen entwickelt. Komm und hilf mit.",
   "about_involved_body": "docolin ist pre-alpha und wird öffentlich unter AGPL entwickelt. Die schnellsten Wege zu helfen: eine Anleitung lesen und stempeln, ob sie funktioniert hat, ein Konto anlegen und selbst etwas hosten, die Doku deines Projekts spiegeln oder die Infrastruktur sponsern.",
   "about_involved_cta_projects": "Für Projekte",
-  "about_involved_cta_sponsor": "Wie es finanziert wird",
-  "about_involved_cta_github": "Code auf GitHub",
 
   "projects_meta_title": "docolin für Projekte",
   "projects_meta_description": "Spiegle die Doku deines Projekts zu docolin und behalte dein Repo, deine Pull Requests und die Merge-Kontrolle. Erhalte Community-Beiträge, Verifizierung, Versionsverlauf und Namensnennung bei jeder KI-Zitation. AGPL, für immer kostenlos.",
@@ -282,7 +280,6 @@
   "home_status_body": "Die Plattform wird gerade aufgebaut, in der Öffentlichkeit, unter AGPL. Code, Designentscheidungen und Roadmap sind alle sichtbar. Verfolge die Entwicklung, melde Issues, oder schreibe die ersten Anleitungen.",
   "home_status_cta_github": "Auf GitHub Stern geben",
   "home_status_cta_browse": "Gemeingut durchstöbern",
-  "home_hero_pango_note": "Pango-Scores sind der Beweis, dass eine Anleitung funktioniert hat, keine Upvotes.",
   "home_status_cta_sponsor": "Sponsern",
 
   "home_footer_tagline": "Strukturiertes Wissen für alles.",
