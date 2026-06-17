@@ -46,6 +46,7 @@ export const TAXONOMY_ROOTS_LIST = [
   "economics",
   "education",
   "entertainment",
+  "example",
   "finance",
   "fitness",
   "food",

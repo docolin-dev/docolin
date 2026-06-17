@@ -1,10 +1,11 @@
 import { error, json } from "@sveltejs/kit";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { requireEnv } from "$lib/server/env";
 import type { RequestHandler } from "./$types";
 import { db } from "$lib/server/db";
 import { versions } from "$lib/server/db/schema";
 import { buildEmbedText, embedText } from "$lib/search/embed";
+import { EXAMPLE_KIND_ROOT } from "$lib/sync/frontmatter-schema";
 
 // Cron-triggered embedding backfill. Computes the dense vector for latest
 // versions that don't have one yet (just published, content re-synced, or
@@ -32,7 +33,15 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       bodyText: versions.bodyText,
     })
     .from(versions)
-    .where(and(eq(versions.isLatest, true), isNull(versions.embedding)))
+    // Example-sandbox docos are never embedded (they're excluded from search),
+    // saving the model call.
+    .where(
+      and(
+        eq(versions.isLatest, true),
+        isNull(versions.embedding),
+        sql`NOT (${versions.kind} <@ ${EXAMPLE_KIND_ROOT}::ltree)`,
+      ),
+    )
     .limit(MAX_VERSIONS_PER_TICK);
 
   const startedAt = Date.now();

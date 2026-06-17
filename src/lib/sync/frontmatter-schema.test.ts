@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { docoFrontmatterSchema } from "./frontmatter-schema";
+import { docoFrontmatterSchema, isExampleKind } from "./frontmatter-schema";
 
 // Loose test-fixture shape: each field is optional so individual tests can
 // mutate or delete without fighting the type checker. The fixture builder
@@ -121,6 +121,12 @@ describe("docoFrontmatterSchema", () => {
       }
     });
 
+    it("accepts the example sandbox domain", () => {
+      const fm = validFrontmatter();
+      fm.docolin.kind = "example/hello";
+      expect(docoFrontmatterSchema.safeParse(fm).success).toBe(true);
+    });
+
     it("rejects single-segment kinds", () => {
       const fm = validFrontmatter();
       fm.docolin.kind = "os";
@@ -146,6 +152,15 @@ describe("docoFrontmatterSchema", () => {
       const fm = validFrontmatter();
       fm.docolin.kind = "fake/topic";
       expect(docoFrontmatterSchema.safeParse(fm).success).toBe(false);
+    });
+
+    it("isExampleKind matches the sandbox root in ltree and display form", () => {
+      expect(isExampleKind("example/hello")).toBe(true);
+      expect(isExampleKind("example.hello")).toBe(true);
+      expect(isExampleKind("example")).toBe(true);
+      expect(isExampleKind("os/linux/firewall")).toBe(false);
+      expect(isExampleKind("tools/example/hello")).toBe(false);
+      expect(isExampleKind("examples/x")).toBe(false);
     });
   });
 
