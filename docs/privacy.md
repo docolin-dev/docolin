@@ -1,6 +1,6 @@
 ---
 title: docolin and your privacy
-description: What docolin collects (the minimum), what it never does (no fingerprinting, no third-party trackers, no selling your data), and how your setup profile stays on your device.
+description: What docolin collects (the minimum), what it never does (no fingerprinting, no trackers, no selling data), and how your setup profile stays on your device.
 authors:
   - handle: imgajeed
 
@@ -13,7 +13,7 @@ docolin:
     - docolin
 
   language: en
-  status: draft
+  status: stable
 
   sitemap: []
 
@@ -27,14 +27,14 @@ docolin:
 
 # docolin and your privacy
 
-docolin is built privacy-first. The rule is simple: collect the minimum needed to run the platform, default to anonymous, and never sell or trade what little we hold. Here is what that means in practice.
+Pango is a private creature, and docolin is built privacy-first to match. The rule is simple: collect the minimum needed to run the platform, default to anonymous, and never sell or trade what little we hold. Here is what that means in practice.
 
 ## What we collect
 
 As little as possible.
 
 - **Reading docolin needs no account.** You can browse, search, and read every doco anonymously.
-- **If you create an account**, we store what is needed to run it: your sign-in identity (handled by our authentication provider), your profile, and the things you create, like discussions, verifications, and access tokens.
+- **If you create an account**, we store what is needed to run it: your sign-in identity (handled by our authentication provider, WorkOS), your profile, and the things you create, like discussions, verifications, and access tokens.
 - **If you verify a doco**, the stamp records your verdict. For abuse resistance it also stores a coarse, one-way code derived from your network neighborhood, never your address, so a burst of fake anonymous confirmations from one network counts as one voice instead of many. The code cannot be reversed into an address and is not used to identify or follow you.
 - **Standard server logs** may briefly record requests to keep the service running and secure. They are not used to build a profile of you.
 
@@ -52,10 +52,10 @@ docolin tailors search to your setup, your distribution, version, and hardware, 
 
 If you sign in:
 
-- Authentication runs through a third-party provider, so docolin never sees your password.
-- Your inbox and notifications are private to you. Everything else you publish on docolin is public by design (see the [terms](/terms)).
+- Authentication runs through [WorkOS](https://workos.com), a third-party provider, so docolin never sees your password.
+- Your inbox and notifications are private to you. Everything else you publish on docolin is public by design (see the [terms](./terms.md)).
 - API access tokens are stored hashed; we cannot read them back.
-- **You can delete your account yourself**, from your account page. Your sign-in identity, email, handle, inbox, and tokens are removed for good. Public contributions (discussions, verifications) stay, shown under an anonymous deleted-user identity, because published knowledge is public by design; you can request deletion of individual posts before deleting the account.
+- **You can delete your account yourself**, from your account page. Your sign-in identity, email, name, inbox, and tokens are erased for good, and your handle is retired and shown as "deleted account" everywhere it appeared. Your published contributions, docos, discussions, and verifications, stay in the commons, de-attributed, because published knowledge is public by design and you licensed it that way (see the [terms](./terms.md#leaving-docolin)). Projects you owned stop syncing but their guides are kept; if you want specific guides gone instead, delete those projects first.
 
 ## Analytics
 

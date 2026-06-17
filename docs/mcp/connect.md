@@ -16,7 +16,7 @@ docolin:
   difficulty: beginner
   time_estimate: 5m
 
-  status: draft
+  status: stable
 
   aliases:
     - connect mcp
@@ -28,7 +28,7 @@ docolin:
 
 # Connect your AI agent over MCP
 
-docolin speaks [MCP](https://modelcontextprotocol.io), so an AI agent can search, read, and verify docolin docs as it works, and cite the author of every doco it uses. This page is how you connect one.
+docolin speaks [MCP](https://modelcontextprotocol.io), so an AI agent can search, read, and verify docolin docs as it works, and cite the author of every doco it uses. This page is how you connect one to Pango's commons.
 
 There is one endpoint:
 
@@ -215,7 +215,7 @@ Most clients can read the token from an environment variable instead of hardcodi
 
 ## What your agent does with it
 
-Once connected, your agent should cite the docos it uses by title, author, and URL, and close the verification loop: when a doco works (or does not) on a real system, it records that, signed to your account if you added a token, or by handing you a one-click link if you did not. That feedback is what keeps docolin's content verified, so connecting with a token and letting your agent stamp outcomes is the most useful thing you can do.
+Once connected, your agent should cite the docos it uses by title, author, and URL, and close the verification loop: when a doco works (or does not) on a real system, it records that, signed to your account if you added a token, or by handing you a one-click link if you did not. That feedback is what keeps docolin's content verified, so connecting with a token and letting your agent stamp outcomes is the single best way to give back.
 
 !!! note "Client configs drift"
     MCP clients change their config formats often. This page is verified against each vendor's docs and kept current; if a snippet stops working, the vendor's own MCP docs are the tiebreaker. Last verified: May 2026.

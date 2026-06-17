@@ -1,0 +1,62 @@
+# Sidebar for the Authoring category. Fixed top-level order, identical across
+# every category; only Authoring is expanded here (with its docos grouped), the
+# rest are swap links.
+sitemap:
+  - title: Tutorial
+    url: ../tutorial/overview.md
+  - title: Concepts
+    url: ../concepts/overview.md
+  - title: Reading
+    url: ../reading/overview.md
+  - title: Hosting
+    url: ../hosting/overview.md
+  - title: Authoring
+    children:
+      - title: Getting started
+        children:
+          - title: Overview
+            url: ./overview.md
+          - title: Your first doco
+            url: ./quickstart.md
+          - title: Preview on save
+            url: ./preview.md
+          - title: Frontmatter
+            url: ./frontmatter.md
+      - title: The basics
+        children:
+          - title: Text, lists, and links
+            url: ./text-and-lists.md
+          - title: Tables
+            url: ./tables.md
+          - title: Code blocks
+            url: ./code-blocks.md
+      - title: Rich blocks
+        children:
+          - title: Callouts
+            url: ./callouts.md
+          - title: Content tabs
+            url: ./tabs.md
+          - title: Cards
+            url: ./cards.md
+          - title: Steps & accordion
+            url: ./steps-and-accordion.md
+      - title: Visuals & math
+        children:
+          - title: Diagrams
+            url: ./diagrams.md
+          - title: Charts
+            url: ./charts.md
+          - title: Math
+            url: ./math.md
+      - title: Depth & craft
+        children:
+          - title: Footnotes & annotations
+            url: ./footnotes-and-annotations.md
+          - title: Links & navigation
+            url: ./links-and-navigation.md
+          - title: Publishing & lifecycle
+            url: ./publishing.md
+          - title: Writing well
+            url: ./writing-well.md
+  - title: For AI agents
+    url: ../mcp/how-agents-use-docolin.md

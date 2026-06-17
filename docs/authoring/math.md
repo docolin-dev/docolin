@@ -1,6 +1,6 @@
 ---
 title: Math
-description: Inline and display math written in LaTeX, rendered to HTML on the server with KaTeX.
+description: Inline and display math written in LaTeX, rendered to HTML on the server with KaTeX, so equations load instantly with no client-side JavaScript.
 authors:
   - handle: imgajeed
 
@@ -16,7 +16,7 @@ docolin:
   difficulty: intermediate
   time_estimate: 5m
 
-  status: draft
+  status: stable
 
   aliases: [math, latex, katex, equations, formulas]
 
@@ -25,6 +25,9 @@ docolin:
 ---
 
 # Math
+
+!!! info "In one line"
+    Inline and display math written in LaTeX, rendered to HTML on the server with KaTeX, no client-side typesetting to wait on.
 
 When Pango works out how far a fall is before the curl reflex kicks in, prose won't do; he needs an equation. docolin renders LaTeX math with [KaTeX](https://katex.org), on the server, so a reader gets finished HTML plus the KaTeX stylesheet and never downloads the KaTeX JavaScript.
 
@@ -36,7 +39,8 @@ Wrap an expression in single `$` to set it in a line of text.
 The mass-energy relation $E = mc^2$, or Euler's identity $e^{i\pi} + 1 = 0$.
 ```
 
-The mass-energy relation $E = mc^2$, or Euler's identity $e^{i\pi} + 1 = 0$.
+!!! cards
+    - The mass-energy relation $E = mc^2$, or Euler's identity $e^{i\pi} + 1 = 0$.
 
 ## Display math
 
@@ -48,9 +52,10 @@ $$
 $$
 ```
 
-$$
-\int_0^1 x^2 \, dx = \frac{1}{3}
-$$
+!!! cards
+    - $$
+      \int_0^1 x^2 \, dx = \frac{1}{3}
+      $$
 
 Bigger constructions, sums and matrices, work the same way:
 
@@ -62,11 +67,12 @@ $$
 $$
 ```
 
-$$
-\sum_{k=1}^{n} k = \frac{n(n + 1)}{2}
-\qquad
-\begin{bmatrix} a & b \\ c & d \end{bmatrix}
-$$
+!!! cards
+    - $$
+      \sum_{k=1}^{n} k = \frac{n(n + 1)}{2}
+      \qquad
+      \begin{bmatrix} a & b \\ c & d \end{bmatrix}
+      $$
 
 ## Inside other constructs
 
@@ -77,8 +83,9 @@ Math nests anywhere prose does, in [callouts](./callouts.md), [tabs](./tabs.md),
     Asked to add $1$ through $100$, he saw $\sum_{k=1}^{100} k = 5050$.
 ```
 
-!!! tip "A young Gauss"
-    Asked to add $1$ through $100$, he saw $\sum_{k=1}^{100} k = 5050$.
+!!! cards
+    - !!! tip "A young Gauss"
+          Asked to add $1$ through $100$, he saw $\sum_{k=1}^{100} k = 5050$.
 
 ## Gotchas
 

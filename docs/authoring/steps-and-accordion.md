@@ -16,7 +16,7 @@ docolin:
   difficulty: beginner
   time_estimate: 6m
 
-  status: draft
+  status: stable
 
   aliases: [steps, stepper, walkthrough, accordion, faq, collapsible rows]
 
@@ -25,6 +25,9 @@ docolin:
 ---
 
 # Steps & accordion
+
+!!! info "In one line"
+    A numbered stepper for a sequence followed in order, and an exclusive accordion for independent entries picked one at a time.
 
 Two constructs for content that comes in pieces. **Steps** are for a sequence the reader follows in order, the way Pango climbs: sniff, grip, pull, repeat. An **accordion** is for independent pieces the reader picks from, where opening one tucks the last away.
 
@@ -39,10 +42,11 @@ An ordered list inside `!!! steps` becomes a numbered vertical stepper. A title 
     3. Bounce to the next bar
 ```
 
-!!! steps
-    1. Sniff the first bar
-    2. Climb it anyway
-    3. Bounce to the next bar
+!!! cards
+    - !!! steps
+          1. Sniff the first bar
+          2. Climb it anyway
+          3. Bounce to the next bar
 
 Steps can be rich. Each one holds whatever Markdown you need, code blocks, lists, prose, so a real walkthrough fits naturally.
 
@@ -62,19 +66,20 @@ Steps can be rich. Each one holds whatever Markdown you need, code blocks, lists
     3. Reboot and run `nvidia-smi`
 ````
 
-!!! steps "Install the driver"
-    1. Add the repo, then install:
+!!! cards
+    - !!! steps "Install the driver"
+          1. Add the repo, then install:
 
-       ```bash
-       sudo dnf install rpmfusion-free-release
-       ```
+             ```bash
+             sudo dnf install rpmfusion-free-release
+             ```
 
-    2. Pick your card from the list:
+          2. Pick your card from the list:
 
-       - desktop GPU
-       - laptop hybrid
+             - desktop GPU
+             - laptop hybrid
 
-    3. Reboot and run `nvidia-smi`
+          3. Reboot and run `nvidia-smi`
 
 ## Accordion
 
@@ -95,18 +100,19 @@ An unordered list inside `!!! accordion` becomes a group of collapsible rows. It
       Yes. He hoards ants and runs without a network.
 ```
 
-!!! accordion
-    - **How do I reset my key?**
+!!! cards
+    - !!! accordion
+          - **How do I reset my key?**
 
-      Open Settings, then Security, then Reset. A fresh key is emailed to you.
+            Open Settings, then Security, then Reset. A fresh key is emailed to you.
 
-    - **Where are logs stored?**
+          - **Where are logs stored?**
 
-      Under `~/.local/state/pango/`, rotated weekly.
+            Under `~/.local/state/pango/`, rotated weekly.
 
-    - **Can Pango work offline?**
+          - **Can Pango work offline?**
 
-      Yes. He hoards ants and runs without a network.
+            Yes. He hoards ants and runs without a network.
 
 ## Which one (and which neither)
 
@@ -116,7 +122,7 @@ An unordered list inside `!!! accordion` becomes a group of collapsible rows. It
 
 ## Gotchas
 
-- **Steps use an ordered list (`1.`), accordion uses an unordered list (`-`).** That is how docolin tells them apart inside the same `!!!` family.
+- **Steps take an ordered list (`1.`); the accordion takes an unordered list (`-`).** The opener (`!!! steps` or `!!! accordion`) chooses the construct, so pair each with the list type it expects.
 - **Four-space indent**, like every `!!!` block. Step or row content nests under its list item.
 - **Blank line before a row's answer.** The bold question and its body need a blank line between them, or they run together on one line.
 - **Don't hide the essential.** An accordion is great for reference a reader dips into, poor for steps everyone must read; collapsed content is content many readers never open.

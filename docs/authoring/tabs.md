@@ -16,7 +16,7 @@ docolin:
   difficulty: beginner
   time_estimate: 6m
 
-  status: draft
+  status: stable
 
   aliases: [tabs, content tabs, tabbed code, synced tabs]
 
@@ -25,6 +25,9 @@ docolin:
 ---
 
 # Content tabs
+
+!!! info "In one line"
+    Group alternatives behind one set of labels, with code tabs that stay in sync across the whole page.
 
 Some things come in flavours. Pango installs ants one way on Linux and another on macOS, and a doco shouldn't make a Linux reader wade through the macOS steps to find theirs. Tabs put the alternatives behind one set of labels and let the reader pick.
 
@@ -43,14 +46,15 @@ Write consecutive `=== "Label"` blocks, each with a four-space-indented body. Ad
     Pango tolerates ants from the Microsoft Store, grudgingly.
 ```
 
-=== "Linux"
-    Pango installs ants via the system package manager.
+!!! cards
+    - === "Linux"
+          Pango installs ants via the system package manager.
 
-=== "macOS"
-    Pango prefers a fresh jar of ants from Homebrew.
+      === "macOS"
+          Pango prefers a fresh jar of ants from Homebrew.
 
-=== "Windows"
-    Pango tolerates ants from the Microsoft Store, grudgingly.
+      === "Windows"
+          Pango tolerates ants from the Microsoft Store, grudgingly.
 
 ## Synced code tabs
 
@@ -75,20 +79,21 @@ Because each panel is a full [code block](./code-blocks.md), the title bar, copy
     ```
 ````
 
-=== "npm"
-    ```bash
-    npm install pangolin
-    ```
+!!! cards
+    - === "npm"
+          ```bash
+          npm install pangolin
+          ```
 
-=== "pnpm"
-    ```bash
-    pnpm add pangolin
-    ```
+      === "pnpm"
+          ```bash
+          pnpm add pangolin
+          ```
 
-=== "bun"
-    ```bash
-    bun add pangolin
-    ```
+      === "bun"
+          ```bash
+          bun add pangolin
+          ```
 
 ## Rich panels
 
@@ -103,16 +108,32 @@ A panel holds any Markdown, callouts, tables, lists, even other tabs.
         A frightened pango rolls into a ball. Do not unroll it by force.
 ```
 
-=== "Overview"
-    Pangolins are the only mammals **wholly covered in scales**.
+!!! cards
+    - === "Overview"
+          Pangolins are the only mammals **wholly covered in scales**.
 
-=== "Care"
-    !!! warning "Handle gently"
-        A frightened pango rolls into a ball. Do not unroll it by force.
+      === "Care"
+          !!! warning "Handle gently"
+              A frightened pango rolls into a ball. Do not unroll it by force.
 
 ## Labels can be anything
 
-Emojis, symbols, long phrases, all fine. Long labels wrap rather than overflow the bar, and a single `=== ` block is still a (one-tab) set, no special-casing.
+Emojis, symbols, or a whole phrase, all fine. A long label is shown in full, never truncated or clipped, and a single `=== ` block is still a (one-tab) set, no special-casing. (If a bar ever holds more tabs than fit on one line, the row wraps to the next line instead of scrolling anything off.)
+
+```md
+=== "🐧 Linux"
+    The usual home.
+
+=== "A whole sentence works as a label, if you want one"
+    Shown in full, not cut off.
+```
+
+!!! cards
+    - === "🐧 Linux"
+          The usual home.
+
+      === "A whole sentence works as a label, if you want one"
+          Shown in full, not cut off.
 
 ## Gotchas
 

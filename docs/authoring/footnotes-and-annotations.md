@@ -16,7 +16,7 @@ docolin:
   difficulty: intermediate
   time_estimate: 7m
 
-  status: draft
+  status: stable
 
   aliases: [footnotes, citations, annotations, inline notes, references]
 
@@ -25,6 +25,9 @@ docolin:
 ---
 
 # Footnotes & annotations
+
+!!! info "In one line"
+    Footnotes gathered at the bottom for sources and asides, and inline annotations that pin a note to an exact spot.
 
 Pango's boasts come with receipts, and the receipts shouldn't clutter the main line. Two tools keep the page clean: **footnotes**, gathered at the bottom for sources and asides, and **annotations**, pinned to an exact spot for "what is this, right here." They look similar but solve different problems.
 
@@ -39,13 +42,11 @@ Pango's boasts come with receipts.[^scales] He keeps a running tally too.[^ants]
 [^ants]: Up to 70 million ants and termites a year, per pangolin.
 ```
 
-Pango's boasts come with receipts.[^scales] He keeps a running tally too.[^ants]
+A footnote won't sit in a preview card: the marker is inline, and the note itself lands in this page's Footnotes section at the very bottom, not beside the text. So here is a live one.[^scales] And a second, for the tally.[^ants] Each marker renders as a number, assigned in order of first appearance; hover one for a peek without leaving your place, or scroll to the foot of the page for the full note. That bottom section is also the path for printing, no-JS, and permalinks.
 
 [^scales]: Pangolins are the only mammals entirely covered in scales.
 
 [^ants]: Up to 70 million ants and termites a year, per pangolin.
-
-The label is just a handle for you; readers see numbers, assigned in order of first appearance. Hover a marker for a preview of the note without leaving your place; the bottom section is the path for printing, no-JS, and permalinks.
 
 Footnotes are flexible: the same marker can be reused, and a footnote can even reference another.
 
@@ -54,6 +55,10 @@ The same marker can be reused,[^scales] and one note can cite another.[^chain]
 
 [^chain]: Which points onward to the scales note.[^scales]
 ```
+
+Live, the scales note shows up again here,[^scales] while this one cites it in turn.[^chain]
+
+[^chain]: Which points onward to the scales note.[^scales]
 
 ## Annotations
 
@@ -67,11 +72,12 @@ sudo dnf install akmod-nvidia  # (1)!
 1. Pulls the driver as an akmod, so it rebuilds for each new kernel.
 ````
 
-```bash
-sudo dnf install akmod-nvidia  # (1)!
-```
+!!! cards
+    - ```bash
+      sudo dnf install akmod-nvidia  # (1)!
+      ```
 
-1. Pulls the driver as an akmod, so it rebuilds for each new kernel.
+      1. Pulls the driver as an akmod, so it rebuilds for each new kernel.
 
 On a code block, the trailing `!` (`(n)!`) strips the comment that carried the marker, leaving just the badge.
 
@@ -86,10 +92,11 @@ Tag any block with a marker, here (1), and list the notes underneath.
 1. A note holds rich Markdown: **bold**, `code`, even a nested annotation.
 ```
 
-Tag any block with a marker, here (1), and list the notes underneath.
-{ .annotate }
+!!! cards
+    - Tag any block with a marker, here (1), and list the notes underneath.
+      { .annotate }
 
-1. A note holds rich Markdown: **bold**, `code`, even a nested annotation.
+      1. A note holds rich Markdown: **bold**, `code`, even a nested annotation.
 
 Notes can hold whole constructs and can nest, an annotation inside an annotation, as deep as you care to climb.
 

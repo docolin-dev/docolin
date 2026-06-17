@@ -1,0 +1,27 @@
+# Sidebar for the Tutorial category. Fixed top-level order, identical across
+# every category; only Tutorial is expanded here, the rest are swap links.
+sitemap:
+  - title: Tutorial
+    children:
+      - title: The walkthrough
+        url: ./overview.md
+      - title: 1. Make a Codeberg account
+        url: ./codeberg-account.md
+      - title: 2. Make your docolin account
+        url: ./docolin-account.md
+      - title: 3. Write your first guide
+        url: ./first-guide.md
+      - title: 4. Publish it on docolin
+        url: ./go-live.md
+      - title: What's next
+        url: ./next-steps.md
+  - title: Concepts
+    url: ../concepts/overview.md
+  - title: Reading
+    url: ../reading/overview.md
+  - title: Hosting
+    url: ../hosting/overview.md
+  - title: Authoring
+    url: ../authoring/overview.md
+  - title: For AI agents
+    url: ../mcp/how-agents-use-docolin.md

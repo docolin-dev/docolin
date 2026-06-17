@@ -16,7 +16,7 @@ docolin:
   difficulty: beginner
   time_estimate: 9m
 
-  status: draft
+  status: stable
 
   aliases: [code blocks, syntax highlighting, code fences, line highlighting, code annotations]
 
@@ -25,6 +25,9 @@ docolin:
 ---
 
 # Code blocks
+
+!!! info "In one line"
+    Fenced, highlighted code with titles, line numbers, author highlights, reader-shareable line links, and inline annotations.
 
 Every good jungle gym ships with code, and docolin treats it as a first-class citizen: highlighted on the server, copyable in one click, and linkable down to the exact line. This page is about fenced blocks; for a backtick `span` inside a sentence, see [inline code](./text-and-lists.md#inline-code).
 
@@ -39,25 +42,27 @@ def somersaults(height_m: float) -> int:
 ```
 ````
 
-```python
-def somersaults(height_m: float) -> int:
-    return int(height_m // 0.5)
-```
+!!! cards
+    - ```python
+      def somersaults(height_m: float) -> int:
+          return int(height_m // 0.5)
+      ```
 
 Highlighting covers every language [Shiki](https://shiki.style) ships with. An unknown language falls back to a plain block instead of erroring, and a fence with no language is left unhighlighted, handy for shell output or ASCII art.
 
-```
-   .--.
-  ( o_o )   pango approves
-   > ^ <
-```
+!!! cards
+    - ```
+         .--.
+        ( o_o )   pango approves
+         > ^ <
+      ```
 
 ## Title, line numbers, and highlights
 
 Three options go on the opening fence, after the language:
 
 - `title="..."` adds a filename bar across the top.
-- `linenums="1"` turns on always-visible line numbers, starting at the given number.
+- `linenums="1"` turns on always-visible line numbers, counted from 1.
 - `hl_lines="2"` highlights one or more lines you want to draw the eye to (`hl_lines="2 5-7"` works too).
 
 ````md
@@ -74,17 +79,18 @@ export function feedPango(p: Pangolin, ants: number): Pangolin {
 ```
 ````
 
-```ts title="feed-pango.ts" linenums="1" hl_lines="7"
-interface Pangolin {
-  name: string;
-  scales: number;
-  rolledUp: boolean;
-}
+!!! cards
+    - ```ts title="feed-pango.ts" linenums="1" hl_lines="7"
+      interface Pangolin {
+        name: string;
+        scales: number;
+        rolledUp: boolean;
+      }
 
-export function feedPango(p: Pangolin, ants: number): Pangolin {
-  return { ...p, rolledUp: ants > 5000 };
-}
-```
+      export function feedPango(p: Pangolin, ants: number): Pangolin {
+        return { ...p, rolledUp: ants > 5000 };
+      }
+      ```
 
 ## Copy and shareable lines
 
@@ -105,6 +111,13 @@ const grip = "firm";
 ````
 `````
 
+!!! cards
+    - ````md
+      ```ts
+      const grip = "firm";
+      ```
+      ````
+
 The rule is simply "more backticks on the outside than anywhere inside." Four wraps three; five wraps four. (This whole guide is written that way.)
 
 ## Annotations
@@ -123,13 +136,14 @@ sudo dnf install akmod-nvidia            # (2)!
 2. Pulls the driver as an akmod, so it rebuilds for each new kernel.
 ````
 
-```bash
-sudo dnf install rpmfusion-free-release  # (1)!
-sudo dnf install akmod-nvidia            # (2)!
-```
+!!! cards
+    - ```bash
+      sudo dnf install rpmfusion-free-release  # (1)!
+      sudo dnf install akmod-nvidia            # (2)!
+      ```
 
-1. Enables the RPM Fusion repo, where the driver lives.
-2. Pulls the driver as an akmod, so it rebuilds for each new kernel.
+      1. Enables the RPM Fusion repo, where the driver lives.
+      2. Pulls the driver as an akmod, so it rebuilds for each new kernel.
 
 A note can hold rich Markdown of its own, including another code block. The same annotation mechanism works on non-code blocks too, with `{ .annotate }`; both are covered in [Footnotes & annotations](./footnotes-and-annotations.md).
 

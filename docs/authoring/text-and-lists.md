@@ -16,7 +16,7 @@ docolin:
   difficulty: beginner
   time_estimate: 8m
 
-  status: draft
+  status: stable
 
   aliases: [markdown basics, headings, lists, emphasis, links, images, inline icons]
 
@@ -25,6 +25,9 @@ docolin:
 ---
 
 # Text, lists, and links
+
+!!! info "In one line"
+    The everyday Markdown, headings, emphasis, lists, quotes, links, images, and inline icons, that the rest of a doco hangs from.
 
 Most of any doco is just words. Pango can climb all the fancy apparatus he likes, but the guide still rests on plain paragraphs, a few lists, and the odd link. docolin speaks standard [CommonMark](https://commonmark.org) with [GitHub-Flavored Markdown](https://github.github.com/gfm/) on top, so if you have written a README, you already know most of this.
 
@@ -39,6 +42,12 @@ which stay one paragraph.
 A blank line above makes this a new paragraph.
 ```
 
+!!! cards
+    - Two lines of chatter,
+      which stay one paragraph.
+
+      A blank line above makes this a new paragraph.
+
 Single line breaks are **joined**, not preserved, so you can hard-wrap your source however you like and the reader still sees flowing prose. (Pango talks a lot; this keeps his source files tidy.)
 
 ## Headings
@@ -52,15 +61,16 @@ One `#` per level, from `#` (the page title) down to `######`.
 #### A smaller heading
 ```
 
-Every heading gets an automatic id slugified from its text, so `## Climbing the bars` is linkable as `#climbing-the-bars`. The `##` and `###` headings also build the table of contents shown beside the page; `#` is the title and `####` and below are too granular to list.
+There is no live preview here on purpose: rendering example headings would add them to this page's own contents list. Every heading gets an automatic id slugified from its text, so `## Climbing the bars` is linkable as `#climbing-the-bars`. The `##` and `###` headings also build the table of contents shown beside the page; `#` is the title and `####` and below are too granular to list.
 
 ## Emphasis
 
 ```md
-**bold**, _italic_, and ~~strikethrough~~.
+A word can be **bold**, _italic_, or ~~strikethrough~~.
 ```
 
-**bold**, _italic_, and ~~strikethrough~~.
+!!! cards
+    - A word can be **bold**, _italic_, or ~~strikethrough~~.
 
 ## Inline code
 
@@ -78,11 +88,12 @@ Unordered lists use `-`; ordered lists use `1.`. Indent to nest.
 3. Bounce to the next bar
 ```
 
-1. Sniff the first bar
-2. Climb it anyway
-   1. Lose grip
-   2. Curl into a ball
-3. Bounce to the next bar
+!!! cards
+    - 1. Sniff the first bar
+      2. Climb it anyway
+         1. Lose grip
+         2. Curl into a ball
+      3. Bounce to the next bar
 
 ```md
 - Top bar
@@ -92,11 +103,12 @@ Unordered lists use `-`; ordered lists use `1.`. Indent to nest.
 - Bottom bar
 ```
 
-- Top bar
-- Middle bar with a **firm grip**
-  - Side rung
-    - The bit only his tail can reach
-- Bottom bar
+!!! cards
+    - - Top bar
+      - Middle bar with a **firm grip**
+        - Side rung
+          - The bit only his tail can reach
+      - Bottom bar
 
 ### Task lists
 
@@ -108,9 +120,10 @@ Prefix items with `[ ]` or `[x]` for a checklist. They render as styled checkbox
 - [ ] Reach the top without rolling off
 ```
 
-- [x] Find the gym
-- [x] Eat 1,000 ants (pre-workout)
-- [ ] Reach the top without rolling off
+!!! cards
+    - - [x] Find the gym
+      - [x] Eat 1,000 ants (pre-workout)
+      - [ ] Reach the top without rolling off
 
 ## Blockquotes
 
@@ -122,16 +135,21 @@ Start a line with `>`. Stack them for nested quotes.
 > > (He looked down. He rolled into a ball. He was fine.)
 ```
 
-> Scales on, snout up, and never look down.
->
-> > (He looked down. He rolled into a ball. He was fine.)
+!!! cards
+    - > Scales on, snout up, and never look down.
+      >
+      > > (He looked down. He rolled into a ball. He was fine.)
 
 ## Links
 
 ```md
-[the burrow](/docolin/docolin/authoring/overview), a [friend off-site](https://example.com),
-and a bare URL: <https://docolin.com>.
+Visit [the burrow](/docolin/docolin/authoring/overview), wave at a [friend off-site](https://example.com),
+or open a bare URL: <https://docolin.com>.
 ```
+
+!!! cards
+    - Visit [the burrow](/docolin/docolin/authoring/overview), wave at a [friend off-site](https://example.com),
+      or open a bare URL: <https://docolin.com>.
 
 - **Internal links** (starting with `/` or a relative `./path`) navigate in place. Hover one and docolin shows a small preview of where it goes; see [Links & navigation](./links-and-navigation.md).
 - **External links** open in a new tab with `rel="noopener noreferrer"` added for you.
@@ -142,6 +160,9 @@ and a bare URL: <https://docolin.com>.
 ```md
 ![Pango mid-somersault off the high bar](https://placehold.co/720x240/png)
 ```
+
+!!! cards
+    - ![Pango mid-somersault off the high bar](https://placehold.co/720x240/png)
 
 The text in brackets is the alt text. Write it as if describing the image to someone who cannot see it; it is what screen readers announce and what shows if the image fails to load. Never leave it empty for a meaningful image.
 
@@ -154,7 +175,7 @@ A screenshot or diagram that reads well in one theme can be unreadable in the ot
 ![Architecture diagram](architecture-dark.png){ .dark-only }
 ```
 
-Each tag hides its image in the other theme, so only the matching one shows. Use the same alt text on both. If you only have one image, leave the tags off and it shows in both themes.
+Each tag hides its image in the other theme, so only the matching one shows. Use the same alt text on both. If you only have one image, leave the tags off and it shows in both themes. (No preview here, it would need a real light/dark image pair to show anything.)
 
 ## Horizontal rule
 
@@ -168,6 +189,13 @@ Lights above the rule.
 Lights below the rule.
 ```
 
+!!! cards
+    - Lights above the rule.
+
+      ---
+
+      Lights below the rule.
+
 ## Inline icons
 
 Drop any [Lucide](https://lucide.dev/icons) icon into a line with `:name:` (kebab names work too).
@@ -176,7 +204,8 @@ Drop any [Lucide](https://lucide.dev/icons) icon into a line with `:name:` (keba
 Climb :mountain: to the top, fuel up on :drumstick:, then read the :book-open:.
 ```
 
-Climb :mountain: to the top, fuel up on :drumstick:, then read the :book-open:.
+!!! cards
+    - Climb :mountain: to the top, fuel up on :drumstick:, then read the :book-open:.
 
 A bare name looks in Lucide first, then falls back to Font Awesome's free packs (so brand glyphs like `:github:` work too). The inline shortcode only accepts bare names; to force a specific set on a card icon, see [Cards](./cards.md#multi-set-icons).
 

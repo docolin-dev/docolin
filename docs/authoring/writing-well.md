@@ -1,6 +1,6 @@
 ---
 title: Writing well
-description: Choosing the right structure and constructs, writing accessibly, remembering that docos are public, and authoring in other formats.
+description: How to choose the right structure and the lightest construct, write accessibly, and remember that every doco is public and read by both people and machines.
 authors:
   - handle: imgajeed
 
@@ -16,14 +16,17 @@ docolin:
   difficulty: intermediate
   time_estimate: 10m
 
-  status: draft
+  status: stable
 
-  aliases: [writing well, style, diataxis, accessibility, best practices, asciidoc, restructuredtext, mdx]
+  aliases: [writing well, style, diataxis, accessibility, best practices, structure, clarity]
 
-  prev: ./links-and-navigation.md
+  prev: ./publishing.md
 ---
 
 # Writing well
+
+!!! info "In one line"
+    Choosing the right structure and the lightest construct, writing accessibly, and remembering docos are public.
 
 You now have every tool in the gym. The last thing Pango learned is the hardest: the tools are not the point. A doc stuffed with callouts, tabs, and charts can still be useless, and a doc that is nothing but clear paragraphs can be excellent. This page is about using the toolbox with judgement.
 
@@ -66,11 +69,11 @@ Everything you publish to docolin is **public**, full stop. That holds even when
 Two consequences for how you write:
 
 - **Never put secrets or personal data in a doco.** API keys, tokens, connection strings, someone's private details, none of it belongs in published content. If something sensitive slips out, the [moderation policy](/docolin/docolin/moderation-policy) covers getting it scrubbed quickly, but the goal is for it never to land.
-- **A doco reads the same for everyone.** There is no per-reader content inside the page itself; tailoring happens through [soft links](./links-and-navigation.md#soft-links-by-kind) that route a reader to the right guide, not through hidden sections within one.
+- **A doco reads the same for everyone.** There is no per-reader content inside the page itself; tailoring happens through [soft links](./links-and-navigation.md#soft-links-by-kind) that rank the guides under a topic by fit, letting the reader pick, not through hidden sections within one page.
 
 ## Help the machines that cite you
 
-docolin feeds AI tools through MCP, and they cite what they ground on. You make your guide a better citation with the same things that make it good for humans: a precise [`description`](./frontmatter.md#description-strongly-encouraged), accurate [`references`](./frontmatter.md#references-optional), honest [`status`](./frontmatter.md#status-required-defaults-to-stable), and clear headings. Write for the reader; the machine benefits for free.
+docolin feeds AI tools through MCP, and they cite what they ground on. You make your guide a better citation with the same things that make it good for humans: a precise [`description`](./frontmatter.md#description-strongly-encouraged), accurate [`references`](./frontmatter.md#references-optional), honest [`status`](./frontmatter.md#status-optional-defaults-to-stable), and clear headings. Write for the reader; the machine benefits for free.
 
 ## A short checklist
 

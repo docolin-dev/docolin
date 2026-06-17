@@ -1,6 +1,6 @@
 ---
 title: Tables
-description: GFM tables, with column alignment and rich cells, and the trick that turns one into a chart.
+description: GFM tables with column alignment and rich cell content, plus the one-line trick that turns a table into a bar or line chart docolin renders for you.
 authors:
   - handle: imgajeed
 
@@ -16,7 +16,7 @@ docolin:
   difficulty: beginner
   time_estimate: 5m
 
-  status: draft
+  status: stable
 
   aliases: [tables, gfm tables, column alignment, data tables]
 
@@ -25,6 +25,9 @@ docolin:
 ---
 
 # Tables
+
+!!! info "In one line"
+    GitHub-flavored Markdown tables, with column alignment, rich cells, and the one-line trick that turns any table into a chart.
 
 Pango keeps a logbook: snacks eaten, bars climbed, naps taken. A table is how that goes into a doco. docolin uses GitHub-Flavored Markdown tables, and they earn an extra trick here: any table can be [drawn as a chart](./charts.md).
 
@@ -40,47 +43,50 @@ A header row, a separator row of dashes, then one row per record. The pipes do n
 | Mystery grub | ???    | 3/5            |
 ```
 
-| Snack        | Crunch | Pango's rating |
-| ------------ | ------ | -------------- |
-| Black ants   | high   | 5/5            |
-| Termites     | medium | 4/5            |
-| Mystery grub | ???    | 3/5            |
+!!! cards
+    - | Snack        | Crunch | Pango's rating |
+      | ------------ | ------ | -------------- |
+      | Black ants   | high   | 5/5            |
+      | Termites     | medium | 4/5            |
+      | Mystery grub | ???    | 3/5            |
 
 ## Column alignment
 
 Colons in the separator row set each column's alignment: left (the default), center, or right.
 
 ```md
-| Left   | Center | Right |
-| :----- | :----: | ----: |
-| ants   |  many  |    70 |
-| grubs  |  few   |    10 |
-```
-
 | Left  | Center | Right |
 | :---- | :----: | ----: |
 | ants  |  many  |    70 |
-| grubs |   few  |    10 |
+| grubs |  few   |    10 |
+```
+
+!!! cards
+    - | Left  | Center | Right |
+      | :---- | :----: | ----: |
+      | ants  |  many  |    70 |
+      | grubs |   few  |    10 |
 
 Right-align columns of numbers so the digits line up by place value; it makes them far easier to compare down a column.
 
 ## Rich cells
 
-Cells take inline Markdown: emphasis, `code`, links, even an inline `:icon:`.
+Cells take inline Markdown: emphasis, `code`, links, even an inline icon like `:paw-print:`.
 
 ```md
-| Command          | What it does          |
-| ---------------- | --------------------- |
-| `pango climb`    | Goes **up**           |
-| `pango roll`     | The _involuntary_ one |
-| [docs](/docolin/docolin/authoring/overview) | Sends you here        |
+| Command       | What it does           |
+| ------------- | ---------------------- |
+| `pango climb` | Goes **up** :arrow-up: |
+| `pango roll`  | The _involuntary_ one  |
+| [docs](/docolin/docolin/authoring/overview) | Sends you here |
 ```
 
-| Command                                     | What it does          |
-| ------------------------------------------- | --------------------- |
-| `pango climb`                               | Goes **up**           |
-| `pango roll`                                | The _involuntary_ one |
-| [docs](/docolin/docolin/authoring/overview) | Sends you here        |
+!!! cards
+    - | Command                                     | What it does           |
+      | ------------------------------------------- | ---------------------- |
+      | `pango climb`                               | Goes **up** :arrow-up: |
+      | `pango roll`                                | The _involuntary_ one  |
+      | [docs](/docolin/docolin/authoring/overview) | Sends you here         |
 
 ## From table to chart
 
@@ -94,6 +100,14 @@ Add a single `{ .chart ... }` line right after a table and docolin paints a char
 
 { .chart type=bar title="Snacks per month" }
 ```
+
+!!! cards
+    - | Month | Ants | Termites |
+      | ----- | ---- | -------- |
+      | Jan   | 186  | 80       |
+      | Feb   | 305  | 200      |
+
+      { .chart type=bar title="Snacks per month" }
 
 The full set of chart types and options lives on the [Charts](./charts.md) page.
 

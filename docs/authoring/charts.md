@@ -16,7 +16,7 @@ docolin:
   difficulty: intermediate
   time_estimate: 8m
 
-  status: draft
+  status: stable
 
   aliases: [charts, graphs, bar chart, line chart, pie chart, data visualization]
 
@@ -25,6 +25,9 @@ docolin:
 ---
 
 # Charts
+
+!!! info "In one line"
+    Add one line under a Markdown table and it renders as a bar, line, area, pie, or donut chart, with the table kept as the data.
 
 Pango keeps a logbook, and numbers in a [table](./tables.md) are precise but hard to feel. A chart makes the shape obvious at a glance. In docolin you do not learn a charting syntax: you write a normal table and add one line.
 
@@ -46,13 +49,14 @@ The first column is the x-axis; every other column is a series named by its head
 { .chart type=bar title="Snacks eaten per month" }
 ```
 
-| Month | Ants | Termites |
-| ----- | ---- | -------- |
-| Jan   | 186  | 80       |
-| Feb   | 305  | 200      |
-| Mar   | 237  | 120      |
+!!! cards
+    - | Month | Ants | Termites |
+      | ----- | ---- | -------- |
+      | Jan   | 186  | 80       |
+      | Feb   | 305  | 200      |
+      | Mar   | 237  | 120      |
 
-{ .chart type=bar title="Snacks eaten per month" }
+      { .chart type=bar title="Snacks eaten per month" }
 
 ## The types
 
@@ -75,14 +79,15 @@ Set `type=` to one of five. The same table works across all of them, so try a co
 { .chart type=line title="Reps over the week" }
 ```
 
-| Day | Curls | Rolls |
-| --- | ----- | ----- |
-| Mon | 12    | 4     |
-| Tue | 19    | 7     |
-| Wed | 15    | 11    |
-| Thu | 22    | 9     |
+!!! cards
+    - | Day | Curls | Rolls |
+      | --- | ----- | ----- |
+      | Mon | 12    | 4     |
+      | Tue | 19    | 7     |
+      | Wed | 15    | 11    |
+      | Thu | 22    | 9     |
 
-{ .chart type=line title="Reps over the week" }
+      { .chart type=line title="Reps over the week" }
 
 For a part-of-whole, use one value column:
 
@@ -96,13 +101,14 @@ For a part-of-whole, use one value column:
 { .chart type=donut title="Diet" }
 ```
 
-| Snack    | Share |
-| -------- | ----- |
-| Ants     | 70    |
-| Termites | 20    |
-| Grubs    | 10    |
+!!! cards
+    - | Snack    | Share |
+      | -------- | ----- |
+      | Ants     | 70    |
+      | Termites | 20    |
+      | Grubs    | 10    |
 
-{ .chart type=donut title="Diet" }
+      { .chart type=donut title="Diet" }
 
 ## Options
 
@@ -114,9 +120,23 @@ Stack them after `type` on the same line:
 - **`legend=false`** hides the legend, useful with a single series.
 
 ```md
+| Time    | Ants | Termites |
+| ------- | ---- | -------- |
+| Morning | 40   | 10       |
+| Midday  | 30   | 25       |
+| Evening | 50   | 15       |
+
 { .chart type=bar stacked title="Foraging by time of day" }
-{ .chart type=bar horizontal legend=false title="Favourite apparatus" }
 ```
+
+!!! cards
+    - | Time    | Ants | Termites |
+      | ------- | ---- | -------- |
+      | Morning | 40   | 10       |
+      | Midday  | 30   | 25       |
+      | Evening | 50   | 15       |
+
+      { .chart type=bar stacked title="Foraging by time of day" }
 
 ## Hidden until revealed
 

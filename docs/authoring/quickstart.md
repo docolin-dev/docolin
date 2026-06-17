@@ -16,15 +16,18 @@ docolin:
   difficulty: beginner
   time_estimate: 10m
 
-  status: draft
+  status: stable
 
   aliases: [first doco, getting started, hello world]
 
   prev: ./overview.md
-  next: ./frontmatter.md
+  next: ./preview.md
 ---
 
 # Your first doco
+
+!!! info "In one line"
+    Build a complete doco from an empty file to a publishable page, one piece at a time.
 
 The fastest way to understand a doco is to write one. So Pango is going to write his very first guide, _How to dismount the high bar_, and you are going to follow along. We will start with an empty file and add one piece at a time until it is a real, publishable page.
 
@@ -57,14 +60,14 @@ docolin:
 
 In plain terms:
 
-- **`title`** is the headline, shown in tabs, search, and social cards.
+- **`title`** is the headline, shown in tabs and search.
 - **`authors`** is who gets the credit. `name` is for anyone; contributors with a docolin account use `handle` instead.
 - **`schema_version`** is always `1` today.
 - **`kind`** is the canonical path of the guide in docolin's taxonomy. Pango is writing a personal post, so he uses the `blog/{handle}/{slug}` shape.
 - **`type`** is one of four intents (`tutorial`, `how-to`, `reference`, `explanation`). A guide that solves a specific task is a `how-to`.
 
 !!! tip "Add a description while you are here"
-    It is optional but worth it: a one-sentence `description:` becomes your search snippet, your social-card text, and the summary an AI shows when it cites you. One line, three jobs.
+    It is optional but worth it: a one-sentence `description:` becomes your search snippet and the summary an AI shows when it cites you. Two jobs from one line.
 
 The [frontmatter reference](./frontmatter.md) covers every field. For now, those five are enough to publish.
 
@@ -97,8 +100,9 @@ Then the part that actually matters. A plain warning would get skimmed, so reach
     ball, bounce twice, and lose all your style points.
 ```
 
-!!! warning "Never dismount head-first"
-    A head-first drop triggers the curl reflex mid-air. You will land as a ball, bounce twice, and lose all your style points.
+!!! cards
+    - !!! warning "Never dismount head-first"
+          A head-first drop triggers the curl reflex mid-air. You will land as a ball, bounce twice, and lose all your style points.
 
 And when there is an exact command to run, a [code block](./code-blocks.md) keeps it copyable and highlighted:
 
@@ -109,10 +113,11 @@ pango dismount --roll-on-contact
 ```
 ````
 
-```bash
-# the only safe descent Pango trusts
-pango dismount --roll-on-contact
-```
+!!! cards
+    - ```bash
+      # the only safe descent Pango trusts
+      pango dismount --roll-on-contact
+      ```
 
 That is a complete, useful page. Everything past this point is polish.
 
@@ -120,10 +125,7 @@ That is a complete, useful page. Everything past this point is polish.
 
 docolin syncs from your git repository, so publishing is really just committing and pushing. There is no separate deploy: once your project is connected, docolin reads the new file straight from the repo, checks the frontmatter, and serves the page at its hard URL.
 
-A plain push does not trigger the sync, though. By default docolin polls your repo on its own schedule, so a new commit is usually picked up within a day. Two ways to skip the wait:
-
-- **Refresh on demand.** Open your project's page in the docolin dashboard and hit Refresh to pull the latest commit right now.
-- **Add a webhook.** Wire your repo's push webhook to docolin and every push syncs the moment it lands.
+A plain push does not trigger the sync, though. By default docolin polls your repo on its own schedule, so a new commit is usually picked up within a day. To skip the wait, open your project's page in the docolin dashboard and hit **Refresh** to pull the latest commit right now. Instant-on-push **webhooks**, so every push syncs the moment it lands, are coming soon.
 
 The full mechanics of hard URLs and pinned versions live in [Links & navigation](./links-and-navigation.md).
 

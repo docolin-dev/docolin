@@ -1,6 +1,6 @@
 ---
 title: Cards
-description: A list inside !!! cards becomes a responsive grid of linked, typed, illustrated cards.
+description: A Markdown list inside !!! cards becomes a responsive grid of linked cards, each with an icon, an optional type color, and a column or horizontal layout.
 authors:
   - handle: imgajeed
 
@@ -16,7 +16,7 @@ docolin:
   difficulty: beginner
   time_estimate: 7m
 
-  status: draft
+  status: stable
 
   aliases: [cards, card grid, link cards, landing page]
 
@@ -25,6 +25,9 @@ docolin:
 ---
 
 # Cards
+
+!!! info "In one line"
+    A list inside `!!! cards` becomes a responsive grid of linked, typed, illustrated cards.
 
 When Pango wants to point a reader at three places at once, a bullet list of links feels thin. Cards turn that list into a grid of tap targets, each with an icon, a description, and a whole-card click area. They are what the [overview](./overview.md) page uses for its tour.
 
@@ -49,12 +52,13 @@ Put a list inside `!!! cards`. Each item is one card: a **title**, an optional `
       Every language Shiki can highlight.
 ```
 
-!!! cards { cols=2 }
-    - [Get started](./quickstart.md){ icon=rocket }
-      Set up in five minutes with the quickstart.
+!!! cards
+    - !!! cards { cols=2 }
+          - [Get started](./quickstart.md){ icon=rocket }
+            Set up in five minutes with the quickstart.
 
-    - [Code bars](./code-blocks.md){ icon=code }
-      Every language Shiki can highlight.
+          - [Code bars](./code-blocks.md){ icon=code }
+            Every language Shiki can highlight.
 
 ### Multi-set icons
 
@@ -77,6 +81,14 @@ To force a specific set, prefix the name with a short set tag joined by a hyphen
       `fa-` forces FA's outline style, the same look Mintlify uses.
 ```
 
+!!! cards
+    - !!! cards { cols=2 }
+          - **Lucide-first**{ icon=zap }
+            A bare name picks Lucide if it has the glyph.
+
+          - **Force Font Awesome**{ icon=fa-bolt }
+            `fa-` forces FA's outline style, the same look Mintlify uses.
+
 The prefix syntax is a hyphen, not a colon, because the inline `:icon:` shortcode in body text already uses colons as its delimiters. Inline shortcodes therefore only accept bare names; for a specific set, switch to a card.
 
 !!! note "Tabler resolution"
@@ -95,12 +107,13 @@ The prefix syntax is a hyphen, not a colon, because the inline `:icon:` shortcod
       A risky action.
 ```
 
-!!! cards { cols=2 }
-    - **Tip**{ type=tip }
-      A helpful suggestion.
+!!! cards
+    - !!! cards { cols=2 }
+          - **Tip**{ type=tip }
+            A helpful suggestion.
 
-    - **Danger**{ type=danger }
-      A risky action.
+          - **Danger**{ type=danger }
+            A risky action.
 
 ## Horizontal, image, and call-to-action
 
@@ -119,16 +132,17 @@ A few more options shape the card:
       External links get an arrow automatically.
 ```
 
-!!! cards { cols=2 }
-    - [Compact](./steps-and-accordion.md){ icon=list-checks horizontal }
-      A horizontal card sits icon-left, text-right.
+!!! cards
+    - !!! cards { cols=2 }
+          - [Compact](./steps-and-accordion.md){ icon=list-checks horizontal }
+            A horizontal card sits icon-left, text-right.
 
-    - [Browse icons](https://lucide.dev){ icon=external-link cta="Open Lucide" }
-      External links get an arrow automatically.
+          - [Browse icons](https://lucide.dev){ icon=external-link cta="Open Lucide" }
+            External links get an arrow automatically.
 
 ## Columns and plain cards
 
-`{ cols=2 }`, `{ cols=3 }`, and so on fix the column count. Omit `cols` for an auto-fit grid that flows to the available width. A card with no link and no options is just a plain card.
+`{ cols=1 }` through `{ cols=4 }` fix the column count. Omit `cols` for an auto-fit grid that flows to the available width (a value outside 1 to 4 falls back to that auto-fit). A card with no link and no options is just a plain card.
 
 ```md
 !!! cards
@@ -138,9 +152,10 @@ A few more options shape the card:
 ```
 
 !!! cards
-    - **Fast** so readers stay.
-    - **Yours** under AGPL, fork freely.
-    - just plain text, no title
+    - !!! cards { cols=3 }
+          - **Fast** so readers stay.
+          - **Yours** under AGPL, fork freely.
+          - just plain text, no title
 
 ## Gotchas
 

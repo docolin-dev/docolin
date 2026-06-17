@@ -16,15 +16,18 @@ docolin:
   difficulty: intermediate
   time_estimate: 9m
 
-  status: draft
+  status: stable
 
   aliases: [links, urls, soft links, hard links, sitemap, sidebar, navigation, versions]
 
   prev: ./footnotes-and-annotations.md
-  next: ./writing-well.md
+  next: ./publishing.md
 ---
 
 # Links & navigation
+
+!!! info "In one line"
+    Everyday links, soft links by kind, hard and pinned URLs, prev/next, and the sidebar sitemap.
 
 A doco is rarely alone. Pango's guide to the high bar wants to point at the warm-up routine, the gym map, and the burrow next door. This page is about the links between docos, and the navigation, prev/next and the sidebar, that ties a whole project together.
 
@@ -50,12 +53,12 @@ Hover an internal link and docolin shows a small preview of the target's title a
 docolin has a second, more powerful kind of link: a link to a **kind path** rather than a specific file.
 
 ```md
-See [setting up a firewall](/network/firewall/setup).
+See [installing Docker](/tools/docker/install).
 ```
 
-There is no special syntax; it is a normal link whose path is a [kind](./frontmatter.md#kind-required). Following it opens a **browse page** that lists every guide under that kind, ranked by how well each one fits the reader's setup. An Ubuntu reader sees the UFW guide near the top; a Fedora reader sees the firewalld one. The list re-ranks itself after the page loads, so the reader's local setup never leaves their browser.
+There is no special syntax; it is a normal link whose path is a [kind](./frontmatter.md#kind-required). Following it opens a **browse page** that lists every guide under that kind, ranked so the ones that fit the reader's setup sit near the top. An Ubuntu reader sees the apt-based guide first; a Fedora reader sees the dnf one. The list re-ranks itself after the page loads, from a profile that never leaves the reader's browser, and the reader picks.
 
-Reach for a soft link when there is more than one credible answer (different distros, different versions) and you want the reader to land on the one that fits them. For a single specific guide, link the hard URL directly so every reader sees the same page.
+Reach for a soft link when there is more than one credible answer (different distros, different versions) and you want the fitting one to surface near the top for each reader. For a single specific guide, link the hard URL directly so every reader sees the same page.
 
 ## Hard URLs (by source)
 
