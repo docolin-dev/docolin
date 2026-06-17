@@ -1,11 +1,12 @@
 import { fail, redirect } from "@sveltejs/kit";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { localizeHref } from "$paraglide/runtime";
 import type { Actions, PageServerLoad } from "./$types";
 import { db } from "$lib/server/db";
 import { gitSources, orgs, orgMembers, projects } from "$lib/server/db/schema";
 import { checkProjectSlugAvailability } from "$lib/reserved-handles";
 import { verifyForgeRepo } from "$lib/server/repo-check";
+import { reviveGitProject } from "$lib/server/org-admin";
 import { syncProject } from "$lib/sync/run";
 import { LIMITS } from "$lib/limits";
 
@@ -34,7 +35,7 @@ export const actions = {
       .select({ id: orgs.id })
       .from(orgs)
       .innerJoin(orgMembers, and(eq(orgMembers.orgId, orgs.id), eq(orgMembers.userId, userId)))
-      .where(eq(orgs.slug, params.org))
+      .where(and(eq(orgs.slug, params.org), isNull(orgs.deletedAt)))
       .limit(1);
     if (orgRows.length === 0) return fail(403, { error: "not_a_member" });
     const orgId = orgRows[0].id;
@@ -68,12 +69,16 @@ export const actions = {
       });
     }
 
-    const taken = await db
-      .select({ id: projects.id })
+    // A live project with this slug blocks it. A soft-deleted one is revived
+    // instead: recreating the same org+slug picks its old docos and version
+    // history back up rather than starting a fresh project.
+    const existing = await db
+      .select({ id: projects.id, deletedAt: projects.deletedAt })
       .from(projects)
       .where(and(eq(projects.ownerOrgId, orgId), eq(projects.slug, slug)))
       .limit(1);
-    if (taken.length > 0) {
+    const reviving = existing.length > 0 && existing[0].deletedAt !== null ? existing[0] : null;
+    if (existing.length > 0 && reviving === null) {
       return fail(409, {
         error: "slug_taken",
         sourceMode,
@@ -97,28 +102,41 @@ export const actions = {
         });
       }
 
-      let createdProjectId: string;
+      let projectId: string;
       try {
-        createdProjectId = await db.transaction(async (tx) => {
-          const insertedProject = await tx
-            .insert(projects)
-            .values({
-              ownerOrgId: orgId,
-              slug,
-              displayName,
-              sourceMode: "git",
-            })
-            .returning({ id: projects.id });
-          const newId = insertedProject[0].id;
-          await tx.insert(gitSources).values({
-            projectId: newId,
+        if (reviving) {
+          // Revive the soft-deleted project: clear its tombstone and re-point
+          // the git source at the (re-verified) repo. The doco tombstones are
+          // resolved by the forced re-sync below, not here.
+          projectId = reviving.id;
+          await reviveGitProject(projectId, displayName, {
             provider: repoCheck.provider,
             repoUrl: repoCheck.canonicalUrl,
             defaultBranch: repoCheck.defaultBranch,
             subpath,
           });
-          return newId;
-        });
+        } else {
+          projectId = await db.transaction(async (tx) => {
+            const insertedProject = await tx
+              .insert(projects)
+              .values({
+                ownerOrgId: orgId,
+                slug,
+                displayName,
+                sourceMode: "git",
+              })
+              .returning({ id: projects.id });
+            const newId = insertedProject[0].id;
+            await tx.insert(gitSources).values({
+              projectId: newId,
+              provider: repoCheck.provider,
+              repoUrl: repoCheck.canonicalUrl,
+              defaultBranch: repoCheck.defaultBranch,
+              subpath,
+            });
+            return newId;
+          });
+        }
       } catch (err) {
         console.error("project provision (git) failed", err);
         return fail(500, {
@@ -131,13 +149,17 @@ export const actions = {
         });
       }
 
-      // Fire the initial sync as a fire-and-forget background job. The user
-      // gets the redirect immediately and the project page polls for the
-      // sync_status badge. waitUntil keeps the Worker alive past the response
-      // until the sync resolves. Skip silently in environments where the
-      // platform context isn't available (some dev setups).
+      // Fire the sync as a fire-and-forget background job. The user gets the
+      // redirect immediately and the project page polls for the sync_status
+      // badge. A revive forces a full re-sync (force=true) so every file still
+      // in the repo is un-tombstoned and any since removed is swept back to
+      // deleted; a fresh project does its normal initial sync. waitUntil keeps
+      // the Worker alive past the response. Skip silently where the platform
+      // context isn't available (some dev setups).
       if (platform) {
-        platform.context.waitUntil(syncProject(createdProjectId, platform.env.MEDIA_BUCKET));
+        platform.context.waitUntil(
+          syncProject(projectId, platform.env.MEDIA_BUCKET, reviving !== null),
+        );
       }
     } else {
       try {

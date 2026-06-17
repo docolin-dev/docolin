@@ -6,9 +6,11 @@ import type { TocEntry } from "$lib/markdown/render";
 // to import from both server and client code.
 
 // Author attribution resolved for display: a docolin user (links to their
-// profile) or external attribution (name + optional url).
+// profile) or external attribution (name + optional url). A `deleted` user is a
+// tombstoned account: its handle and displayName are blanked here (defence in
+// depth) and renderers show "deleted account" with no profile link.
 export type ResolvedAuthor =
-  | { kind: "user"; userId: string; handle: string; displayName: string | null }
+  | { kind: "user"; userId: string; handle: string; displayName: string | null; deleted: boolean }
   | { kind: "external"; name: string; username: string | null; url: string | null };
 
 // Rich prev/next nav target. Resolved entries carry the destination's title

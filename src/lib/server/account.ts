@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, count, eq, ne } from "drizzle-orm";
+import { and, count, eq, isNull, ne } from "drizzle-orm";
 import { db } from "$lib/server/db";
 import { inboxMessages, mcpTokens, orgMembers, orgs, projects, users } from "$lib/server/db/schema";
 import { requireEnv } from "$lib/server/env";
@@ -8,15 +8,22 @@ import { requireEnv } from "$lib/server/env";
 //
 // Deletion semantics (the privacy-first / content-is-public compromise):
 //   - The user row is tombstoned, not deleted: authored content references it
-//     with `restrict` FKs and threads must stay coherent. Every PII column is
-//     scrubbed (handle -> deleted-{hex}, display name, email, WorkOS id).
-//   - Public contributions (discussions, replies, stamps) stay, under the
-//     ghost identity. The UI says so and points at the per-post deletion
-//     request flow for content someone wants gone before they leave.
+//     with `restrict` FKs and threads must stay coherent. PII columns are
+//     scrubbed (display name, email, WorkOS id), deletedAt is set, and the row
+//     renders "deleted account" everywhere.
+//   - The handle is RETIRED, not freed. It is also the personal org's slug,
+//     which the frozen docos' URLs depend on, so freeing it would break those
+//     URLs and let someone reclaim the handle and collide with the slug. Kept
+//     in the row for resolution, never displayed.
+//   - Public contributions (docos, discussions, replies, stamps) stay, under
+//     the ghost identity. The personal org is soft-deleted ("deleted org") and
+//     its projects freeze: they stop syncing but their docos stay published,
+//     de-attributed. The UI points at the per-post deletion-request flow for
+//     content someone wants gone before they leave.
 //   - Private data IS deleted: inbox, personal MCP tokens, org memberships,
-//     the personal org row, and the WorkOS user.
-//   - Blockers, not cascades: admin of a non-personal org, or projects in the
-//     personal org, must be handled deliberately first.
+//     and the WorkOS user.
+//   - One blocker remains: admin of a non-personal org must be transferred or
+//     soft-deleted first. Personal projects no longer block; they freeze.
 
 export interface AccountView {
   handle: string;
@@ -46,9 +53,13 @@ export async function getAccountView(userId: string): Promise<AccountView | null
     .select({ id: orgs.id, slug: orgs.slug })
     .from(orgs)
     .where(
-      user.personalOrgId === null
-        ? eq(orgs.adminUserId, userId)
-        : and(eq(orgs.adminUserId, userId), ne(orgs.id, user.personalOrgId)),
+      and(
+        // A shared org the user already soft-deleted no longer blocks.
+        isNull(orgs.deletedAt),
+        user.personalOrgId === null
+          ? eq(orgs.adminUserId, userId)
+          : and(eq(orgs.adminUserId, userId), ne(orgs.id, user.personalOrgId)),
+      ),
     );
   const personalProjects =
     user.personalOrgId === null
@@ -57,7 +68,7 @@ export async function getAccountView(userId: string): Promise<AccountView | null
           await db
             .select({ n: count() })
             .from(projects)
-            .where(eq(projects.ownerOrgId, user.personalOrgId))
+            .where(and(eq(projects.ownerOrgId, user.personalOrgId), isNull(projects.deletedAt)))
         )[0]?.n ?? 0);
 
   return {
@@ -82,7 +93,10 @@ export type DeleteAccountResult =
 export async function deleteAccount(userId: string): Promise<DeleteAccountResult> {
   const view = await getAccountView(userId);
   if (view === null) return { ok: false, reason: "not_found" };
-  if (view.blockingOrgSlugs.length > 0 || view.personalProjectCount > 0) {
+  // Only admin'd non-personal orgs block (they need a deliberate transfer or
+  // their own soft-delete first). Personal projects don't block; they freeze
+  // when the personal org is soft-deleted in the transaction below.
+  if (view.blockingOrgSlugs.length > 0) {
     return { ok: false, reason: "blocked" };
   }
 
@@ -118,47 +132,53 @@ export async function deleteAccount(userId: string): Promise<DeleteAccountResult
 
   const tombstoneTag = randomUUID();
   const outcome = await db.transaction(async (tx): Promise<"done" | "raced"> => {
-    // Re-check the blockers inside the transaction: a project or org created
-    // between the pre-check and here must abort the scrub, or the personal-org
-    // delete below would cascade it away. The WorkOS side is already gone at
-    // this point (rare, loud, and recoverable: the data survives), the
-    // reverse ordering would lose PII deletion instead, see above.
-    const [adminOrgRows, personalProjects] = await Promise.all([
-      tx
-        .select({ id: orgs.id })
-        .from(orgs)
-        .where(
+    // Re-check the only blocker inside the transaction: a non-personal org this
+    // user became admin of between the pre-check and here must abort the scrub.
+    // The WorkOS side is already gone at this point (rare, loud, and
+    // recoverable: the data survives); the reverse ordering would lose PII
+    // deletion instead, see above. Personal projects no longer block, they
+    // freeze under the soft-deleted personal org below.
+    const adminOrgRows = await tx
+      .select({ id: orgs.id })
+      .from(orgs)
+      .where(
+        and(
+          isNull(orgs.deletedAt),
           personalOrgId === null
             ? eq(orgs.adminUserId, userId)
             : and(eq(orgs.adminUserId, userId), ne(orgs.id, personalOrgId)),
         ),
-      personalOrgId === null
-        ? Promise.resolve([])
-        : tx
-            .select({ id: projects.id })
-            .from(projects)
-            .where(eq(projects.ownerOrgId, personalOrgId)),
-    ]);
-    if (adminOrgRows.length > 0 || personalProjects.length > 0) return "raced";
+      );
+    if (adminOrgRows.length > 0) return "raced";
+    const scrubAt = new Date();
     // Private data goes for real.
     await tx.delete(inboxMessages).where(eq(inboxMessages.userId, userId));
     await tx.delete(mcpTokens).where(eq(mcpTokens.userId, userId));
     await tx.delete(orgMembers).where(eq(orgMembers.userId, userId));
-    // The personal org dies with the account (re-checked empty just above).
-    // users.personal_org_id is ON DELETE SET NULL.
-    if (personalOrgId !== null) await tx.delete(orgs).where(eq(orgs.id, personalOrgId));
-    // Tombstone: scrubbed but referencable. The unique columns get tagged
-    // values so re-registration of the freed handle/email works.
+    // Soft-delete the personal org rather than deleting it: its projects freeze
+    // (stop syncing) and their docos stay published, de-attributed, instead of
+    // cascading away. personalOrgId stays pointing at the tombstoned org.
+    if (personalOrgId !== null) {
+      await tx
+        .update(orgs)
+        .set({ deletedAt: scrubAt, updatedAt: scrubAt })
+        .where(eq(orgs.id, personalOrgId));
+    }
+    // Tombstone the user. The handle is RETIRED (kept), not freed: it doubles
+    // as the personal org's slug, which the frozen docos' URLs depend on, and
+    // freeing it would let someone reclaim it and collide with that slug. The
+    // row renders "deleted account" everywhere (resolveAuthors and friends).
+    // workosUserId is tagged so the freed WorkOS link can't collide with a
+    // future signup; email is nulled so re-registration with it works.
     await tx
       .update(users)
       .set({
-        handle: `deleted-${tombstoneTag.slice(0, 8)}`,
         displayName: null,
         email: null,
         workosUserId: `deleted_${tombstoneTag}`,
         isPlatformAdmin: false,
-        deletedAt: new Date(),
-        updatedAt: new Date(),
+        deletedAt: scrubAt,
+        updatedAt: scrubAt,
       })
       .where(eq(users.id, userId));
     return "done";

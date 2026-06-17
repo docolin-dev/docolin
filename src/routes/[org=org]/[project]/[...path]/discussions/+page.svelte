@@ -205,7 +205,11 @@
               </span>
               <span class="text-muted-foreground truncate text-xs">
                 {m.discussion_meta_by()}
-                {t.authorDisplayName ?? `@${t.authorHandle}`}
+                {#if t.authorDeleted}
+                  <span class="text-muted-foreground">{m.common_deleted_account()}</span>
+                {:else}
+                  {t.authorDisplayName ?? `@${t.authorHandle}`}
+                {/if}
                 <span class="text-muted-foreground/40">·</span>
                 {relativeTime(t.lastActivityAt, getLocale())}
               </span>

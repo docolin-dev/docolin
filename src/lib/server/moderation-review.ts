@@ -70,6 +70,10 @@ export interface TargetView {
   authorUserId: string | null;
   authorHandle: string | null;
   authorDisplayName: string | null;
+  // Whether the author's account is tombstoned (deleted). When true, the handle
+  // and displayName above are blanked here so a renderer can't leak the retired
+  // identity; show "deleted account" instead.
+  authorDeleted: boolean;
   // Short human label for the queue row.
   contextLabel: string;
   // Raw path to the content (localized in the page); null if unresolvable.
@@ -95,6 +99,7 @@ export async function resolveTargetView(
           author: discussions.createdByUserId,
           handle: users.handle,
           displayName: users.displayName,
+          deletedAt: users.deletedAt,
         })
         .from(discussions)
         .innerJoin(users, eq(users.id, discussions.createdByUserId))
@@ -103,13 +108,15 @@ export async function resolveTargetView(
       if (!r[0]) return null;
       const loc = await docoLocation(r[0].docoId);
       const ref = discussionRef(r[0].number, r[0].title);
+      const authorDeleted = r[0].deletedAt !== null;
       return {
         bodyText: r[0].bodyText,
         isRedacted: r[0].isRedacted,
         isHidden: r[0].hiddenAt !== null,
         authorUserId: r[0].author,
-        authorHandle: r[0].handle,
-        authorDisplayName: r[0].displayName,
+        authorHandle: authorDeleted ? "" : r[0].handle,
+        authorDisplayName: authorDeleted ? null : r[0].displayName,
+        authorDeleted,
         contextLabel: `Discussion #${String(r[0].number)}: ${r[0].title}`,
         url: loc
           ? `/${loc.orgSlug}/${loc.projectSlug}/${loc.pathFromProjectRoot}/discussions/${ref}`
@@ -128,6 +135,7 @@ export async function resolveTargetView(
           author: discussionReplies.createdByUserId,
           handle: users.handle,
           displayName: users.displayName,
+          deletedAt: users.deletedAt,
         })
         .from(discussionReplies)
         .innerJoin(discussions, eq(discussions.id, discussionReplies.discussionId))
@@ -137,13 +145,15 @@ export async function resolveTargetView(
       if (!r[0]) return null;
       const loc = await docoLocation(r[0].docoId);
       const ref = discussionRef(r[0].number, r[0].title);
+      const authorDeleted = r[0].deletedAt !== null;
       return {
         bodyText: r[0].bodyText,
         isRedacted: r[0].isRedacted,
         isHidden: r[0].hiddenAt !== null,
         authorUserId: r[0].author,
-        authorHandle: r[0].handle,
-        authorDisplayName: r[0].displayName,
+        authorHandle: authorDeleted ? "" : r[0].handle,
+        authorDisplayName: authorDeleted ? null : r[0].displayName,
+        authorDeleted,
         contextLabel: `Reply in #${String(r[0].number)}: ${r[0].title}`,
         url: loc
           ? `/${loc.orgSlug}/${loc.projectSlug}/${loc.pathFromProjectRoot}/discussions/${ref}#comment-${targetId}`
@@ -158,6 +168,7 @@ export async function resolveTargetView(
           author: versions.createdByUserId,
           handle: users.handle,
           displayName: users.displayName,
+          deletedAt: users.deletedAt,
         })
         .from(versions)
         .leftJoin(users, eq(users.id, versions.createdByUserId))
@@ -165,13 +176,15 @@ export async function resolveTargetView(
         .limit(1);
       if (!r[0]) return null;
       const loc = await docoLocation(r[0].docoId);
+      const authorDeleted = r[0].deletedAt !== null;
       return {
         bodyText: "",
         isRedacted: false,
         isHidden: false,
         authorUserId: r[0].author,
-        authorHandle: r[0].handle,
-        authorDisplayName: r[0].displayName,
+        authorHandle: authorDeleted ? "" : r[0].handle,
+        authorDisplayName: authorDeleted ? null : r[0].displayName,
+        authorDeleted,
         contextLabel: `Doco version: ${r[0].title}`,
         url: loc ? `/${loc.orgSlug}/${loc.projectSlug}/${loc.pathFromProjectRoot}` : null,
       };
@@ -188,6 +201,7 @@ export async function resolveTargetView(
           author: discussionEdits.editedByUserId,
           handle: users.handle,
           displayName: users.displayName,
+          deletedAt: users.deletedAt,
         })
         .from(discussionEdits)
         .innerJoin(discussions, eq(discussions.id, discussionEdits.discussionId))
@@ -197,13 +211,15 @@ export async function resolveTargetView(
       if (!r[0]) return null;
       const loc = await docoLocation(r[0].docoId);
       const ref = discussionRef(r[0].number, r[0].title);
+      const authorDeleted = r[0].deletedAt !== null;
       return {
         bodyText: r[0].bodyText,
         isRedacted: r[0].isRedacted,
         isHidden: r[0].hiddenAt !== null,
         authorUserId: r[0].author,
-        authorHandle: r[0].handle,
-        authorDisplayName: r[0].displayName,
+        authorHandle: authorDeleted ? "" : r[0].handle,
+        authorDisplayName: authorDeleted ? null : r[0].displayName,
+        authorDeleted,
         contextLabel: `Edit-history version of discussion #${String(r[0].number)}`,
         url: loc
           ? `/${loc.orgSlug}/${loc.projectSlug}/${loc.pathFromProjectRoot}/discussions/${ref}`
@@ -223,6 +239,7 @@ export async function resolveTargetView(
           author: discussionReplyEdits.editedByUserId,
           handle: users.handle,
           displayName: users.displayName,
+          deletedAt: users.deletedAt,
         })
         .from(discussionReplyEdits)
         .innerJoin(
@@ -236,13 +253,15 @@ export async function resolveTargetView(
       if (!r[0]) return null;
       const loc = await docoLocation(r[0].docoId);
       const ref = discussionRef(r[0].number, r[0].title);
+      const authorDeleted = r[0].deletedAt !== null;
       return {
         bodyText: r[0].bodyText,
         isRedacted: r[0].isRedacted,
         isHidden: r[0].hiddenAt !== null,
         authorUserId: r[0].author,
-        authorHandle: r[0].handle,
-        authorDisplayName: r[0].displayName,
+        authorHandle: authorDeleted ? "" : r[0].handle,
+        authorDisplayName: authorDeleted ? null : r[0].displayName,
+        authorDeleted,
         contextLabel: `Edit-history version of a reply in #${String(r[0].number)}`,
         url: loc
           ? `/${loc.orgSlug}/${loc.projectSlug}/${loc.pathFromProjectRoot}/discussions/${ref}#comment-${r[0].replyId}`

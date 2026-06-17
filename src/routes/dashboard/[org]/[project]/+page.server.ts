@@ -1,5 +1,5 @@
 import { fail } from "@sveltejs/kit";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { Actions, PageServerLoad } from "./$types";
 import { db } from "$lib/server/db";
 import { orgs, orgMembers, projects } from "$lib/server/db/schema";
@@ -31,14 +31,20 @@ export const actions = {
       .select({ id: orgs.id })
       .from(orgs)
       .innerJoin(orgMembers, and(eq(orgMembers.orgId, orgs.id), eq(orgMembers.userId, userId)))
-      .where(eq(orgs.slug, params.org))
+      .where(and(eq(orgs.slug, params.org), isNull(orgs.deletedAt)))
       .limit(1);
     if (orgRows.length === 0) return fail(403, { error: "not_a_member" });
 
     const projectRows = await db
       .select({ id: projects.id, sourceMode: projects.sourceMode })
       .from(projects)
-      .where(and(eq(projects.ownerOrgId, orgRows[0].id), eq(projects.slug, params.project)))
+      .where(
+        and(
+          eq(projects.ownerOrgId, orgRows[0].id),
+          eq(projects.slug, params.project),
+          isNull(projects.deletedAt),
+        ),
+      )
       .limit(1);
     if (projectRows.length === 0) return fail(404, { error: "not_found" });
     if (projectRows[0].sourceMode !== "git") {

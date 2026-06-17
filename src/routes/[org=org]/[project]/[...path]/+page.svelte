@@ -32,9 +32,11 @@
     mainEntityOfPage: canonicalUrl,
     url: canonicalUrl,
     author: doco.authors.map((a) =>
-      a.kind === "user"
-        ? { "@type": "Person", name: a.displayName ?? a.handle, url: `${SITE_URL}/${a.handle}` }
-        : { "@type": "Person", name: a.name, ...(a.url === null ? {} : { url: a.url }) },
+      a.kind === "user" && a.deleted
+        ? { "@type": "Person", name: "deleted account" }
+        : a.kind === "user"
+          ? { "@type": "Person", name: a.displayName ?? a.handle, url: `${SITE_URL}/${a.handle}` }
+          : { "@type": "Person", name: a.name, ...(a.url === null ? {} : { url: a.url }) },
     ),
     publisher: { "@type": "Organization", name: "docolin", url: SITE_URL },
   });

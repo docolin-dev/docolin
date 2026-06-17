@@ -27,9 +27,10 @@
     return m.dashboard_settings_error_generic();
   }
 
-  const blocked = $derived(
-    data.account.blockingOrgSlugs.length > 0 || data.account.personalProjectCount > 0,
-  );
+  // Only admin'd organizations block deletion now: they need a deliberate
+  // transfer or their own delete first. Personal projects don't block; they
+  // freeze (stop syncing, guides preserved) when the account is deleted.
+  const blocked = $derived(data.account.blockingOrgSlugs.length > 0);
   let confirmHandle = $state("");
   let renameSubmitting = $state(false);
   let deleteSubmitting = $state(false);
@@ -124,15 +125,16 @@
           </li>
         {/each}
       </ul>
-    {:else if data.account.personalProjectCount > 0}
-      <p class="text-muted-foreground text-sm">
-        {data.account.personalProjectCount === 1
-          ? m.dashboard_account_delete_blocked_projects_one()
-          : m.dashboard_account_delete_blocked_projects({
-              count: data.account.personalProjectCount,
-            })}
-      </p>
     {:else}
+      {#if data.account.personalProjectCount > 0}
+        <p class="text-muted-foreground mb-1 text-sm">
+          {data.account.personalProjectCount === 1
+            ? m.dashboard_account_delete_blocked_projects_one()
+            : m.dashboard_account_delete_blocked_projects({
+                count: data.account.personalProjectCount,
+              })}
+        </p>
+      {/if}
       <p class="text-muted-foreground mb-1 text-sm">
         {m.dashboard_account_delete_description()}
       </p>

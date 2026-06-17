@@ -21,7 +21,7 @@ export async function resolveAuthors(raw: unknown): Promise<ResolvedAuthor[]> {
     if (typeof entry !== "object" || entry === null) continue;
     const obj = entry as Record<string, unknown>;
     if (typeof obj.userId === "string") {
-      out.push({ kind: "user", userId: obj.userId, handle: "", displayName: null });
+      out.push({ kind: "user", userId: obj.userId, handle: "", displayName: null, deleted: false });
       userIds.push(obj.userId);
       userSlots.push(out.length - 1);
     } else if (typeof obj.name === "string") {
@@ -34,10 +34,19 @@ export async function resolveAuthors(raw: unknown): Promise<ResolvedAuthor[]> {
     }
   }
 
-  // Second pass: hydrate handle + displayName for user entries.
+  // Second pass: hydrate handle + displayName for user entries. A tombstoned
+  // (deleted) account stays referenced by id but its identity is blanked here,
+  // so a renderer that forgets the `deleted` flag still can't leak the retired
+  // handle. A row that resolves to nothing (should not happen under the
+  // `restrict` FKs) is treated as deleted too.
   if (userIds.length > 0) {
     const rows = await db
-      .select({ id: users.id, handle: users.handle, displayName: users.displayName })
+      .select({
+        id: users.id,
+        handle: users.handle,
+        displayName: users.displayName,
+        deletedAt: users.deletedAt,
+      })
       .from(users)
       .where(inArray(users.id, userIds));
     const map = new Map(rows.map((r) => [r.id, r]));
@@ -45,7 +54,11 @@ export async function resolveAuthors(raw: unknown): Promise<ResolvedAuthor[]> {
       const entry = out[slot];
       if (entry.kind !== "user") continue;
       const row = map.get(entry.userId);
-      if (row !== undefined) {
+      if (row === undefined) {
+        entry.deleted = true;
+      } else if (row.deletedAt !== null) {
+        entry.deleted = true;
+      } else {
         entry.handle = row.handle;
         entry.displayName = row.displayName;
       }

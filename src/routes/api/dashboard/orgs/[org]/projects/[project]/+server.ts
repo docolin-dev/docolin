@@ -1,5 +1,5 @@
 import { error, json } from "@sveltejs/kit";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import type { RequestHandler } from "./$types";
 import { db } from "$lib/server/db";
 import {
@@ -27,7 +27,7 @@ export const GET: RequestHandler = async ({ locals, params, setHeaders }) => {
     .select({ id: orgs.id, slug: orgs.slug, displayName: orgs.displayName })
     .from(orgs)
     .innerJoin(orgMembers, and(eq(orgMembers.orgId, orgs.id), eq(orgMembers.userId, userId)))
-    .where(eq(orgs.slug, params.org))
+    .where(and(eq(orgs.slug, params.org), isNull(orgs.deletedAt)))
     .limit(1);
   if (orgRows.length === 0) error(404);
   const org = orgRows[0];
@@ -41,7 +41,13 @@ export const GET: RequestHandler = async ({ locals, params, setHeaders }) => {
       createdAt: projects.createdAt,
     })
     .from(projects)
-    .where(and(eq(projects.ownerOrgId, org.id), eq(projects.slug, params.project)))
+    .where(
+      and(
+        eq(projects.ownerOrgId, org.id),
+        eq(projects.slug, params.project),
+        isNull(projects.deletedAt),
+      ),
+    )
     .limit(1);
   if (projectRows.length === 0) error(404);
   const project = projectRows[0];

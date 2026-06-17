@@ -1,5 +1,5 @@
 import { error, json } from "@sveltejs/kit";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { RequestHandler } from "./$types";
 import { db } from "$lib/server/db";
 import { orgs, orgMembers, projects } from "$lib/server/db/schema";
@@ -37,15 +37,17 @@ export const GET: RequestHandler = async ({ url, locals, setHeaders }) => {
     .select({ id: orgs.id })
     .from(orgs)
     .innerJoin(orgMembers, and(eq(orgMembers.orgId, orgs.id), eq(orgMembers.userId, userId)))
-    .where(eq(orgs.slug, orgSlug))
+    .where(and(eq(orgs.slug, orgSlug), isNull(orgs.deletedAt)))
     .limit(1);
   if (orgRows.length === 0) error(404);
   const orgId = orgRows[0].id;
 
+  // A soft-deleted project's slug reads as available: recreating it revives the
+  // project (with its old docos and history) rather than colliding.
   const taken = await db
     .select({ id: projects.id })
     .from(projects)
-    .where(and(eq(projects.ownerOrgId, orgId), eq(projects.slug, slug)))
+    .where(and(eq(projects.ownerOrgId, orgId), eq(projects.slug, slug), isNull(projects.deletedAt)))
     .limit(1);
 
   if (taken.length > 0) {
