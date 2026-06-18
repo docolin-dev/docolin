@@ -167,15 +167,21 @@ export async function syncProject(
       base: r.lastSyncedCommit,
     });
   } catch (err) {
-    // Surface the failure so the badge stops spinning; full detail goes to the
-    // Workers log for diagnosis.
-    const message = err instanceof Error ? err.message : String(err);
+    // Surface a terminal state so the badge stops spinning. The full detail goes
+    // to the Workers log (maintainer-only). syncError is returned to the project
+    // owner by the dashboard API, so keep it generic: a raw exception message
+    // could leak schema or infra internals.
+    const detail = err instanceof Error ? err.message : String(err);
     console.error("sync failed unexpectedly", {
       projectId: r.projectId,
       gitSourceId: r.gitSourceId,
-      message,
+      detail,
     });
-    return await markError(r.gitSourceId, `Unexpected sync failure: ${message}`, ZERO_COUNTS);
+    return await markError(
+      r.gitSourceId,
+      "The sync failed unexpectedly. Try resyncing, and report it if it keeps happening.",
+      ZERO_COUNTS,
+    );
   }
 }
 
