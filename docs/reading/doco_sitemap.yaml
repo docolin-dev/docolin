@@ -1,0 +1,25 @@
+# Sidebar for the Reading category. Fixed top-level order, identical across every
+# category; only Reading is expanded here, the rest are swap links.
+sitemap:
+  - title: Tutorial
+    url: ../tutorial/overview.md
+  - title: Concepts
+    url: ../concepts/overview.md
+  - title: Reading
+    children:
+      - title: Reading on docolin
+        url: ./overview.md
+      - title: Finding a guide
+        url: ./finding-a-guide.md
+      - title: Reading a doco
+        url: ./reading-a-doco.md
+      - title: Verifying that a guide worked
+        url: ./verifying.md
+      - title: Discussions
+        url: ./discussions.md
+  - title: Hosting
+    url: ../hosting/overview.md
+  - title: Authoring
+    url: ../authoring/overview.md
+  - title: For AI agents
+    url: ../mcp/how-agents-use-docolin.md

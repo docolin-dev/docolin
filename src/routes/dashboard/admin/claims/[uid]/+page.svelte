@@ -61,13 +61,17 @@
        Sub-line 2: muted caption with filed-at + ref id. flex-wrap on each
        so long emails reflow cleanly on narrow widths. -->
   <p class="text-foreground/80 mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
-    <span>
-      {claim.requester.displayName ?? claim.requester.handle}
-      <span class="text-muted-foreground">(@{claim.requester.handle})</span>
-    </span>
-    {#if claim.requester.email}
-      <span class="text-muted-foreground" aria-hidden="true">·</span>
-      <MaskedEmail email={claim.requester.email} class="text-foreground font-mono" />
+    {#if claim.requester.deleted}
+      <span class="text-muted-foreground italic">{m.common_deleted_account()}</span>
+    {:else}
+      <span>
+        {claim.requester.displayName ?? claim.requester.handle}
+        <span class="text-muted-foreground">(@{claim.requester.handle})</span>
+      </span>
+      {#if claim.requester.email}
+        <span class="text-muted-foreground" aria-hidden="true">·</span>
+        <MaskedEmail email={claim.requester.email} class="text-foreground font-mono" />
+      {/if}
     {/if}
   </p>
   <p class="text-muted-foreground mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs">
@@ -107,10 +111,14 @@
         <ul class="text-muted-foreground mt-2 space-y-0.5 text-sm">
           {#each siblings as sib (sib.uid)}
             <li>
-              <span class="text-foreground/80">@{sib.handle}</span>
-              {#if sib.email}
-                <span aria-hidden="true">·</span>
-                <MaskedEmail email={sib.email} class="font-mono" />
+              {#if sib.deleted}
+                <span class="italic">{m.common_deleted_account()}</span>
+              {:else}
+                <span class="text-foreground/80">@{sib.handle}</span>
+                {#if sib.email}
+                  <span aria-hidden="true">·</span>
+                  <MaskedEmail email={sib.email} class="font-mono" />
+                {/if}
               {/if}
             </li>
           {/each}

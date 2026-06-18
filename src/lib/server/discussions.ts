@@ -63,6 +63,10 @@ export interface ThreadListItem {
   isAnswered: boolean;
   authorHandle: string;
   authorDisplayName: string | null;
+  // True when the author's account is tombstoned (deletedAt set) or missing.
+  // The identity above is blanked in that case; renderers show a neutral
+  // "deleted account" label with no profile link.
+  authorDeleted: boolean;
   replyCount: number;
   lastActivityAt: string;
 }
@@ -96,6 +100,7 @@ export async function listThreads(docoId: string, filter: ThreadFilter): Promise
       updatedAt: discussions.updatedAt,
       authorHandle: users.handle,
       authorDisplayName: users.displayName,
+      authorDeletedAt: users.deletedAt,
     })
     .from(discussions)
     .innerJoin(users, eq(users.id, discussions.createdByUserId))
@@ -122,24 +127,35 @@ export async function listThreads(docoId: string, filter: ThreadFilter): Promise
     for (const a of aggRows) counts.set(a.discussionId, a.c);
   }
 
-  return rows.map((r) => ({
-    id: r.id,
-    number: r.number,
-    title: r.title,
-    status: r.status,
-    isPinned: r.pinnedAt !== null,
-    isAnswered: r.answeredReplyId !== null,
-    authorHandle: r.authorHandle,
-    authorDisplayName: r.authorDisplayName,
-    replyCount: counts.get(r.id) ?? 0,
-    lastActivityAt: r.updatedAt.toISOString(),
-  }));
+  return rows.map((r) => {
+    // A tombstoned author keeps the thread but loses its identity here, so a
+    // renderer that forgets the `authorDeleted` flag still can't leak the
+    // retired handle.
+    const authorDeleted = r.authorDeletedAt !== null;
+    return {
+      id: r.id,
+      number: r.number,
+      title: r.title,
+      status: r.status,
+      isPinned: r.pinnedAt !== null,
+      isAnswered: r.answeredReplyId !== null,
+      authorHandle: authorDeleted ? "" : r.authorHandle,
+      authorDisplayName: authorDeleted ? null : r.authorDisplayName,
+      authorDeleted,
+      replyCount: counts.get(r.id) ?? 0,
+      lastActivityAt: r.updatedAt.toISOString(),
+    };
+  });
 }
 
 export interface ThreadPost {
   id: string;
   authorHandle: string;
   authorDisplayName: string | null;
+  // True when the author's account is tombstoned (deletedAt set) or missing.
+  // The identity above is blanked in that case; renderers show a neutral
+  // "deleted account" label with no profile link.
+  authorDeleted: boolean;
   bodyHtml: string;
   // Raw markdown source, so the author's inline edit form can prefill with the
   // original text. Public content (same as the rendered body), so exposing it
@@ -197,6 +213,7 @@ export async function getThread(docoId: string, number: number): Promise<ThreadD
       createdByUserId: discussions.createdByUserId,
       authorHandle: users.handle,
       authorDisplayName: users.displayName,
+      authorDeletedAt: users.deletedAt,
     })
     .from(discussions)
     .innerJoin(users, eq(users.id, discussions.createdByUserId))
@@ -219,6 +236,7 @@ export async function getThread(docoId: string, number: number): Promise<ThreadD
       createdByUserId: discussionReplies.createdByUserId,
       authorHandle: users.handle,
       authorDisplayName: users.displayName,
+      authorDeletedAt: users.deletedAt,
     })
     .from(discussionReplies)
     .innerJoin(users, eq(users.id, discussionReplies.createdByUserId))
@@ -251,6 +269,7 @@ export async function getThread(docoId: string, number: number): Promise<ThreadD
           id: r.id,
           authorHandle: "",
           authorDisplayName: null,
+          authorDeleted: true,
           bodyHtml: "",
           bodySource: "",
           createdAt: r.createdAt.toISOString(),
@@ -260,10 +279,14 @@ export async function getThread(docoId: string, number: number): Promise<ThreadD
           removed: true,
         };
       }
+      // A tombstoned author keeps the reply but loses its identity here (defence
+      // in depth), so a renderer that forgets the flag can't leak the handle.
+      const authorDeleted = r.authorDeletedAt !== null;
       return {
         id: r.id,
-        authorHandle: r.authorHandle,
-        authorDisplayName: r.authorDisplayName,
+        authorHandle: authorDeleted ? "" : r.authorHandle,
+        authorDisplayName: authorDeleted ? null : r.authorDisplayName,
+        authorDeleted,
         bodyHtml: await renderMarkdown(r.bodyText),
         bodySource: r.bodyText,
         createdAt: r.createdAt.toISOString(),
@@ -275,6 +298,10 @@ export async function getThread(docoId: string, number: number): Promise<ThreadD
     }),
   );
 
+  // A tombstoned op author keeps the thread but loses its identity here
+  // (defence in depth), so a renderer that forgets the flag can't leak the
+  // retired handle.
+  const opDeleted = d.authorDeletedAt !== null;
   return {
     id: d.id,
     number: d.number,
@@ -284,8 +311,9 @@ export async function getThread(docoId: string, number: number): Promise<ThreadD
     answeredReplyId: d.answeredReplyId,
     op: {
       id: d.id,
-      authorHandle: d.authorHandle,
-      authorDisplayName: d.authorDisplayName,
+      authorHandle: opDeleted ? "" : d.authorHandle,
+      authorDisplayName: opDeleted ? null : d.authorDisplayName,
+      authorDeleted: opDeleted,
       bodyHtml: await renderMarkdown(d.bodyText),
       bodySource: d.bodyText,
       createdAt: d.createdAt.toISOString(),

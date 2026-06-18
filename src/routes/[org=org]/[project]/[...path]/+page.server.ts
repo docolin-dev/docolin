@@ -71,6 +71,7 @@ export const load: PageServerLoad = async ({ params, setHeaders, isDataRequest }
         userId: "playground-user",
         handle: "imgajeed",
         displayName: "Oliver Seifert",
+        deleted: false,
       },
       {
         kind: "external",

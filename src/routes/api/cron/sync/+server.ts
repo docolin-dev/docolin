@@ -3,7 +3,7 @@ import { and, eq, isNull, lt, or, sql, asc } from "drizzle-orm";
 import { requireEnv } from "$lib/server/env";
 import type { RequestHandler } from "./$types";
 import { db } from "$lib/server/db";
-import { gitSources, projects } from "$lib/server/db/schema";
+import { gitSources, orgs, projects } from "$lib/server/db/schema";
 import { purgeOnRendererChange } from "$lib/server/renderer-purge";
 import { syncProject } from "$lib/sync/run";
 
@@ -51,9 +51,15 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     })
     .from(projects)
     .innerJoin(gitSources, eq(gitSources.projectId, projects.id))
+    .innerJoin(orgs, eq(orgs.id, projects.ownerOrgId))
     .where(
       and(
         eq(projects.sourceMode, "git"),
+        // Soft-deleted projects never sync; revive (recreate) clears the flag.
+        isNull(projects.deletedAt),
+        // Frozen projects (their org was soft-deleted) stop syncing too; their
+        // docos stay published but de-attributed.
+        isNull(orgs.deletedAt),
         or(
           isNull(gitSources.lastSyncedAt),
           lt(

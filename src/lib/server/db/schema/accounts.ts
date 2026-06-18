@@ -59,6 +59,12 @@ export const orgs = pgTable(
       "github" | "gitlab" | "gitea" | "bitbucket" | "sourcehut"
     >(),
     upstreamOrgId: text("upstream_org_id"),
+    // Soft delete: an org is never hard-deleted (that would cascade its projects
+    // and destroy the docos). Tombstoned instead, rendered "deleted org", with
+    // its projects frozen, they stop syncing but their docos stay live and
+    // anonymized. Personal orgs die with the account. See $lib/server/account
+    // and $lib/server/org-admin.
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },

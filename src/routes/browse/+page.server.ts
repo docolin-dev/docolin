@@ -3,6 +3,7 @@ import type { PageServerLoad } from "./$types";
 import { db } from "$lib/server/db";
 import { kinds } from "$lib/server/db/schema";
 import { TAXONOMY_ROOTS_LIST } from "$lib/reserved-handles";
+import { EXAMPLE_KIND_ROOT } from "$lib/sync/frontmatter-schema";
 import { getBrowseFeed } from "$lib/server/browse";
 
 // The browse landing: what's moving on docolin (trending by verification +
@@ -36,6 +37,7 @@ export const load: PageServerLoad = async ({ setHeaders, isDataRequest }) => {
       FROM versions v
       JOIN docos d ON d.id = v.doco_id
       WHERE v.is_latest AND v.status <> 'deprecated' AND d.deleted_at IS NULL
+        AND NOT (v.kind <@ ${EXAMPLE_KIND_ROOT}::ltree)
       GROUP BY 1
     `),
     db
@@ -51,11 +53,15 @@ export const load: PageServerLoad = async ({ setHeaders, isDataRequest }) => {
   const descriptions = new Map<string, string | null>();
   for (const row of descRows) descriptions.set(row.key, row.description);
 
-  const roots: RootCard[] = TAXONOMY_ROOTS_LIST.map((root) => ({
-    root,
-    description: descriptions.get(root) ?? null,
-    count: counts.get(root) ?? 0,
-  }));
+  // The example sandbox is a reserved taxonomy root (so no org can claim the
+  // handle), but it never appears as a browsable topic.
+  const roots: RootCard[] = TAXONOMY_ROOTS_LIST.filter((root) => root !== EXAMPLE_KIND_ROOT).map(
+    (root) => ({
+      root,
+      description: descriptions.get(root) ?? null,
+      count: counts.get(root) ?? 0,
+    }),
+  );
 
   return { feed, roots };
 };

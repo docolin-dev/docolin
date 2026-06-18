@@ -1,6 +1,6 @@
 ---
 title: docolin moderation policy
-description: How docolin handles reports, removals, and content moderation.
+description: How docolin moderates content, who can report it, the fixed set of reasons something is hidden or redacted, why disagreement is never one of them, and how to appeal.
 authors:
   - handle: imgajeed
 
@@ -16,14 +16,16 @@ docolin:
   difficulty: beginner
   time_estimate: 7m
 
-  status: draft
+  status: stable
+
+  sitemap: []
 
   aliases: [moderation, content-policy, reporting]
 ---
 
 # docolin moderation policy
 
-A jungle gym only stays fun if it stays safe, and docolin is no different. Moderation is how we keep it a place people want to be: a small, predictable set of rules about what comes down, who decides, and how you push back when we get it wrong.
+Pango's jungle gym only stays fun if it stays safe, and docolin is no different. Moderation is how we keep it a place people want to be: a small, predictable set of rules about what comes down, who decides, and how you push back when we get it wrong.
 
 !!! info "Early platform, growing toolkit"
     docolin is pre-alpha. This page describes the policy as it is enforced today. The closing [Where this is heading](#where-this-is-heading) section lists capabilities we intend to add as the platform grows.

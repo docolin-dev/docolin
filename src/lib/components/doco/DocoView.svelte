@@ -926,7 +926,9 @@
               {m.doco_meta_by()}
               {#each doco.authors as author, i (i)}
                 {#if i > 0}<span>{authorSeparator(i, doco.authors.length)}</span>{/if}
-                {#if author.kind === "user"}
+                {#if author.kind === "user" && author.deleted}
+                  <span class="text-muted-foreground">{m.common_deleted_account()}</span>
+                {:else if author.kind === "user"}
                   <a
                     href={localizeHref(`/${author.handle}`)}
                     class="text-foreground hover:text-primary transition-colors"

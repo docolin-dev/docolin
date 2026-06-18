@@ -18,6 +18,7 @@ export const load: PageServerLoad = async ({ params }) => {
       requesterHandle: users.handle,
       requesterDisplayName: users.displayName,
       requesterEmail: users.email,
+      requesterDeletedAt: users.deletedAt,
     })
     .from(claimRequests)
     .innerJoin(users, eq(users.id, claimRequests.requestedByUserId))
@@ -25,6 +26,10 @@ export const load: PageServerLoad = async ({ params }) => {
     .limit(1);
   if (rows.length === 0) error(404);
   const row = rows[0];
+  // A tombstoned requester's identity is blanked before it leaves the server,
+  // so the page can render "deleted account" off the flag without ever holding
+  // the retired handle/displayName/email.
+  const requesterDeleted = row.requesterDeletedAt !== null;
 
   // Sibling pending claims (same slug, different uid). Surfaced so the admin
   // knows what they're about to cascade-cancel by approving this one.
@@ -33,6 +38,7 @@ export const load: PageServerLoad = async ({ params }) => {
       uid: claimRequests.uid,
       requesterHandle: users.handle,
       requesterEmail: users.email,
+      requesterDeletedAt: users.deletedAt,
     })
     .from(claimRequests)
     .innerJoin(users, eq(users.id, claimRequests.requestedByUserId))
@@ -53,16 +59,21 @@ export const load: PageServerLoad = async ({ params }) => {
       status: row.status,
       createdAt: row.createdAt.toISOString(),
       requester: {
-        handle: row.requesterHandle,
-        displayName: row.requesterDisplayName,
-        email: row.requesterEmail,
+        deleted: requesterDeleted,
+        handle: requesterDeleted ? "" : row.requesterHandle,
+        displayName: requesterDeleted ? null : row.requesterDisplayName,
+        email: requesterDeleted ? null : row.requesterEmail,
       },
     },
-    siblings: siblings.map((s) => ({
-      uid: s.uid,
-      handle: s.requesterHandle,
-      email: s.requesterEmail,
-    })),
+    siblings: siblings.map((s) => {
+      const deleted = s.requesterDeletedAt !== null;
+      return {
+        uid: s.uid,
+        deleted,
+        handle: deleted ? "" : s.requesterHandle,
+        email: deleted ? null : s.requesterEmail,
+      };
+    }),
   };
 };
 

@@ -11,14 +11,20 @@ import type { Root } from "hast";
 // same way a browser would, rather than via a hand-rolled scheme match.
 
 const SAFE_PROTOCOLS = new Set(["http:", "https:", "mailto:", "tel:"]);
+// blob: URLs come only from the local-folder preview (URL.createObjectURL on a
+// picked file): same-origin and ephemeral. Allowed for media `src` so preview
+// images render, but never for link `href`, so a doco can't smuggle one into a
+// clickable link.
+const SAFE_SRC_PROTOCOLS = new Set([...SAFE_PROTOCOLS, "blob:"]);
 const URL_ATTRS = new Set(["href", "src"]);
 // Relative/anchor URLs have no scheme; resolving them against a dummy https base
 // yields an allowed protocol. The base host is never emitted.
 const DUMMY_BASE = "https://docolin.invalid/";
 
-function isSafeUrl(value: string): boolean {
+function isSafeUrl(value: string, attr: string): boolean {
   try {
-    return SAFE_PROTOCOLS.has(new URL(value, DUMMY_BASE).protocol);
+    const protocol = new URL(value, DUMMY_BASE).protocol;
+    return (attr === "src" ? SAFE_SRC_PROTOCOLS : SAFE_PROTOCOLS).has(protocol);
   } catch {
     // Unparseable URL: drop it.
     return false;
@@ -39,7 +45,7 @@ export function rehypeSanitizeUrls() {
           continue;
         }
         const value = props[key];
-        if (URL_ATTRS.has(lower) && typeof value === "string" && !isSafeUrl(value)) {
+        if (URL_ATTRS.has(lower) && typeof value === "string" && !isSafeUrl(value, lower)) {
           props[key] = undefined;
         }
       }

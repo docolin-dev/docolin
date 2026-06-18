@@ -12,6 +12,7 @@ import {
   versions,
 } from "$lib/server/db/schema";
 import { listedDocoSelection, toListedDoco, type ListedDoco } from "$lib/server/doco-rows";
+import { EXAMPLE_KIND_ROOT } from "$lib/sync/frontmatter-schema";
 
 // The browse feed: what's moving on docolin. "Trending" is built from the only
 // usage signals the platform collects, all public and volunteered: stamps
@@ -118,7 +119,15 @@ function listedRows() {
   return db
     .select(listedDocoSelection)
     .from(latestVersions)
-    .innerJoin(docos, and(eq(docos.id, latestVersions.docoId), isNull(docos.deletedAt)))
+    .innerJoin(
+      docos,
+      and(
+        eq(docos.id, latestVersions.docoId),
+        isNull(docos.deletedAt),
+        // Example sandbox docos never appear in trending, fresh, the pool, or events.
+        sql`NOT (${latestVersions.kind} <@ ${EXAMPLE_KIND_ROOT}::ltree)`,
+      ),
+    )
     .innerJoin(projects, eq(projects.id, docos.projectId))
     .innerJoin(orgs, eq(orgs.id, projects.ownerOrgId))
     .leftJoin(gitSources, eq(gitSources.projectId, projects.id));

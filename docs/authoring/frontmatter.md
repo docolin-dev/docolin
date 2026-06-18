@@ -1,6 +1,6 @@
 ---
 title: Frontmatter
-description: The YAML block at the top of every doco that says what it is, who wrote it, and where it belongs in docolin.
+description: The YAML block at the top of every doco that says what it is, who wrote it, where it belongs in docolin's taxonomy, and how it's verified and versioned.
 authors:
   - handle: imgajeed
 
@@ -16,15 +16,18 @@ docolin:
   difficulty: beginner
   time_estimate: 12m
 
-  status: draft
+  status: stable
 
   aliases: [frontmatter format, metadata fields, yaml header, guide metadata]
 
-  prev: ./quickstart.md
+  prev: ./preview.md
   next: ./text-and-lists.md
 ---
 
 # Frontmatter
+
+!!! info "In one line"
+    The YAML block at the top of every doco that says what it is, who wrote it, and where it belongs.
 
 Before Pango can publish his guide to the high bar, docolin needs to know a few things about it: what it is called, who wrote it, and where it belongs. All of that lives in the **frontmatter**, a small block of YAML between two `---` fences at the very top of every doco.
 
@@ -96,7 +99,7 @@ schema_version: 1
 
 ### `kind` (required)
 
-The canonical path of this guide in the docolin taxonomy.
+The canonical path of this guide in the docolin taxonomy. The why behind paths-not-tags is in [kinds and the path taxonomy](../concepts/kinds.md).
 
 ```yaml
 kind: data/postgres/replication/setup
@@ -104,7 +107,7 @@ kind: data/postgres/replication/setup
 
 Rules:
 
-- **Lowercase, kebab-case** segments.
+- **Lowercase letters, digits, hyphens, or underscores** per segment (kebab-case by convention).
 - **Depth 2 to 5.** The hard cap of 5 is enforced.
 - **First segment** must be one of the fixed top-level domains below.
 - **Below that**, free-form. Authors choose what makes sense.
@@ -122,6 +125,10 @@ Rules:
 | `programming/` | Languages, frameworks, libraries, paradigms        |
 | `tools/`       | Developer tools that are not OS-bound              |
 | `blog/`        | Blog posts, organized as `blog/{handle}/{slug}`    |
+| `example/`     | Sandbox for testing and tutorials (see below)      |
+
+!!! info "The `example` sandbox"
+    A doco whose kind starts with `example/` is published and served at its URL, and you can stamp it, but it is **excluded from search, browse, trending, and crawler indexing**. It's the space for trying things out and for the [tutorial](../tutorial/overview.md), so first guides and experiments never clutter the real taxonomy. Move it to a real domain when it's ready to be found.
 
 !!! warning "These domains are reserved handles"
     No user or organization can claim a handle that collides with a top-level domain. That is what lets a URL tell a kind path apart from a project path. See [Links & navigation](./links-and-navigation.md) for how `kind` drives soft URLs.
@@ -151,7 +158,7 @@ applies_to:
   - root-or-sudo
 ```
 
-Each entry is a fact, not a filter. The platform reads these facts differently depending on context: the soft-link resolver prefers a guide whose facts match the reader's setup; search ranks matching guides slightly higher; browse pages show them as labels; and a reader who actively filters ("only Postgres 14+") filters on this field.
+Each entry is a fact, not a filter. The platform reads these facts differently depending on context: [soft-link](../concepts/soft-links.md) ranking favors guides whose facts match the reader's setup; search ranks matching guides slightly higher; browse pages show them as labels; and a reader who actively filters ("only Postgres 14+") filters on this field.
 
 !!! info "A guide is never hidden automatically"
     `applies_to` only narrows a guide when a reader explicitly filters it out. So an overly specific list costs you reach, not visibility.
@@ -159,7 +166,7 @@ Each entry is a fact, not a filter. The platform reads these facts differently d
 !!! note "Planned"
     Validating the vocabulary against a per-domain registry is planned. Today any string is accepted.
 
-### `language` (required)
+### `language` (optional, defaults to `en`)
 
 ISO 639-1 code (`en`, `de`, `fr`, ...). Defaults to `en` if omitted. A translation is simply the same `kind` with a different `language`; whether it is in sync with its source is inferred from git timestamps.
 
@@ -171,7 +178,7 @@ How much prior knowledge the reader needs: `beginner`, `intermediate`, `advanced
 
 How long the guide takes, reading plus doing. Shorthand: `15m`, `2h`, `1h30m` for a single value, `30m-1h` for a range. Author-provided, because "doing time" does not follow from word count.
 
-### `status` (required, defaults to `stable`)
+### `status` (optional, defaults to `stable`)
 
 How current and reliable the content is.
 

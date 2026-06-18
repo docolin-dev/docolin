@@ -16,7 +16,7 @@ docolin:
   difficulty: beginner
   time_estimate: 5m
 
-  status: draft
+  status: stable
 
   aliases: [authoring guide, writing guide, markdown guide, how to write docs]
 
@@ -24,6 +24,9 @@ docolin:
 ---
 
 # Writing docs with docolin
+
+!!! info "In one line"
+    A guided tour of everything you can put in a docolin doco, taught by example through a pangolin and his jungle gym.
 
 Pango is a pangolin. He spends his nights in a jungle gym, climbing bars and hoarding ants, and he is also, as of last Tuesday, a technical writer, because somebody had to document the gym before a newcomer walked straight off the high bar.
 

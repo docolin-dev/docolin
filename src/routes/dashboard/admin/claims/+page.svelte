@@ -105,11 +105,17 @@
                 <h3 class="text-foreground text-xl font-medium tracking-tight">
                   {claim.slug}
                 </h3>
-                <span class="text-foreground/80 text-sm">@{claim.requester.handle}</span>
-                {#if claim.requester.email}
-                  <span class="text-muted-foreground font-mono text-sm">
-                    {maskEmail(claim.requester.email)}
-                  </span>
+                {#if claim.requester.deleted}
+                  <span class="text-muted-foreground text-sm italic"
+                    >{m.common_deleted_account()}</span
+                  >
+                {:else}
+                  <span class="text-foreground/80 text-sm">@{claim.requester.handle}</span>
+                  {#if claim.requester.email}
+                    <span class="text-muted-foreground font-mono text-sm">
+                      {maskEmail(claim.requester.email)}
+                    </span>
+                  {/if}
                 {/if}
               </div>
               <span class="text-muted-foreground shrink-0 font-mono text-xs">{claim.uid}</span>

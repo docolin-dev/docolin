@@ -1,0 +1,28 @@
+# Sidebar for the Concepts category. The top-level order is FIXED and identical
+# across every category's sitemap; only the category you're in is expanded, the
+# others stay as leaf links that open their own sidebar when followed.
+sitemap:
+  - title: Tutorial
+    url: ../tutorial/overview.md
+  - title: Concepts
+    children:
+      - title: What docolin is
+        url: ./overview.md
+      - title: Kinds and the path taxonomy
+        url: ./kinds.md
+      - title: Soft links
+        url: ./soft-links.md
+      - title: Verification and the Pango score
+        url: ./verification.md
+      - title: Attribution
+        url: ./attribution.md
+      - title: Privacy by design
+        url: ./privacy.md
+  - title: Reading
+    url: ../reading/overview.md
+  - title: Hosting
+    url: ../hosting/overview.md
+  - title: Authoring
+    url: ../authoring/overview.md
+  - title: For AI agents
+    url: ../mcp/how-agents-use-docolin.md

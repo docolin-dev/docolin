@@ -69,9 +69,8 @@
         <a href={localizeHref("/sponsor")} class="hover:text-foreground transition-colors"
           >{m.home_footer_sponsor()}</a
         >
-        <a
-          href={localizeHref("/docolin/docolin/privacy")}
-          class="hover:text-foreground transition-colors">{m.home_footer_privacy()}</a
+        <a href={localizeHref("/privacy")} class="hover:text-foreground transition-colors"
+          >{m.home_footer_privacy()}</a
         >
         <a href={localizeHref("/terms")} class="hover:text-foreground transition-colors"
           >{m.home_footer_terms()}</a

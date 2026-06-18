@@ -13,6 +13,7 @@ export const load: PageServerLoad = async () => {
       requesterHandle: users.handle,
       requesterDisplayName: users.displayName,
       requesterEmail: users.email,
+      requesterDeletedAt: users.deletedAt,
     })
     .from(claimRequests)
     .innerJoin(users, eq(users.id, claimRequests.requestedByUserId))
@@ -20,16 +21,23 @@ export const load: PageServerLoad = async () => {
     .orderBy(desc(claimRequests.createdAt));
 
   return {
-    claims: rows.map((r) => ({
-      uid: r.uid,
-      slug: r.slug,
-      details: r.details,
-      createdAt: r.createdAt.toISOString(),
-      requester: {
-        handle: r.requesterHandle,
-        displayName: r.requesterDisplayName,
-        email: r.requesterEmail,
-      },
-    })),
+    claims: rows.map((r) => {
+      // A tombstoned requester's identity is blanked here so the queue can't
+      // leak the retired handle/displayName/email; the page shows "deleted
+      // account" off the flag instead.
+      const deleted = r.requesterDeletedAt !== null;
+      return {
+        uid: r.uid,
+        slug: r.slug,
+        details: r.details,
+        createdAt: r.createdAt.toISOString(),
+        requester: {
+          deleted,
+          handle: deleted ? "" : r.requesterHandle,
+          displayName: deleted ? null : r.requesterDisplayName,
+          email: deleted ? null : r.requesterEmail,
+        },
+      };
+    }),
   };
 };

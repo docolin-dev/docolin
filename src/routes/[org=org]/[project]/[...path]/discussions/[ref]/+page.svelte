@@ -158,6 +158,9 @@
   interface PostHeaderProps {
     handle: string;
     displayName: string | null;
+    // True when the post's author account is tombstoned: render a neutral
+    // "deleted account" label with no profile link instead of the identity.
+    authorDeleted: boolean;
     createdAt: string;
     isEdited: boolean;
     isOpAuthor: boolean;
@@ -265,12 +268,16 @@
     class="border-foreground/15 bg-muted/40 flex min-h-10 items-center justify-between gap-3 border-b px-4 py-1.5"
   >
     <div class="min-w-0 text-sm">
-      <a
-        href={localizeHref(`/${p.handle}`)}
-        class="text-foreground hover:text-primary font-medium transition-colors"
-      >
-        {p.displayName ?? `@${p.handle}`}
-      </a>
+      {#if p.authorDeleted}
+        <span class="text-muted-foreground font-medium">{m.common_deleted_account()}</span>
+      {:else}
+        <a
+          href={localizeHref(`/${p.handle}`)}
+          class="text-foreground hover:text-primary font-medium transition-colors"
+        >
+          {p.displayName ?? `@${p.handle}`}
+        </a>
+      {/if}
       <a
         href={p.permalink}
         class="text-muted-foreground hover:text-foreground underline-offset-2 transition-colors hover:underline"
@@ -567,6 +574,7 @@
       {@render postHeader({
         handle: thread.op.authorHandle,
         displayName: thread.op.authorDisplayName,
+        authorDeleted: thread.op.authorDeleted,
         createdAt: thread.op.createdAt,
         isEdited: thread.op.isEdited,
         isOpAuthor: true,
@@ -658,6 +666,7 @@
           {@render postHeader({
             handle: reply.authorHandle,
             displayName: reply.authorDisplayName,
+            authorDeleted: reply.authorDeleted,
             createdAt: reply.createdAt,
             isEdited: reply.isEdited,
             isOpAuthor: reply.isOpAuthor,

@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
 import { db } from "$lib/server/db";
 import { versions } from "$lib/server/db/schema";
 import { DEFAULT_SCORING_CONFIG } from "$lib/verification/score";
+import { EXAMPLE_KIND_ROOT } from "$lib/sync/frontmatter-schema";
 
 // The reusable retrieval core: one hybrid query (lexical FTS + dense vector,
 // fused with RRF, then re-ranked by the business signals) plus a version-
@@ -159,6 +160,7 @@ export async function searchGuides(input: SearchInput): Promise<SearchCandidate[
   // explicit status filter asks for it.
   const facets = sql`
     v.is_latest
+    AND NOT (v.kind <@ ${EXAMPLE_KIND_ROOT}::ltree)
     AND (${statusParam}::text[] IS NOT NULL OR v.status <> 'deprecated')
     AND (${language}::text IS NULL OR v.language = ${language})
     AND (${kindPrefix}::ltree IS NULL OR v.kind <@ ${kindPrefix}::ltree)
@@ -479,6 +481,7 @@ export async function aggregateFacets(input: FacetInput): Promise<SearchFacets> 
       FROM versions v
       JOIN docos d ON d.id = v.doco_id
       WHERE v.is_latest AND v.status <> 'deprecated' AND d.deleted_at IS NULL
+        AND NOT (v.kind <@ ${EXAMPLE_KIND_ROOT}::ltree)
         AND (${q} = '' OR v.search_tsv @@ (SELECT query FROM tsq))
         AND (NOT ${verifiedOnly}::boolean OR v.verification_score IS NOT NULL)
         AND (${minPango}::int IS NULL OR v.verification_score >= ${minPango}::int)

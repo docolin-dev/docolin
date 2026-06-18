@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { error, fail, redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
 import { db } from "$lib/server/db";
@@ -38,7 +38,14 @@ async function adminProjectCtx(
     })
     .from(projects)
     .innerJoin(orgs, eq(orgs.id, projects.ownerOrgId))
-    .where(and(eq(orgs.slug, params.org), eq(projects.slug, params.project)));
+    .where(
+      and(
+        eq(orgs.slug, params.org),
+        isNull(orgs.deletedAt),
+        eq(projects.slug, params.project),
+        isNull(projects.deletedAt),
+      ),
+    );
   if (rows.length === 0) return null;
   const row = rows[0];
   if (!locals.dbUser.isPlatformAdmin && row.adminUserId !== locals.dbUser.id) return null;
@@ -85,9 +92,9 @@ export const actions = {
     }
 
     await deleteProject(ctx.projectId);
-    // The project's public pages would keep serving from the edge (SWR up to
-    // a week) after the rows are gone; a zone purge is blunt but correct for
-    // an action this rare.
+    // The docos are now tombstoned (kept, not deleted), but their public pages
+    // would keep serving the pre-delete version from the edge (SWR up to a
+    // week); a zone purge is blunt but correct for an action this rare.
     platform?.context.waitUntil(purgeCacheEverything());
     redirect(303, localizeHref(`/dashboard/${ctx.orgSlug}`));
   },

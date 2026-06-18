@@ -1,0 +1,27 @@
+# Sidebar for the Hosting category. Fixed top-level order, identical across every
+# category; only Hosting is expanded here, the rest are swap links.
+sitemap:
+  - title: Tutorial
+    url: ../tutorial/overview.md
+  - title: Concepts
+    url: ../concepts/overview.md
+  - title: Reading
+    url: ../reading/overview.md
+  - title: Hosting
+    children:
+      - title: Host your docs on docolin
+        url: ./overview.md
+      - title: Connect a git repo
+        url: ./connect-repo.md
+      - title: How sync works
+        url: ./how-sync-works.md
+      - title: Accounts, orgs, and projects
+        url: ./accounts-orgs-projects.md
+      - title: Manage a project
+        url: ./manage-project.md
+      - title: Import a Mintlify project
+        url: ./import-mintlify.md
+  - title: Authoring
+    url: ../authoring/overview.md
+  - title: For AI agents
+    url: ../mcp/how-agents-use-docolin.md

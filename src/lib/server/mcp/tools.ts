@@ -343,7 +343,11 @@ export async function executeTool(
           verification: verificationLabel(content.pangoScore),
           verifiedCount: content.verifiedCount,
           authors: content.authors.map((a) =>
-            a.kind === "user" ? `${a.displayName ?? a.handle} (@${a.handle})` : a.name,
+            a.kind !== "user"
+              ? a.name
+              : a.deleted
+                ? "deleted account"
+                : `${a.displayName ?? a.handle} (@${a.handle})`,
           ),
           // Call list_discussions with this doco id for community Q&A / fixes.
           discussionsDoco: `/${content.orgSlug}/${content.projectSlug}/${content.pathFromProjectRoot}`,
@@ -393,7 +397,9 @@ export async function executeTool(
             title: t.title,
             status: t.status,
             answered: t.isAnswered,
-            author: t.authorDisplayName ?? `@${t.authorHandle}`,
+            author: t.authorDeleted
+              ? "deleted account"
+              : (t.authorDisplayName ?? `@${t.authorHandle}`),
             replyCount: t.replyCount,
           };
         }),

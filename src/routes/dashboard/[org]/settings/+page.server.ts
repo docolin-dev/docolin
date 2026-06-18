@@ -11,6 +11,7 @@ import {
   renameOrg,
 } from "$lib/server/org-admin";
 import { LIMITS, isRequestBodyTooLarge } from "$lib/limits";
+import { purgeCacheEverything } from "$lib/sync/cache-purge";
 import { localizeHref } from "$paraglide/runtime";
 
 // Org settings: rename, members, delete. Members can view and leave; only the
@@ -137,7 +138,7 @@ export const actions = {
     redirect(303, localizeHref("/dashboard"));
   },
 
-  deleteOrg: async ({ request, params, locals }) => {
+  deleteOrg: async ({ request, params, locals, platform }) => {
     if (isRequestBodyTooLarge(request)) {
       return fail(413, { action: "deleteOrg", error: "generic" });
     }
@@ -153,6 +154,10 @@ export const actions = {
 
     const res = await deleteOrg(ctx.org);
     if (!res.ok) return fail(400, { action: "deleteOrg", error: res.reason });
+    // The org's frozen docos now render "deleted org" as their owner; their
+    // public pages would keep serving the old name from the edge (SWR up to a
+    // week). A zone purge is blunt but correct for an action this rare.
+    platform?.context.waitUntil(purgeCacheEverything());
     redirect(303, localizeHref("/dashboard"));
   },
 } satisfies Actions;

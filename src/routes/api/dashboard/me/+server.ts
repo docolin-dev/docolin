@@ -1,5 +1,5 @@
 import { error, json } from "@sveltejs/kit";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import type { RequestHandler } from "./$types";
 import { db } from "$lib/server/db";
 import { claimRequests, orgs, orgMembers, projects } from "$lib/server/db/schema";
@@ -31,8 +31,11 @@ export const GET: RequestHandler = async ({ locals, setHeaders }) => {
     })
     .from(orgs)
     .innerJoin(orgMembers, eq(orgMembers.orgId, orgs.id))
-    .leftJoin(projects, eq(projects.ownerOrgId, orgs.id))
-    .where(eq(orgMembers.userId, userId))
+    // Soft-deleted projects don't count toward the org's project tally.
+    .leftJoin(projects, and(eq(projects.ownerOrgId, orgs.id), isNull(projects.deletedAt)))
+    // A soft-deleted org drops off the user's dashboard, even if they're still a
+    // member row on it (memberships aren't scrubbed on org delete).
+    .where(and(eq(orgMembers.userId, userId), isNull(orgs.deletedAt)))
     .groupBy(orgs.id)
     .orderBy(orgs.createdAt);
 

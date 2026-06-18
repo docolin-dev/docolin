@@ -83,6 +83,12 @@ describe("standard markdown parity", () => {
     expect(html).not.toContain("{ .light-only }");
     expect(html).not.toContain("{ .dark-only }");
   });
+
+  it("keeps a blob: image src (local preview) but strips a blob: link href", async () => {
+    const html = await render("![shot](blob:https://x/abc)\n\n[a](blob:https://x/def)\n");
+    expect(html).toContain('src="blob:https://x/abc"');
+    expect(html).not.toContain("blob:https://x/def");
+  });
 });
 
 describe("table of contents", () => {

@@ -105,7 +105,7 @@ async function orgProjects(orgId: string): Promise<ProfileProject[]> {
       })
       .from(projects)
       .leftJoin(gitSources, eq(gitSources.projectId, projects.id))
-      .where(eq(projects.ownerOrgId, orgId)),
+      .where(and(eq(projects.ownerOrgId, orgId), isNull(projects.deletedAt))),
     db
       .select({ projectSlug: projects.slug, n: count() })
       .from(docos)
@@ -186,7 +186,9 @@ export async function getProfile(slug: string): Promise<Profile | null> {
       createdAt: orgs.createdAt,
     })
     .from(orgs)
-    .where(eq(orgs.slug, slug));
+    // A soft-deleted org has no public profile; its frozen docos stay reachable
+    // by their own URLs, but the org directory page is gone.
+    .where(and(eq(orgs.slug, slug), isNull(orgs.deletedAt)));
   const org = orgRows.length > 0 ? orgRows[0] : null;
 
   // Personal org (or, defensively, a handle without an org row) -> user profile.

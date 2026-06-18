@@ -23,7 +23,27 @@ const RESERVED_KIND_DOMAINS = [
   "programming",
   "tools",
   "blog",
+  // Sandbox root: `example/...` kinds are valid and viewable but excluded from
+  // search, browse, trending, and crawler indexing (see EXAMPLE_KIND_ROOT). For
+  // tutorials and one-off testing, so they never clutter the real taxonomy.
+  "example",
 ] as const;
+
+// The sandbox kind root. A doco whose kind starts with this is published and
+// served at its URL (and can be stamped), but excluded from every discovery
+// surface: search, browse, trending, the kind tree, embeddings, and crawlers.
+export const EXAMPLE_KIND_ROOT = "example";
+
+/** Whether a kind, given as either a dotted ltree path (`example.hello`) or a
+ *  slashed display path (`example/hello`), sits under the example sandbox. */
+export function isExampleKind(kind: string): boolean {
+  let end = kind.length;
+  const slash = kind.indexOf("/");
+  const dot = kind.indexOf(".");
+  if (slash !== -1 && slash < end) end = slash;
+  if (dot !== -1 && dot < end) end = dot;
+  return kind.slice(0, end) === EXAMPLE_KIND_ROOT;
+}
 
 // Per CLAUDE.md 3.8, no regex: explicit char-class check.
 function isValidKindSegment(segment: string): boolean {

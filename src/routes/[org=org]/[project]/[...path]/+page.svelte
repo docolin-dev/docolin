@@ -8,6 +8,12 @@
   let { data }: PageProps = $props();
   const doco = $derived(data.doco);
 
+  // Example-sandbox docos (kind under `example/`) are served at their URL but
+  // kept out of search engines, mirroring their exclusion from on-site search
+  // and browse. The literal matches EXAMPLE_KIND_ROOT in frontmatter-schema,
+  // kept inline so the zod-heavy schema module stays out of the client bundle.
+  const noindex = $derived(doco.kind.split("/")[0] === "example");
+
   // SEO surface: every doco page is a landing page. The canonical always
   // points at the unversioned URL (per locale), so pinned @version views
   // consolidate their ranking onto the living doco. Kept in the route (not the
@@ -26,9 +32,11 @@
     mainEntityOfPage: canonicalUrl,
     url: canonicalUrl,
     author: doco.authors.map((a) =>
-      a.kind === "user"
-        ? { "@type": "Person", name: a.displayName ?? a.handle, url: `${SITE_URL}/${a.handle}` }
-        : { "@type": "Person", name: a.name, ...(a.url === null ? {} : { url: a.url }) },
+      a.kind === "user" && a.deleted
+        ? { "@type": "Person", name: "deleted account" }
+        : a.kind === "user"
+          ? { "@type": "Person", name: a.displayName ?? a.handle, url: `${SITE_URL}/${a.handle}` }
+          : { "@type": "Person", name: a.name, ...(a.url === null ? {} : { url: a.url }) },
     ),
     publisher: { "@type": "Organization", name: "docolin", url: SITE_URL },
   });
@@ -55,6 +63,9 @@
     <meta property="og:description" content={doco.description} />
   {/if}
   <link rel="canonical" href={canonicalUrl} />
+  {#if noindex}
+    <meta name="robots" content="noindex, nofollow" />
+  {/if}
   <meta property="og:title" content={doco.title} />
   <meta property="og:type" content="article" />
   <meta property="og:url" content={canonicalUrl} />

@@ -1,57 +1,18 @@
-# docolin's own docs sidebar. Lives in the docs root, so it applies to every
-# doco under docs/ and below. A nested docs/<dir>/doco_sitemap.yaml would
-# override it for that subtree, and a doco's frontmatter `sitemap:` overrides it
-# per page. Same recursive shape as the frontmatter field: { title, url?,
-# children? } with url xor children per entry.
-#
-# URLs are relative to this file's location (docs/), like everyday doco links, so
-# they move with the files instead of hard-coding /docolin/docolin/... A relative
-# .md path resolves to the doco's website URL at sync time.
-
+# Default sidebar at the docs root. Each category folder
+# (concepts/, reading/, hosting/, authoring/, mcp/) has its own doco_sitemap.yaml
+# that overrides this for its own subtree; this is just the fallback that lists
+# the categories in the same fixed order. The root policy docos (privacy,
+# moderation-policy, licensing) opt out of a sidebar with `sitemap: []`.
 sitemap:
-  - title: Getting started
-    children:
-      - title: Overview
-        url: ./authoring/overview.md
-      - title: Your first doco
-        url: ./authoring/quickstart.md
-      - title: Frontmatter
-        url: ./authoring/frontmatter.md
-  - title: The basics
-    children:
-      - title: Text, lists, and links
-        url: ./authoring/text-and-lists.md
-      - title: Tables
-        url: ./authoring/tables.md
-      - title: Code blocks
-        url: ./authoring/code-blocks.md
-  - title: Rich blocks
-    children:
-      - title: Callouts
-        url: ./authoring/callouts.md
-      - title: Content tabs
-        url: ./authoring/tabs.md
-      - title: Cards
-        url: ./authoring/cards.md
-      - title: Steps & accordion
-        url: ./authoring/steps-and-accordion.md
-  - title: Visuals & math
-    children:
-      - title: Diagrams
-        url: ./authoring/diagrams.md
-      - title: Charts
-        url: ./authoring/charts.md
-      - title: Math
-        url: ./authoring/math.md
-  - title: Depth & craft
-    children:
-      - title: Footnotes & annotations
-        url: ./authoring/footnotes-and-annotations.md
-      - title: Links & navigation
-        url: ./authoring/links-and-navigation.md
-      - title: Writing well
-        url: ./authoring/writing-well.md
-  - title: Policies
-    children:
-      - title: Moderation policy
-        url: ./moderation-policy.md
+  - title: Tutorial
+    url: ./tutorial/overview.md
+  - title: Concepts
+    url: ./concepts/overview.md
+  - title: Reading
+    url: ./reading/overview.md
+  - title: Hosting
+    url: ./hosting/overview.md
+  - title: Authoring
+    url: ./authoring/overview.md
+  - title: For AI agents
+    url: ./mcp/how-agents-use-docolin.md

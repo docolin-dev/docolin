@@ -21,9 +21,17 @@ export const projects = pgTable(
     sourceMode: text("source_mode").notNull().$type<"git" | "native">(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    // Soft delete: a deleted project keeps its row, git source, docos, and full
+    // version history. Its docos are tombstoned (docos.deleted_at) so they drop
+    // out of search and browse, but their URLs still serve the removed banner.
+    // Recreating the same org+slug revives the project and a forced re-sync
+    // un-deletes the docos still in the repo (and sweeps the ones that aren't).
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (t) => [
     // Composite uniqueness: two orgs can each have a project named `docs`.
+    // Holds across soft-deletes: the deleted row keeps the slug so the recreate
+    // revives it instead of colliding.
     uniqueIndex("projects_org_slug_unique").on(t.ownerOrgId, t.slug),
     index("projects_owner_org_idx").on(t.ownerOrgId),
     check("projects_source_mode_check", sql`${t.sourceMode} IN ('git', 'native')`),

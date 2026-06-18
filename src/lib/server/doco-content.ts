@@ -226,9 +226,10 @@ export function docoUrlPath(content: DocoContent): string {
 
 // Authored-frontmatter author entry, reconstructed from the resolved author:
 // docolin users keep their handle, external authors their name/url. Mirrors the
-// frontmatter `authors` shape so the raw doco round-trips toward its source.
+// frontmatter `authors` shape so the raw doco round-trips toward its source. A
+// tombstoned account is emitted as a deleted marker, never its retired handle.
 function frontmatterAuthor(a: ResolvedAuthor): Record<string, unknown> {
-  if (a.kind === "user") return { handle: a.handle };
+  if (a.kind === "user") return a.deleted ? { deleted: true } : { handle: a.handle };
   const out: Record<string, unknown> = { name: a.name };
   if (a.username !== null) out.username = a.username;
   if (a.url !== null) out.url = a.url;
@@ -332,7 +333,12 @@ export function buildDocoMarkdown(content: DocoContent, baseUrl: string): string
 
 // ── Discussions ─────────────────────────────────────────────────────────────
 
-function postAuthor(post: { authorHandle: string; authorDisplayName: string | null }): string {
+function postAuthor(post: {
+  authorHandle: string;
+  authorDisplayName: string | null;
+  authorDeleted: boolean;
+}): string {
+  if (post.authorDeleted) return "deleted account";
   return post.authorDisplayName !== null
     ? `${post.authorDisplayName} (@${post.authorHandle})`
     : `@${post.authorHandle}`;
@@ -341,7 +347,9 @@ function postAuthor(post: { authorHandle: string; authorDisplayName: string | nu
 function authorEntry(post: {
   authorHandle: string;
   authorDisplayName: string | null;
+  authorDeleted: boolean;
 }): Record<string, unknown> {
+  if (post.authorDeleted) return { deleted: true };
   return post.authorDisplayName !== null
     ? { name: post.authorDisplayName, handle: post.authorHandle }
     : { handle: post.authorHandle };
@@ -526,7 +534,7 @@ export async function getDiscussionListMarkdown(
       t.isAnswered ? "answered" : "",
       t.isPinned ? "pinned" : "",
       `${String(t.replyCount)} ${t.replyCount === 1 ? "reply" : "replies"}`,
-      t.authorDisplayName ?? `@${t.authorHandle}`,
+      t.authorDeleted ? "deleted account" : (t.authorDisplayName ?? `@${t.authorHandle}`),
     ].filter((tag) => tag.length > 0);
     return `- [#${String(t.number)} ${t.title}](${url}) · ${tags.join(" · ")}`;
   });
