@@ -31,7 +31,7 @@ docolin:
 
 Pango likes a place for everything. A kind is how docolin gives each doco its place: instead of a loose pile of tags, every doco lives at a path:
 
-```
+```text
 os / linux / firewall / ufw
 ```
 

@@ -6,7 +6,7 @@ import { db } from "$lib/server/db";
 import { gitSources, orgs, orgMembers, projects } from "$lib/server/db/schema";
 import { checkProjectSlugAvailability } from "$lib/reserved-handles";
 import { verifyForgeRepo } from "$lib/server/repo-check";
-import { reviveGitProject } from "$lib/server/org-admin";
+import { reviveGitProject, reviveNativeProject } from "$lib/server/org-admin";
 import { syncProject } from "$lib/sync/run";
 import { LIMITS } from "$lib/limits";
 
@@ -163,12 +163,18 @@ export const actions = {
       }
     } else {
       try {
-        await db.insert(projects).values({
-          ownerOrgId: orgId,
-          slug,
-          displayName,
-          sourceMode: "native",
-        });
+        if (reviving) {
+          // Revive the soft-deleted native project in place; recreating the same
+          // org+slug must not collide with its tombstoned row.
+          await reviveNativeProject(reviving.id, displayName);
+        } else {
+          await db.insert(projects).values({
+            ownerOrgId: orgId,
+            slug,
+            displayName,
+            sourceMode: "native",
+          });
+        }
       } catch (err) {
         console.error("project provision (native) failed", err);
         return fail(500, {

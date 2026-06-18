@@ -229,32 +229,63 @@ export async function reviveGitProject(
       .update(projects)
       .set({ deletedAt: null, displayName, sourceMode: "git", updatedAt: now })
       .where(eq(projects.id, projectId));
-    // The git source survived the soft-delete, so refresh it in place. If the
-    // revived project had been native (no source), insert one.
-    const existing = await tx
-      .select({ projectId: gitSources.projectId })
-      .from(gitSources)
-      .where(eq(gitSources.projectId, projectId))
-      .limit(1);
-    if (existing.length > 0) {
-      await tx
-        .update(gitSources)
-        .set({
-          provider: repo.provider,
-          repoUrl: repo.repoUrl,
-          defaultBranch: repo.defaultBranch,
-          subpath: repo.subpath,
-          updatedAt: now,
-        })
-        .where(eq(gitSources.projectId, projectId));
-    } else {
-      await tx.insert(gitSources).values({
+    // Upsert the git source atomically. A select-then-insert would let two
+    // concurrent revives both see no row and then collide on the unique
+    // project_id constraint; a revived-from-native project simply has no row
+    // yet, so the same statement inserts instead of updating.
+    await tx
+      .insert(gitSources)
+      .values({
         projectId,
         provider: repo.provider,
         repoUrl: repo.repoUrl,
         defaultBranch: repo.defaultBranch,
         subpath: repo.subpath,
+      })
+      .onConflictDoUpdate({
+        target: gitSources.projectId,
+        set: {
+          provider: repo.provider,
+          repoUrl: repo.repoUrl,
+          defaultBranch: repo.defaultBranch,
+          subpath: repo.subpath,
+          updatedAt: now,
+        },
       });
+  });
+}
+
+/** Revives a soft-deleted project as native (no git source). Clears the project
+ *  tombstone, drops any git source left over from a previous git mode, and
+ *  un-deletes exactly the docos this project's deletion took down, matched by the
+ *  shared deletedAt so docos deleted on their own stay deleted. The git path
+ *  leaves this to its forced re-sync; a native project has no sync, so it happens
+ *  here. */
+export async function reviveNativeProject(
+  projectId: string,
+  displayName: string | null,
+): Promise<void> {
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    const rows = await tx
+      .select({ deletedAt: projects.deletedAt })
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1);
+    const tombstonedAt = rows[0]?.deletedAt ?? null;
+    await tx
+      .update(projects)
+      .set({ deletedAt: null, displayName, sourceMode: "native", updatedAt: now })
+      .where(eq(projects.id, projectId));
+    // A native project has no source; drop one that survived a prior git mode.
+    await tx.delete(gitSources).where(eq(gitSources.projectId, projectId));
+    // Restore the docos tombstoned by this project's deletion (same timestamp),
+    // leaving any individually-deleted docos deleted.
+    if (tombstonedAt !== null) {
+      await tx
+        .update(docos)
+        .set({ deletedAt: null, updatedAt: now })
+        .where(and(eq(docos.projectId, projectId), eq(docos.deletedAt, tombstonedAt)));
     }
   });
 }
