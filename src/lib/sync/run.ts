@@ -133,8 +133,28 @@ export async function syncProject(
   // A forced run (dev-mode manual resync) re-processes the whole tree even when
   // HEAD hasn't moved, so renderer / pipeline changes take effect without pushing
   // a no-op commit.
-  if (r.lastSyncedCommit === null || force) {
-    return await runInitialSync({
+  //
+  // The mode functions only markError for anticipated failures (bad provider,
+  // forge fetch, rate limit). Wrap them so an unexpected throw (a DB error, an R2
+  // write, a malformed blob) also lands on "error" rather than escaping with the
+  // status left on "syncing", which spins the project forever with nothing
+  // surfaced. The set of possible throws can't be enumerated, so a catch-all is
+  // the only way to guarantee a terminal state.
+  try {
+    if (r.lastSyncedCommit === null || force) {
+      return await runInitialSync({
+        bucket,
+        forge,
+        repoUrl: r.repoUrl,
+        projectId: r.projectId,
+        projectSlug: r.projectSlug,
+        orgSlug: r.orgSlug,
+        gitSourceId: r.gitSourceId,
+        branch: r.defaultBranch,
+        subpath: r.subpath,
+      });
+    }
+    return await runIncrementalSync({
       bucket,
       forge,
       repoUrl: r.repoUrl,
@@ -144,20 +164,19 @@ export async function syncProject(
       gitSourceId: r.gitSourceId,
       branch: r.defaultBranch,
       subpath: r.subpath,
+      base: r.lastSyncedCommit,
     });
+  } catch (err) {
+    // Surface the failure so the badge stops spinning; full detail goes to the
+    // Workers log for diagnosis.
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("sync failed unexpectedly", {
+      projectId: r.projectId,
+      gitSourceId: r.gitSourceId,
+      message,
+    });
+    return await markError(r.gitSourceId, `Unexpected sync failure: ${message}`, ZERO_COUNTS);
   }
-  return await runIncrementalSync({
-    bucket,
-    forge,
-    repoUrl: r.repoUrl,
-    projectId: r.projectId,
-    projectSlug: r.projectSlug,
-    orgSlug: r.orgSlug,
-    gitSourceId: r.gitSourceId,
-    branch: r.defaultBranch,
-    subpath: r.subpath,
-    base: r.lastSyncedCommit,
-  });
 }
 
 // ---------- modes ----------
