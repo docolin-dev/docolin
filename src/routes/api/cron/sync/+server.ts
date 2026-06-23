@@ -26,7 +26,7 @@ const STALE_AFTER_HOURS = 24;
 export const POST: RequestHandler = async ({ request, platform }) => {
   const auth = request.headers.get("authorization");
   if (auth !== `Bearer ${requireEnv("CRON_SECRET")}`) error(401, "unauthorized");
-  if (!platform) error(500, "platform context is not available");
+  if (!platform?.env.SYNC_QUEUE) error(500, "SYNC_QUEUE binding is not available");
 
   const queue = platform.env.SYNC_QUEUE;
 

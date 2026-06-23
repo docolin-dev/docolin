@@ -12,12 +12,14 @@ export const POST: RequestHandler = async ({ request, platform }) => {
   const auth = request.headers.get("authorization");
   if (auth !== `Bearer ${requireEnv("CRON_SECRET")}`) error(401, "unauthorized");
   if (!platform?.env.MEDIA_BUCKET) error(500, "MEDIA_BUCKET binding is not available");
+  if (!platform.env.SYNC_QUEUE) error(500, "SYNC_QUEUE binding is not available");
+  const queue = platform.env.SYNC_QUEUE;
 
   const body = (await request.json().catch(() => null)) as { gitSourceId?: unknown } | null;
   const gitSourceId = body?.gitSourceId;
   if (typeof gitSourceId !== "string") error(400, "gitSourceId required");
 
   const { more } = await drainSyncJob(gitSourceId, platform.env.MEDIA_BUCKET);
-  if (more) await platform.env.SYNC_QUEUE.send({ gitSourceId });
+  if (more) await queue.send({ gitSourceId });
   return json({ more });
 };

@@ -42,7 +42,7 @@ declare global {
         // push a { gitSourceId } trigger here; the docolin-cron worker consumes it
         // and drives the drain. Undefined in `vite dev` (no consumer runs there),
         // where enqueueSync drains inline instead.
-        SYNC_QUEUE: Queue<SyncQueueMessage>;
+        SYNC_QUEUE?: Queue<SyncQueueMessage>;
       };
       // CF Workers' ExecutionContext. `waitUntil` keeps the Worker alive
       // until the promise resolves; used by sync engine to fire-and-forget

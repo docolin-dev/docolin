@@ -48,8 +48,9 @@ type SyncJobRow = typeof syncJobs.$inferSelect;
 export interface EnqueueOptions {
   force?: boolean;
   // Sync queue producer (platform.env.SYNC_QUEUE): a { gitSourceId } message is
-  // the durable trigger the docolin-cron consumer drains.
-  queue: SyncQueue;
+  // the durable trigger the docolin-cron consumer drains. Undefined in `vite dev`
+  // (no binding); the dev branch drains inline and never reads it.
+  queue: SyncQueue | undefined;
   // R2 bucket, used only by the dev inline-drain fallback (no consumer runs in
   // `vite dev`).
   bucket: R2Bucket;
@@ -86,6 +87,13 @@ export async function enqueueSync(projectId: string, opts: EnqueueOptions): Prom
     // No queue consumer runs in `vite dev`, so a sent message would never be
     // picked up. Drain inline (awaited) instead; prod always uses the queue.
     await drainInline(gitSourceId, opts.bucket);
+    return;
+  }
+  if (!opts.queue) {
+    // Unreachable in a real deploy: wrangler fails the deploy if the SYNC_QUEUE
+    // producer points at a missing queue. Log instead of throwing so a webhook /
+    // resync still returns; the job row stands for the cron backstop.
+    console.error("sync: SYNC_QUEUE binding missing, job left for cron reclaim", { gitSourceId });
     return;
   }
   // Reliable, in-request send (never waitUntil); the docolin-cron consumer drives
