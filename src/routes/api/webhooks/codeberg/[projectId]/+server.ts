@@ -11,7 +11,7 @@ import { enqueueSync } from "$lib/sync/job";
 // hex, no "sha256=" prefix); older Gitea-compatible senders use
 // X-Gitea-Signature. Same opt-in model: projects without a stored secret 404.
 
-export const POST: RequestHandler = async ({ request, params, platform, url }) => {
+export const POST: RequestHandler = async ({ request, params, platform }) => {
   const projectId = params.projectId;
 
   const source = await db
@@ -57,8 +57,8 @@ export const POST: RequestHandler = async ({ request, params, platform, url }) =
   // where the old fire-and-forget waitUntil sync would have evicted.
   if (platform) {
     await enqueueSync(projectId, {
-      origin: url.origin,
-      waitUntil: platform.context.waitUntil.bind(platform.context),
+      queue: platform.env.SYNC_QUEUE,
+      bucket: platform.env.MEDIA_BUCKET,
     });
   }
 

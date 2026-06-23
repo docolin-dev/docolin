@@ -1,6 +1,8 @@
-# Tiny standalone Cloudflare Worker that fires the docolin sync endpoint on
-# a cron schedule. Lives outside the main Pages project because CF Pages
-# Functions don't support cron triggers natively.
+# Tiny standalone Cloudflare Worker with two jobs: it fires the docolin cron
+# endpoints on a schedule, and it consumes the sync queue (the main app can't host
+# a queue() handler, since adapter-cloudflare only emits a fetch handler). Each
+# queue message triggers one drain chunk on the app via /api/sync/drain. Lives
+# outside the main project because that adapter supports neither cron nor queues.
 #
 # Deploy:        bunx wrangler deploy -c workers/cron/wrangler.toml
 # Set secret:    bunx wrangler secret put CRON_SECRET -c workers/cron/wrangler.toml
@@ -23,3 +25,16 @@ crons = ["*/15 * * * *"]
 # if you split prod/staging later. CRON_SECRET goes in via `wrangler secret put`,
 # not here (secrets must not be in version-controlled config).
 DOCOLIN_BASE_URL = "https://docolin.com"
+
+# Consume the sync queue: each message is one { gitSourceId } trigger. The handler
+# calls /api/sync/drain (which drains one chunk and re-enqueues itself while work
+# remains). A failed delivery retries with backoff up to max_retries, then lands
+# in the dead-letter queue for inspection. Create the queues once with:
+#   bunx wrangler queues create docolin-sync
+#   bunx wrangler queues create docolin-sync-dlq
+[[queues.consumers]]
+queue = "docolin-sync"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 5
+dead_letter_queue = "docolin-sync-dlq"

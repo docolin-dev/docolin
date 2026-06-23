@@ -26,9 +26,6 @@ routes = [{ pattern = "docolin.com", custom_domain = true }]
 WORKOS_CLIENT_ID = "client_01KRJQZ8DPMA346EB8XBB5Q6Y5"
 WORKOS_REDIRECT_URI = "https://docolin.com/callback"
 R2_PUBLIC_BASE = "https://media.docolin.com"
-# Canonical origin the sync drain self-kick targets. Pinned here (not the
-# request Host) so the CRON_SECRET bearer is never sent to a spoofed origin.
-APP_ORIGIN = "https://docolin.com"
 
 # SvelteKit's client build (static assets + prerendered pages). The Worker
 # serves these directly; ASSETS is the binding adapter-cloudflare expects.
@@ -50,6 +47,14 @@ preview_bucket_name = "docolin-media-dev"
 # Surfaces as event.platform.env.AI in SvelteKit server code.
 [ai]
 binding = "AI"
+
+# Sync queue producer. enqueueSync / the drain endpoint / cron reclaim push a
+# { gitSourceId } trigger here; the docolin-cron worker consumes it and drives the
+# drain (see workers/cron/). Reliable awaited sends, never a waitUntil self-fetch.
+# Create once with: bunx wrangler queues create docolin-sync
+[[queues.producers]]
+binding = "SYNC_QUEUE"
+queue = "docolin-sync"
 
 # Workers Logs so runtime exceptions surface in the dashboard (and persist)
 # without needing `wrangler tail` open.
