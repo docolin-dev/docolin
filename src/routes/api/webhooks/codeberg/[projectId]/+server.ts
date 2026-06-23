@@ -3,20 +3,21 @@ import { eq } from "drizzle-orm";
 import type { RequestHandler } from "./$types";
 import { db } from "$lib/server/db";
 import { gitSources } from "$lib/server/db/schema";
-import { syncProject } from "$lib/sync/run";
+import { enqueueSync } from "$lib/sync/job";
 
 // Codeberg (Forgejo) webhook receiver, the sibling of the GitHub one. Forgejo
 // signs the raw body with HMAC-SHA256 in the X-Forgejo-Signature header (bare
 // hex, no "sha256=" prefix); older Gitea-compatible senders use
 // X-Gitea-Signature. Same opt-in model: projects without a stored secret 404.
 
-export const POST: RequestHandler = async ({ request, params, platform }) => {
+export const POST: RequestHandler = async ({ request, params, platform, url }) => {
   const projectId = params.projectId;
 
   const source = await db
     .select({
       id: gitSources.id,
       projectId: gitSources.projectId,
+      defaultBranch: gitSources.defaultBranch,
       webhookSecretHash: gitSources.webhookSecretHash,
     })
     .from(gitSources)
@@ -37,12 +38,43 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
   const valid = await verifyForgejoSignature(body, signature, source[0].webhookSecretHash);
   if (!valid) error(401, "bad signature");
 
+  // Only a push to the project's default branch syncs.
+  const event = request.headers.get("x-forgejo-event") ?? request.headers.get("x-gitea-event");
+  if (event !== "push") return json({ ignored: "not a push event" }, { status: 202 });
+  if (!pushedDefaultBranch(body, source[0].defaultBranch)) {
+    return json({ ignored: "not the default branch" }, { status: 202 });
+  }
+
+  // Accepted push to the default branch: record it for the "last push received"
+  // affordance (only a real push, not a test or other-branch delivery).
+  await db
+    .update(gitSources)
+    .set({ webhookLastEventAt: new Date(), updatedAt: new Date() })
+    .where(eq(gitSources.id, source[0].id));
+
+  // Enqueue a sync and kick the drain. The chunked job survives a large diff
+  // where the old fire-and-forget waitUntil sync would have evicted.
   if (platform) {
-    platform.context.waitUntil(syncProject(projectId, platform.env.MEDIA_BUCKET));
+    await enqueueSync(projectId, {
+      origin: url.origin,
+      waitUntil: platform.context.waitUntil.bind(platform.context),
+    });
   }
 
   return json({ accepted: true }, { status: 202 });
 };
+
+// True when the push payload's ref is the project's default branch. A payload we
+// can't parse (never a real forge push) is treated as non-matching.
+function pushedDefaultBranch(body: string, defaultBranch: string): boolean {
+  let ref: unknown;
+  try {
+    ref = (JSON.parse(body) as { ref?: unknown }).ref;
+  } catch {
+    return false;
+  }
+  return ref === `refs/heads/${defaultBranch}`;
+}
 
 async function verifyForgejoSignature(
   body: string,

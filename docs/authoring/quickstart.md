@@ -125,7 +125,7 @@ That is a complete, useful page. Everything past this point is polish.
 
 docolin syncs from your git repository, so publishing is really just committing and pushing. There is no separate deploy: once your project is connected, docolin reads the new file straight from the repo, checks the frontmatter, and serves the page at its hard URL.
 
-A plain push does not trigger the sync, though. By default docolin polls your repo on its own schedule, so a new commit is usually picked up within a day. To skip the wait, open your project's page in the docolin dashboard and hit **Refresh** to pull the latest commit right now. Instant-on-push **webhooks**, so every push syncs the moment it lands, are coming soon.
+A plain push does not trigger the sync, though. By default docolin polls your repo on its own schedule, so a new commit is usually picked up within a day. To skip the wait, open your project's page in the docolin dashboard and hit **Refresh** to pull the latest commit right now, or set up [auto-sync on push](../hosting/auto-sync-on-push.md) so every push syncs the moment it lands.
 
 The full mechanics of hard URLs and pinned versions live in [Links & navigation](./links-and-navigation.md).
 

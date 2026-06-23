@@ -60,18 +60,31 @@ export type ProcessFileResult =
       errorDetails: Record<string, unknown>;
     };
 
-export async function processFile(
+type ProcessFileError = Extract<ProcessFileResult, { status: "errored" }>;
+
+export type ValidateFileResult =
+  | { ok: true; parsed: ParsedDoco; storedAuthors: StoredAuthor[] }
+  | { ok: false; error: ProcessFileError };
+
+// The error-able prefix of processFile: fetch, Mintlify-convert, parse + validate
+// frontmatter, and resolve author handles. No rendering or DB write, so the sync
+// can validate every changed file cheaply before any version is written (the
+// atomic gate). processFile reuses the result so the work isn't repeated.
+export async function validateFile(
   filePath: string,
   ctx: ProcessFileContext,
-): Promise<ProcessFileResult> {
+): Promise<ValidateFileResult> {
   // 1. Fetch the file content from the forge's raw-content path.
   const fetched = await ctx.forge.fetchFile(ctx.ref, filePath);
   if (!fetched.ok) {
     return {
-      status: "errored",
-      errorCode: "fetch_failed",
-      errorMessage: `Could not fetch ${filePath} from the source repo: ${fetched.message}`,
-      errorDetails: { reason: fetched.reason },
+      ok: false,
+      error: {
+        status: "errored",
+        errorCode: "fetch_failed",
+        errorMessage: `Could not fetch ${filePath} from the source repo: ${fetched.message}`,
+        errorDetails: { reason: fetched.reason },
+      },
     };
   }
 
@@ -88,34 +101,52 @@ export async function processFile(
     // maintainer exactly what to add instead of dumping a raw schema error.
     if (ctx.mintlify && !hasDocolinFrontmatter(fetched.content)) {
       return {
-        status: "errored",
-        errorCode: "mintlify_frontmatter_required",
-        errorMessage:
-          "Imported from Mintlify. Add docolin frontmatter to this page: an `authors` list (at least one) and a `docolin:` block with `kind` and `type`.",
-        errorDetails: { underlying: parseResult.error.code },
+        ok: false,
+        error: {
+          status: "errored",
+          errorCode: "mintlify_frontmatter_required",
+          errorMessage:
+            "Imported from Mintlify. Add docolin frontmatter to this page: an `authors` list (at least one) and a `docolin:` block with `kind` and `type`.",
+          errorDetails: { underlying: parseResult.error.code },
+        },
       };
     }
     return {
-      status: "errored",
-      errorCode: parseResult.error.code,
-      errorMessage: parseResult.error.message,
-      errorDetails: parseResult.error.details,
+      ok: false,
+      error: {
+        status: "errored",
+        errorCode: parseResult.error.code,
+        errorMessage: parseResult.error.message,
+        errorDetails: parseResult.error.details,
+      },
     };
   }
-  const parsed = parseResult.parsed;
 
-  // Resolve author handles to userIds (server-only). A handle that isn't a real
-  // docolin user errors the file rather than silently dropping attribution.
-  const authorsResult = await resolveStoredAuthors(parsed.frontmatter.authors);
+  // 4. Resolve author handles to userIds (server-only). A handle that isn't a
+  // real docolin user errors the file rather than silently dropping attribution.
+  const authorsResult = await resolveStoredAuthors(parseResult.parsed.frontmatter.authors);
   if (!authorsResult.ok) {
     return {
-      status: "errored",
-      errorCode: "handle_not_found",
-      errorMessage: `Author handle(s) don't exist on docolin: ${authorsResult.missing.join(", ")}`,
-      errorDetails: { missingHandles: authorsResult.missing },
+      ok: false,
+      error: {
+        status: "errored",
+        errorCode: "handle_not_found",
+        errorMessage: `Author handle(s) don't exist on docolin: ${authorsResult.missing.join(", ")}`,
+        errorDetails: { missingHandles: authorsResult.missing },
+      },
     };
   }
-  const storedAuthors = authorsResult.authors;
+  return { ok: true, parsed: parseResult.parsed, storedAuthors: authorsResult.authors };
+}
+
+export async function processFile(
+  filePath: string,
+  ctx: ProcessFileContext,
+): Promise<ProcessFileResult> {
+  // Validate first (fetch + parse + authors); reuse the parsed result to render.
+  const validated = await validateFile(filePath, ctx);
+  if (!validated.ok) return validated.error;
+  const { parsed, storedAuthors } = validated;
 
   // 4. Convert the body. Image archival errors get collected here; they don't
   // fail the file since the markdown still renders with the source URL.

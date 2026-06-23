@@ -11,6 +11,7 @@ export * from "./inbox";
 export * from "./media";
 export * from "./project-media";
 export * from "./sync-errors";
+export * from "./sync-jobs";
 export * from "./claims";
 export * from "./stamps";
 export * from "./mcp-tokens";

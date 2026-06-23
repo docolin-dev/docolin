@@ -1,0 +1,1 @@
+ALTER TABLE "git_sources" ADD COLUMN "webhook_last_event_at" timestamp with time zone;
