@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import type { RequestHandler } from "./$types";
 import { db } from "$lib/server/db";
 import { gitSources } from "$lib/server/db/schema";
+import { pushedDefaultBranch } from "$lib/server/webhooks/shared";
 import { enqueueSync } from "$lib/sync/job";
 
 // Codeberg (Forgejo) webhook receiver, the sibling of the GitHub one. Forgejo
@@ -63,18 +64,6 @@ export const POST: RequestHandler = async ({ request, params, platform, url }) =
 
   return json({ accepted: true }, { status: 202 });
 };
-
-// True when the push payload's ref is the project's default branch. A payload we
-// can't parse (never a real forge push) is treated as non-matching.
-function pushedDefaultBranch(body: string, defaultBranch: string): boolean {
-  let ref: unknown;
-  try {
-    ref = (JSON.parse(body) as { ref?: unknown }).ref;
-  } catch {
-    return false;
-  }
-  return ref === `refs/heads/${defaultBranch}`;
-}
 
 async function verifyForgejoSignature(
   body: string,

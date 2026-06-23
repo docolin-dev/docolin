@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import type { RequestHandler } from "./$types";
 import { db } from "$lib/server/db";
 import { gitSources } from "$lib/server/db/schema";
+import { pushedDefaultBranch } from "$lib/server/webhooks/shared";
 import { enqueueSync } from "$lib/sync/job";
 
 // GitHub webhook receiver. Validates the HMAC signature against the project's
@@ -71,18 +72,6 @@ export const POST: RequestHandler = async ({ request, params, platform, url }) =
 
   return json({ accepted: true }, { status: 202 });
 };
-
-// True when the push payload's ref is the project's default branch. A payload we
-// can't parse (never a real forge push) is treated as non-matching.
-function pushedDefaultBranch(body: string, defaultBranch: string): boolean {
-  let ref: unknown;
-  try {
-    ref = (JSON.parse(body) as { ref?: unknown }).ref;
-  } catch {
-    return false;
-  }
-  return ref === `refs/heads/${defaultBranch}`;
-}
 
 // Compares X-Hub-Signature-256 against HMAC-SHA256(secret, body). Constant-time
 // comparison is required: a naive string equality would leak the correct prefix

@@ -1,4 +1,4 @@
-import { and, eq, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, lt, lte, or, sql } from "drizzle-orm";
 import type { R2Bucket } from "@cloudflare/workers-types";
 import { db } from "$lib/server/db";
 import { gitSources, syncJobs, type SyncJobPlan } from "$lib/server/db/schema";
@@ -88,8 +88,20 @@ function kickDrain(
 ): void {
   const secret = env.CRON_SECRET;
   if (!secret) return;
+  // The CRON_SECRET bearer must only ever go to our own origin, never a
+  // request-derived Host a client could spoof. Prefer the configured APP_ORIGIN;
+  // in dev (unset) fall back to the request origin only when it is loopback. No
+  // trusted target => skip the kick loudly; the durable job still drains on the
+  // cron backstop, so we degrade safely instead of leaking the secret.
+  const base = drainOrigin(origin);
+  if (base === null) {
+    console.error("sync: no trusted drain origin (set APP_ORIGIN); cron backstop will drain", {
+      gitSourceId,
+    });
+    return;
+  }
   waitUntil(
-    fetch(`${origin}/api/sync/drain`, {
+    fetch(`${base}/api/sync/drain`, {
       method: "POST",
       headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
       body: JSON.stringify({ gitSourceId }),
@@ -99,6 +111,17 @@ function kickDrain(
         console.error("sync drain kick failed", { gitSourceId, detail: String(err) });
       }),
   );
+}
+
+// Resolves the origin the secret-bearing drain self-kick may target: APP_ORIGIN
+// when configured, else the request origin but only when it is loopback (local
+// dev). Returns null when neither is safe, so the caller skips the kick rather
+// than send the secret to an untrusted Host.
+function drainOrigin(requestOrigin: string): string | null {
+  if (env.APP_ORIGIN) return env.APP_ORIGIN;
+  const host = new URL(requestOrigin).hostname;
+  if (host === "localhost" || host === "127.0.0.1") return requestOrigin;
+  return null;
 }
 
 // Cron backstop: kick a drain for every job whose lease is free or lapsed (a
@@ -172,9 +195,10 @@ async function runDrainStep(job: SyncJobRow, bucket: R2Bucket): Promise<boolean>
   if (job.phase === "pending") {
     const planned = await buildPlan(ctx, lastSyncedCommit, job.force);
     if (planned.kind === "terminal") {
-      // No-op idle / error / rate-limited already written by buildPlan.
-      await deleteJob(job.gitSourceId);
-      return false;
+      // No-op idle / error / rate-limited already written by buildPlan. Conclude
+      // the job, unless a push landed during buildPlan (requestedAt moved past
+      // the claim) in which case replan to the new HEAD rather than dropping it.
+      return await concludeOrReplan(job.gitSourceId, job.requestedAt);
     }
     const plan = planned.plan;
     const stored: SyncJobPlan = {
@@ -200,7 +224,11 @@ async function runDrainStep(job: SyncJobRow, bucket: R2Bucket): Promise<boolean>
         pending: plan.pending,
         counts: countsToRecord(seedCounts),
         changedPaths: [],
-        plannedAt: new Date(),
+        // The request watermark this plan was built for, NOT wall-clock plan
+        // time: a push arriving during buildPlan advances requestedAt past this,
+        // so finalize re-plans to the new HEAD instead of treating it as covered
+        // and dropping it.
+        plannedAt: job.requestedAt,
         // Release the lease so the self-kick's fresh drain can claim and continue;
         // the lease is held only during an executing chunk.
         leaseUntil: null,
@@ -242,7 +270,7 @@ async function runDrainStep(job: SyncJobRow, bucket: R2Bucket): Promise<boolean>
     // lastSyncedCommit); a push that arrived during validation re-plans instead.
     const errorCount = await planErrorCount(job.projectId, plan.processedSeed);
     if (errorCount > 0) {
-      return await concludeOrReplan(job.gitSourceId, async () => {
+      return await concludeOrReplan(job.gitSourceId, null, async () => {
         await markError(job.gitSourceId, atomicGateMessage(errorCount), ZERO_COUNTS);
       });
     }
@@ -297,7 +325,7 @@ async function runDrainStep(job: SyncJobRow, bucket: R2Bucket): Promise<boolean>
   await finalizePlan(ctx, plan, counts, changedPaths);
 
   // Conclude on success, or re-plan if a push arrived during this sync.
-  return await concludeOrReplan(job.gitSourceId);
+  return await concludeOrReplan(job.gitSourceId, null);
 }
 
 async function handleDrainFailure(job: SyncJobRow, err: unknown): Promise<boolean> {
@@ -308,6 +336,11 @@ async function handleDrainFailure(job: SyncJobRow, err: unknown): Promise<boolea
     attempts: job.attempts,
     detail,
   });
+  // A push that landed after we claimed this chunk supersedes the failing plan:
+  // replan to the new HEAD instead of retrying it (or, at the cap, erroring out
+  // and dropping the newer request with it).
+  if (await replanIfSuperseded(job.gitSourceId, job.requestedAt)) return true;
+
   const attempts = job.attempts + 1;
   if (attempts >= MAX_ATTEMPTS) {
     await markError(
@@ -354,37 +387,85 @@ function countsToRecord(c: SyncRunCounts): Record<string, number> {
 
 // Concludes a drained job: onConcluded runs the terminal effect (nothing on a
 // clean success, markError on an aborted validate). But if a push arrived since
-// the plan (requestedAt moved past plannedAt), it re-plans instead so the new HEAD
-// is re-validated. The conditional delete is atomic, so a concurrent enqueue
-// between the check and the delete can't be lost.
+// the plan, it re-plans instead so the new HEAD is picked up. The conditional
+// delete is atomic, so a concurrent enqueue between the check and the delete
+// can't be lost.
+//
+// watermark fixes the cutoff: a Date pins it to the drain's claim time (the
+// pending-phase terminal, before a plan and its plannedAt exist); null compares
+// against the row's plannedAt, the requestedAt the active plan was built for
+// (validate / finalize).
 async function concludeOrReplan(
   gitSourceId: string,
+  watermark: Date | null,
   onConcluded?: () => Promise<void>,
 ): Promise<boolean> {
+  const covered =
+    watermark === null
+      ? lte(syncJobs.requestedAt, syncJobs.plannedAt)
+      : lte(syncJobs.requestedAt, watermark);
   const deleted = await db
     .delete(syncJobs)
-    .where(
-      and(eq(syncJobs.gitSourceId, gitSourceId), lte(syncJobs.requestedAt, syncJobs.plannedAt)),
-    )
+    .where(and(eq(syncJobs.gitSourceId, gitSourceId), covered))
     .returning({ gitSourceId: syncJobs.gitSourceId });
   if (deleted.length > 0) {
     await onConcluded?.();
     return false;
   }
-  await db
-    .update(syncJobs)
-    .set({
-      phase: "pending",
-      plan: null,
-      pending: [],
-      counts: {},
-      changedPaths: [],
-      attempts: 0,
-      leaseUntil: null,
-      updatedAt: new Date(),
-    })
-    .where(eq(syncJobs.gitSourceId, gitSourceId));
+  await replanJob(gitSourceId);
   return true;
+}
+
+// Resets a job to re-plan from the current HEAD and restores the syncing badge,
+// which a concluded attempt's markIdle / markError may have cleared.
+async function replanJob(gitSourceId: string): Promise<void> {
+  await db.update(syncJobs).set(resetToPendingSet()).where(eq(syncJobs.gitSourceId, gitSourceId));
+  await markSyncing(gitSourceId);
+}
+
+// Atomically replans only when a newer enqueue advanced requestedAt past the
+// claim watermark; returns whether it did. Used on chunk failure so a push that
+// lands mid-failure isn't lost behind retries of a now-stale plan.
+async function replanIfSuperseded(gitSourceId: string, watermark: Date): Promise<boolean> {
+  const rows = await db
+    .update(syncJobs)
+    .set(resetToPendingSet())
+    .where(and(eq(syncJobs.gitSourceId, gitSourceId), gt(syncJobs.requestedAt, watermark)))
+    .returning({ gitSourceId: syncJobs.gitSourceId });
+  if (rows.length === 0) return false;
+  await markSyncing(gitSourceId);
+  return true;
+}
+
+// The reset that returns a job to the pending phase, discarding the stale plan
+// and its cursors so the next drain re-plans from HEAD.
+function resetToPendingSet(): {
+  phase: "pending";
+  plan: null;
+  pending: string[];
+  counts: Record<string, number>;
+  changedPaths: string[];
+  attempts: number;
+  leaseUntil: null;
+  updatedAt: Date;
+} {
+  return {
+    phase: "pending",
+    plan: null,
+    pending: [],
+    counts: {},
+    changedPaths: [],
+    attempts: 0,
+    leaseUntil: null,
+    updatedAt: new Date(),
+  };
+}
+
+async function markSyncing(gitSourceId: string): Promise<void> {
+  await db
+    .update(gitSources)
+    .set({ syncStatus: "syncing", updatedAt: new Date() })
+    .where(eq(gitSources.id, gitSourceId));
 }
 
 async function deleteJob(gitSourceId: string): Promise<void> {
