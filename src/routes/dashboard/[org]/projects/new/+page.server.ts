@@ -7,7 +7,7 @@ import { gitSources, orgs, orgMembers, projects } from "$lib/server/db/schema";
 import { checkProjectSlugAvailability } from "$lib/reserved-handles";
 import { verifyForgeRepo } from "$lib/server/repo-check";
 import { reviveGitProject, reviveNativeProject } from "$lib/server/org-admin";
-import { syncProject } from "$lib/sync/run";
+import { enqueueSync } from "$lib/sync/job";
 import { LIMITS } from "$lib/limits";
 
 const MAX_SUBPATH = 200;
@@ -25,7 +25,7 @@ export const load: PageServerLoad = ({ setHeaders, isDataRequest }) => {
 };
 
 export const actions = {
-  default: async ({ request, params, locals, platform }) => {
+  default: async ({ request, params, locals, platform, url }) => {
     const userId = locals.dbUser?.id;
     if (!userId) return fail(401, { error: "not_authenticated" });
 
@@ -149,17 +149,27 @@ export const actions = {
         });
       }
 
-      // Fire the sync as a fire-and-forget background job. The user gets the
-      // redirect immediately and the project page polls for the sync_status
-      // badge. A revive forces a full re-sync (force=true) so every file still
-      // in the repo is un-tombstoned and any since removed is swept back to
-      // deleted; a fresh project does its normal initial sync. waitUntil keeps
-      // the Worker alive past the response. Skip silently where the platform
-      // context isn't available (some dev setups).
+      // Enqueue the sync and kick the drain. The user gets the redirect
+      // immediately and the project page polls the sync_status badge. A revive
+      // forces a full re-sync (force=true) so every file still in the repo is
+      // un-tombstoned and any since removed is swept back to deleted; a fresh
+      // project does its normal initial sync. The chunked job replaces the old
+      // fire-and-forget waitUntil sync. Skip where platform context is absent.
       if (platform) {
-        platform.context.waitUntil(
-          syncProject(projectId, platform.env.MEDIA_BUCKET, reviving !== null),
-        );
+        // Best-effort: the project (and its git source) is already provisioned, so
+        // don't fail the request if the initial enqueue throws. Failing here would
+        // 500 the action, skip the redirect, and strand a created-but-unsynced
+        // project behind a 409 slug_taken on retry. Cron reclaim or a manual resync
+        // picks it up instead.
+        try {
+          await enqueueSync(projectId, {
+            force: reviving !== null,
+            origin: url.origin,
+            waitUntil: platform.context.waitUntil.bind(platform.context),
+          });
+        } catch (err) {
+          console.error("initial sync enqueue failed", err);
+        }
       }
     } else {
       try {

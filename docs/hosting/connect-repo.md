@@ -60,7 +60,7 @@ docolin publishes a file as a doco when it is Markdown, sits under your docs fol
 
 ## Staying in sync
 
-After the first sync, docolin re-checks your repo about once a day and pulls in what changed; to pull the latest commit sooner, hit **Refresh** on the project page. Instant-on-push webhooks are coming soon. The full model, versions, tombstones for deleted files, and per-file errors, is in [how sync works](./how-sync-works.md).
+After the first sync, docolin re-checks your repo about once a day and pulls in what changed; to pull the latest commit sooner, hit **Refresh** on the project page, or turn on [auto-sync on push](./auto-sync-on-push.md) so every push refreshes within seconds. The full model, versions, tombstones for deleted files, and per-file errors, is in [how sync works](./how-sync-works.md).
 
 ## After it's connected
 

@@ -1,0 +1,2 @@
+ALTER TABLE "sync_jobs" DROP CONSTRAINT "sync_jobs_phase_check";--> statement-breakpoint
+ALTER TABLE "sync_jobs" ADD CONSTRAINT "sync_jobs_phase_check" CHECK ("sync_jobs"."phase" IN ('pending', 'validating', 'processing', 'finalizing'));

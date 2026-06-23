@@ -204,6 +204,27 @@
       "when": 1781729162333,
       "tag": "0028_loud_lockheed",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1782240714720,
+      "tag": "0029_round_wrecking_crew",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1782241260488,
+      "tag": "0030_dark_grim_reaper",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1782243835931,
+      "tag": "0031_fresh_havok",
+      "breakpoints": true
     }
   ]
 }

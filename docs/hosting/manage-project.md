@@ -45,4 +45,4 @@ In the project's **Settings**:
 
 ## Instant updates
 
-Today docolin keeps up by polling about once a day (hit **Refresh** to pull a new commit sooner). **Webhooks**, for updates the instant you push, are coming soon.
+docolin keeps up by polling about once a day (hit **Refresh** to pull a new commit sooner), or turn on [auto-sync on push](./auto-sync-on-push.md) so every push refreshes within seconds.

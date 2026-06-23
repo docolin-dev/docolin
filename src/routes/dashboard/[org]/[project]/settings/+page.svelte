@@ -4,6 +4,8 @@
   import { localizeHref } from "$paraglide/runtime";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
+  import Copy from "@lucide/svelte/icons/copy";
+  import Check from "@lucide/svelte/icons/check";
   import { LIMITS } from "$lib/limits";
   import type { PageProps } from "./$types";
 
@@ -22,6 +24,33 @@
 
   let confirmSlug = $state("");
   let renameSubmitting = $state(false);
+
+  // Auto-sync (webhook) state. `webhook` is null for native projects.
+  const wh = $derived(data.webhook);
+  // The raw secret is returned once, right after generating it.
+  const freshSecret = $derived(
+    f?.action === "enableWebhook" && typeof f.secret === "string" ? f.secret : null,
+  );
+  let webhookSubmitting = $state(false);
+  let copied = $state<string | null>(null);
+
+  async function copyText(text: string, key: string) {
+    // Best-effort: clipboard can reject (permissions / insecure context); leave
+    // the value on screen so it can be copied by hand.
+    try {
+      await navigator.clipboard.writeText(text);
+      copied = key;
+      setTimeout(() => {
+        if (copied === key) copied = null;
+      }, 2000);
+    } catch {
+      copied = null;
+    }
+  }
+
+  function formatWhen(iso: string): string {
+    return new Date(iso).toLocaleString();
+  }
 </script>
 
 <svelte:head>
@@ -83,6 +112,144 @@
       <p class="text-destructive mt-2 text-sm">{errorMessage(actionError("rename"))}</p>
     {/if}
   </section>
+
+  {#if wh}
+    <section class="mb-16 max-w-2xl">
+      <h2 class="text-foreground mb-2 text-xl font-semibold tracking-tight sm:text-2xl">
+        {m.dashboard_project_webhook_heading()}
+      </h2>
+      <p class="text-muted-foreground mb-4 text-sm">
+        {m.dashboard_project_webhook_description()}
+      </p>
+
+      {#if !wh.enabled && !freshSecret}
+        <form
+          method="POST"
+          action="?/enableWebhook"
+          use:enhance={() => {
+            webhookSubmitting = true;
+            return async ({ update }) => {
+              await update({ reset: false });
+              webhookSubmitting = false;
+            };
+          }}
+        >
+          <Button type="submit" disabled={webhookSubmitting} class="h-10 px-5">
+            {webhookSubmitting
+              ? m.dashboard_project_webhook_enabling()
+              : m.dashboard_project_webhook_enable_button()}
+          </Button>
+        </form>
+      {:else}
+        {#if freshSecret}
+          <div class="border-primary/30 bg-primary/5 mb-4 border-l-2 p-4">
+            <p class="text-foreground mb-2 text-sm font-medium">
+              {m.dashboard_project_webhook_secret_label()}
+            </p>
+            <div class="flex items-center gap-2">
+              <code
+                class="bg-background min-w-0 flex-1 truncate border px-2 py-1 font-mono text-sm"
+              >
+                {freshSecret}
+              </code>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                class="h-8 shrink-0 gap-1.5"
+                onclick={() => copyText(freshSecret, "secret")}
+              >
+                {#if copied === "secret"}
+                  <Check class="size-4" />{m.dashboard_project_webhook_copied()}
+                {:else}
+                  <Copy class="size-4" />{m.dashboard_project_webhook_copy()}
+                {/if}
+              </Button>
+            </div>
+            <p class="text-muted-foreground mt-2 text-xs">
+              {m.dashboard_project_webhook_secret_warning()}
+            </p>
+          </div>
+        {/if}
+
+        <div class="mb-3">
+          <p class="text-foreground mb-1 text-sm font-medium">
+            {m.dashboard_project_webhook_url_label()}
+          </p>
+          <div class="flex items-center gap-2">
+            <code class="bg-background min-w-0 flex-1 truncate border px-2 py-1 font-mono text-sm">
+              {wh.url}
+            </code>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              class="h-8 shrink-0 gap-1.5"
+              onclick={() => copyText(wh.url, "url")}
+            >
+              {#if copied === "url"}
+                <Check class="size-4" />{m.dashboard_project_webhook_copied()}
+              {:else}
+                <Copy class="size-4" />{m.dashboard_project_webhook_copy()}
+              {/if}
+            </Button>
+          </div>
+          <p class="text-muted-foreground mt-1 text-xs">
+            {m.dashboard_project_webhook_content_type_label()}
+          </p>
+        </div>
+
+        <ol class="text-muted-foreground mb-4 list-decimal space-y-1 pl-5 text-sm">
+          {#if wh.provider === "github"}
+            <li>{m.dashboard_project_webhook_github_step_1()}</li>
+            <li>{m.dashboard_project_webhook_github_step_2()}</li>
+            <li>{m.dashboard_project_webhook_github_step_3()}</li>
+            <li>{m.dashboard_project_webhook_github_step_4()}</li>
+          {:else}
+            <li>{m.dashboard_project_webhook_codeberg_step_1()}</li>
+            <li>{m.dashboard_project_webhook_codeberg_step_2()}</li>
+            <li>{m.dashboard_project_webhook_codeberg_step_3()}</li>
+            <li>{m.dashboard_project_webhook_codeberg_step_4()}</li>
+          {/if}
+        </ol>
+
+        <p class="text-muted-foreground mb-4 text-sm">
+          {#if wh.lastEventAt}
+            {m.dashboard_project_webhook_last_received({ when: formatWhen(wh.lastEventAt) })}
+          {:else}
+            {m.dashboard_project_webhook_last_received_never()}
+          {/if}
+        </p>
+
+        <div class="flex flex-wrap gap-3">
+          <form
+            method="POST"
+            action="?/enableWebhook"
+            use:enhance={() => {
+              webhookSubmitting = true;
+              return async ({ update }) => {
+                await update({ reset: false });
+                webhookSubmitting = false;
+              };
+            }}
+          >
+            <Button type="submit" variant="outline" disabled={webhookSubmitting} class="h-9">
+              {m.dashboard_project_webhook_regenerate_button()}
+            </Button>
+          </form>
+          <form method="POST" action="?/disableWebhook" use:enhance>
+            <Button type="submit" variant="ghost" class="text-muted-foreground h-9">
+              {m.dashboard_project_webhook_disable_button()}
+            </Button>
+          </form>
+        </div>
+      {/if}
+
+      {#if actionError("enableWebhook")}
+        <p class="text-destructive mt-2 text-sm">{errorMessage(actionError("enableWebhook"))}</p>
+      {/if}
+    </section>
+  {/if}
 
   <section class="border-destructive/40 max-w-2xl border p-6">
     <h2 class="text-destructive mb-2 text-xl font-semibold tracking-tight sm:text-2xl">

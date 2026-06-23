@@ -1,4 +1,4 @@
-import { and, eq, isNull, like } from "drizzle-orm";
+import { and, eq, inArray, isNull, like } from "drizzle-orm";
 import type { R2Bucket } from "@cloudflare/workers-types";
 import { db } from "$lib/server/db";
 import { projects, orgs, gitSources, syncFileErrors, docos, versions } from "$lib/server/db/schema";
@@ -23,6 +23,7 @@ import {
 import { navToSitemap } from "./mintlify/nav-to-sitemap";
 import {
   processFile,
+  validateFile,
   processFileRename,
   processFileDelete,
   type ProcessFileContext,
@@ -62,7 +63,7 @@ export type SyncRunResult =
     }
   | { status: "not_found"; message: string; counts: SyncRunCounts };
 
-const ZERO_COUNTS: SyncRunCounts = {
+export const ZERO_COUNTS: SyncRunCounts = {
   created: 0,
   updated: 0,
   deleted: 0,
@@ -70,19 +71,52 @@ const ZERO_COUNTS: SyncRunCounts = {
   errored: 0,
 };
 
-export async function syncProject(
+// ---------- top-level orchestration ----------
+
+// A serializable description of one sync run: which commit to sync to and the
+// file work to do. Persisted in sync_jobs so a drain resumes it across bounded
+// invocations; also used in-memory by the single-shot syncProject path. Renames
+// are executed at plan time (they must precede adds), so the plan only carries
+// their old paths for the finalize cache purge.
+export interface SyncPlan {
+  isInitial: boolean;
+  targetSha: string;
+  baseSha: string | null;
+  versionTag: string | null;
+  mintlify: MintlifyMode | null;
+  pending: string[];
+  deletes: string[];
+  renameOlds: string[];
+  renamedCount: number;
+  // The full upsert set at plan time: the skip set for sitemap re-resolution and,
+  // for an initial sync, the present-file set for the reconciliation sweep.
+  processedSeed: string[];
+  changedSitemaps: { path: string; removed: boolean }[];
+  configChanged: boolean;
+}
+
+export type PlanResult =
+  | { kind: "plan"; plan: SyncPlan }
+  | { kind: "terminal"; result: SyncRunResult };
+
+export interface LoadedSource {
+  ctx: ModeBase;
+  lastSyncedCommit: string | null;
+}
+
+// Loads a project's git source and builds the sync context, or returns a terminal
+// result (project missing / soft-deleted / unsupported provider / unparseable
+// URL). The deletedAt guards stop a queued job from re-syncing and un-deleting
+// the docos of a project or org that was soft-deleted while the job waited.
+export async function loadSyncContext(
   projectId: string,
   bucket: R2Bucket,
-  force = false,
-): Promise<SyncRunResult> {
-  // Load everything in one query. innerJoin on git_sources means we get a
-  // row back only if the project has a git source attached.
+): Promise<LoadedSource | { terminal: SyncRunResult }> {
   const rows = await db
     .select({
       projectId: projects.id,
       projectSlug: projects.slug,
       orgSlug: orgs.slug,
-      sourceMode: projects.sourceMode,
       gitSourceId: gitSources.id,
       provider: gitSources.provider,
       repoUrl: gitSources.repoUrl,
@@ -93,92 +127,123 @@ export async function syncProject(
     .from(projects)
     .innerJoin(orgs, eq(orgs.id, projects.ownerOrgId))
     .innerJoin(gitSources, eq(gitSources.projectId, projects.id))
-    .where(eq(projects.id, projectId))
+    .where(and(eq(projects.id, projectId), isNull(projects.deletedAt), isNull(orgs.deletedAt)))
     .limit(1);
 
   if (rows.length === 0) {
     return {
-      status: "not_found",
-      message: `Project ${projectId} not found or has no git source`,
-      counts: ZERO_COUNTS,
+      terminal: {
+        status: "not_found",
+        message: `Project ${projectId} not found, deleted, or has no git source`,
+        counts: ZERO_COUNTS,
+      },
     };
   }
   const r = rows[0];
-
   if (!isForgeProvider(r.provider)) {
-    return await markError(
-      r.gitSourceId,
-      `Provider ${r.provider} is not supported yet`,
-      ZERO_COUNTS,
-    );
+    return {
+      terminal: await markError(
+        r.gitSourceId,
+        `Provider ${r.provider} is not supported yet`,
+        ZERO_COUNTS,
+      ),
+    };
   }
-
   const parsed = parseForgeRepoUrl(r.provider, r.repoUrl);
   if (parsed === null) {
-    return await markError(
-      r.gitSourceId,
-      `Could not parse repo URL for provider ${r.provider}: ${r.repoUrl}`,
-      ZERO_COUNTS,
-    );
+    return {
+      terminal: await markError(
+        r.gitSourceId,
+        `Could not parse repo URL for provider ${r.provider}: ${r.repoUrl}`,
+        ZERO_COUNTS,
+      ),
+    };
   }
   const forge = forgeFor(r.provider, parsed.owner, parsed.repo);
+  const ctx: ModeBase = {
+    bucket,
+    forge,
+    repoUrl: r.repoUrl,
+    projectId: r.projectId,
+    projectSlug: r.projectSlug,
+    orgSlug: r.orgSlug,
+    gitSourceId: r.gitSourceId,
+    branch: r.defaultBranch,
+    subpath: r.subpath,
+  };
+  return { ctx, lastSyncedCommit: r.lastSyncedCommit };
+}
 
-  // Mark syncing. From here on, every exit path either transitions to idle
-  // (success / no-change), error (unrecoverable), or rate_limited (defer).
+// Decides initial vs incremental and builds the plan, or returns a terminal
+// result that already wrote sync state (no-op idle, error, rate-limited). The
+// caller has set sync_status='syncing' first. Renames are executed here.
+export async function buildPlan(
+  ctx: ModeBase,
+  lastSyncedCommit: string | null,
+  force: boolean,
+): Promise<PlanResult> {
+  if (lastSyncedCommit === null || force) {
+    return await planInitialSync(ctx);
+  }
+  return await planIncrementalSync(ctx, lastSyncedCommit);
+}
+
+export function mergeCounts(into: SyncRunCounts, from: SyncRunCounts): void {
+  into.created += from.created;
+  into.updated += from.updated;
+  into.deleted += from.deleted;
+  into.renamed += from.renamed;
+  into.errored += from.errored;
+}
+
+// Single-shot sync: plan, process every file in one invocation, finalize. Kept
+// for tests and any non-queued caller; production triggers enqueue a sync_job and
+// drain it in bounded chunks (see job.ts), which is what survives a large diff
+// without eviction.
+export async function syncProject(
+  projectId: string,
+  bucket: R2Bucket,
+  force = false,
+): Promise<SyncRunResult> {
+  const loaded = await loadSyncContext(projectId, bucket);
+  if ("terminal" in loaded) return loaded.terminal;
+  const { ctx, lastSyncedCommit } = loaded;
+
+  // From here on every exit path reaches a terminal state (idle, error, or
+  // rate_limited); the catch-all guarantees it even on an unexpected throw.
   await db
     .update(gitSources)
     .set({ syncStatus: "syncing", updatedAt: new Date() })
-    .where(eq(gitSources.id, r.gitSourceId));
+    .where(eq(gitSources.id, ctx.gitSourceId));
 
-  // A forced run (dev-mode manual resync) re-processes the whole tree even when
-  // HEAD hasn't moved, so renderer / pipeline changes take effect without pushing
-  // a no-op commit.
-  //
-  // The mode functions only markError for anticipated failures (bad provider,
-  // forge fetch, rate limit). Wrap them so an unexpected throw (a DB error, an R2
-  // write, a malformed blob) also lands on "error" rather than escaping with the
-  // status left on "syncing", which spins the project forever with nothing
-  // surfaced. The set of possible throws can't be enumerated, so a catch-all is
-  // the only way to guarantee a terminal state.
   try {
-    if (r.lastSyncedCommit === null || force) {
-      return await runInitialSync({
-        bucket,
-        forge,
-        repoUrl: r.repoUrl,
-        projectId: r.projectId,
-        projectSlug: r.projectSlug,
-        orgSlug: r.orgSlug,
-        gitSourceId: r.gitSourceId,
-        branch: r.defaultBranch,
-        subpath: r.subpath,
-      });
+    const planned = await buildPlan(ctx, lastSyncedCommit, force);
+    if (planned.kind === "terminal") return planned.result;
+    const plan = planned.plan;
+    // Atomic gate: validate every changed file first; if any is broken, write
+    // nothing and leave lastSyncedCommit so the next push re-validates the set.
+    await validatePlanBatch(ctx, plan, plan.processedSeed);
+    const errorCount = await planErrorCount(ctx.projectId, plan.processedSeed);
+    if (errorCount > 0) {
+      return await markError(ctx.gitSourceId, atomicGateMessage(errorCount), ZERO_COUNTS);
     }
-    return await runIncrementalSync({
-      bucket,
-      forge,
-      repoUrl: r.repoUrl,
-      projectId: r.projectId,
-      projectSlug: r.projectSlug,
-      orgSlug: r.orgSlug,
-      gitSourceId: r.gitSourceId,
-      branch: r.defaultBranch,
-      subpath: r.subpath,
-      base: r.lastSyncedCommit,
-    });
+    const counts: SyncRunCounts = { ...ZERO_COUNTS, renamed: plan.renamedCount };
+    const changedPaths: string[] = [];
+    const batch = await processPlanBatch(ctx, plan, plan.pending);
+    mergeCounts(counts, batch.counts);
+    changedPaths.push(...batch.changedPaths);
+    return await finalizePlan(ctx, plan, counts, changedPaths);
   } catch (err) {
-    // Surface a terminal state so the badge stops spinning. The full detail goes
-    // to the Workers log (maintainer-only). syncError is returned to the project
-    // owner by the dashboard API, so keep it generic: a raw exception message
-    // could leak schema or infra internals.
+    // Keep syncError generic (it reaches the project owner via the dashboard API);
+    // the full detail goes to the Workers log only.
     const detail = err instanceof Error ? err.message : String(err);
     console.error("sync failed unexpectedly", {
-      projectId: r.projectId,
-      gitSourceId: r.gitSourceId,
+      projectId: ctx.projectId,
+      gitSourceId: ctx.gitSourceId,
       detail,
     });
     return await markError(
-      r.gitSourceId,
+      ctx.gitSourceId,
       "The sync failed unexpectedly. Try resyncing, and report it if it keeps happening.",
       ZERO_COUNTS,
     );
@@ -187,7 +252,7 @@ export async function syncProject(
 
 // ---------- modes ----------
 
-interface ModeBase {
+export interface ModeBase {
   bucket: R2Bucket;
   forge: Forge;
   repoUrl: string;
@@ -199,9 +264,14 @@ interface ModeBase {
   subpath: string | null;
 }
 
-async function runInitialSync(ctx: ModeBase): Promise<SyncRunResult> {
+async function planInitialSync(ctx: ModeBase): Promise<PlanResult> {
   const tree = await ctx.forge.fetchTree(ctx.branch);
-  if (!tree.ok) return await handleGitHubFailure(ctx.gitSourceId, tree, ZERO_COUNTS);
+  if (!tree.ok) {
+    return {
+      kind: "terminal",
+      result: await handleGitHubFailure(ctx.gitSourceId, tree, ZERO_COUNTS),
+    };
+  }
 
   const resolvedSha = tree.value.sha;
   const blobPaths = tree.value.tree
@@ -221,57 +291,34 @@ async function runInitialSync(ctx: ModeBase): Promise<SyncRunResult> {
   }
 
   const versionTag = await resolveTagForSha(ctx.forge, resolvedSha);
-  let resolveSitemap: (docoPath: string) => Promise<SitemapResolution | null>;
-  if (mintlify !== null) {
-    const navSitemap = mintlify.sitemap;
-    // The Mintlify nav has no source file and its urls are already absolute, so
-    // the base is irrelevant; anchor it at the docs root.
-    const navResolution: SitemapResolution | null =
-      navSitemap === null ? null : { sitemap: navSitemap, sourcePath: ctx2.subpath ?? "" };
-    resolveSitemap = () => Promise.resolve(navResolution);
-  } else {
+  // Validate the docolin sitemap files now (records / clears their per-file
+  // errors); a Mintlify nav has no source files to validate. Each drain rebuilds
+  // its own resolver, so this one exists only for the validation pass.
+  if (mintlify === null) {
     const resolver = makeResolver(ctx2, resolvedSha);
     await validateSitemapFiles(ctx2.projectId, resolver, sitemapFiles);
-    resolveSitemap = (path) => resolver.resolve(path);
   }
 
-  const { counts, changedPaths } = await processFiles(
-    eligible,
-    [],
-    [],
-    ctx2,
-    resolvedSha,
-    versionTag,
-    resolveSitemap,
-    mintlify !== null,
-    mintlify?.iconLibrary ?? "fontawesome",
-  );
-
-  // A full sync is a reconciliation, not just an upsert: any live doco whose
-  // source file is no longer in the tree was removed (or moved) upstream and
-  // must be marked deleted here too. Incremental syncs learn deletions from
-  // the compare diff; this path (first sync, forced re-sync, the fallback
-  // after a truncated compare) only knows what IS present, so it sweeps the
-  // difference. Without this, a forced re-sync silently kept deleted docos
-  // alive forever.
-  const present = new Set(eligible);
-  const liveRows = await db
-    .select({ pathInSource: docos.pathInSource })
-    .from(docos)
-    .where(and(eq(docos.gitSourceId, ctx2.gitSourceId), isNull(docos.deletedAt)));
-  for (const row of liveRows) {
-    if (row.pathInSource === null || present.has(row.pathInSource)) continue;
-    const deletion = await processFileDelete(row.pathInSource, ctx2.gitSourceId);
-    if (deletion.status === "deleted") {
-      counts.deleted += 1;
-      await clearFileError(ctx2.projectId, row.pathInSource);
-      changedPaths.push(row.pathInSource);
-    }
-  }
-
-  const result = await markIdle(ctx2.gitSourceId, resolvedSha, counts);
-  await purgeChangedDocos(ctx2, changedPaths);
-  return result;
+  // The reconciliation sweep (live docos no longer in the tree, removed upstream)
+  // and the file upserts run in the drain: processPlanBatch consumes `pending`,
+  // finalizePlan sweeps against `processedSeed`.
+  return {
+    kind: "plan",
+    plan: {
+      isInitial: true,
+      targetSha: resolvedSha,
+      baseSha: null,
+      versionTag,
+      mintlify,
+      pending: eligible,
+      deletes: [],
+      renameOlds: [],
+      renamedCount: 0,
+      processedSeed: eligible,
+      changedSitemaps: [],
+      configChanged: false,
+    },
+  };
 }
 
 // A per-sync sitemap resolver bound to the resolved commit. Fetches each
@@ -365,19 +412,27 @@ async function validateSitemapFiles(
   }
 }
 
-async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<SyncRunResult> {
-  const compare = await ctx.forge.fetchCompare(ctx.base, ctx.branch);
-  if (!compare.ok) return await handleGitHubFailure(ctx.gitSourceId, compare, ZERO_COUNTS);
+async function planIncrementalSync(ctx: ModeBase, base: string): Promise<PlanResult> {
+  const compare = await ctx.forge.fetchCompare(base, ctx.branch);
+  if (!compare.ok) {
+    return {
+      kind: "terminal",
+      result: await handleGitHubFailure(ctx.gitSourceId, compare, ZERO_COUNTS),
+    };
+  }
 
   if (compare.value.truncated) {
     // Compare endpoint capped (250 commits / 300 files). For v1 fall back
     // to error and let the operator decide; a fresh-tree fallback can come
     // later. Per sync-engine spec this is rare in practice.
-    return await markError(
-      ctx.gitSourceId,
-      "The forge's compare response was truncated. Run a full re-sync.",
-      ZERO_COUNTS,
-    );
+    return {
+      kind: "terminal",
+      result: await markError(
+        ctx.gitSourceId,
+        "The forge's compare response was truncated. Run a full re-sync.",
+        ZERO_COUNTS,
+      ),
+    };
   }
 
   const resolvedSha = compare.value.resolvedSha;
@@ -385,7 +440,7 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
   // Detect Mintlify for this sync (probes the persisted docs subpath). Mintlify
   // takes its sidebar from the config nav; a docolin repo uses the cascade.
   const mintlify = await resolveMintlify(ctx, resolvedSha, null);
-  const ctx2: ModeBase & { base: string } = { ...ctx, subpath: mintlify?.subpath ?? ctx.subpath };
+  const ctx2: ModeBase = { ...ctx, subpath: mintlify?.subpath ?? ctx.subpath };
   const allowMdx = mintlify !== null;
   const configPaths = mintlify !== null ? new Set(configPathsFor(ctx2.subpath)) : new Set<string>();
 
@@ -501,91 +556,240 @@ async function runIncrementalSync(ctx: ModeBase & { base: string }): Promise<Syn
       })
       .where(eq(gitSources.id, ctx2.gitSourceId));
     return {
-      status: "skipped_no_change",
-      resolvedSha,
-      counts: ZERO_COUNTS,
+      kind: "terminal",
+      result: { status: "skipped_no_change", resolvedSha, counts: ZERO_COUNTS },
     };
   }
 
-  // Renames must be processed before adds so the lookup on the OLD path
-  // finds the original doco, not a freshly-inserted one at the same name.
-  const renameCounts = { renamed: 0 };
+  // Renames must be processed before adds so the lookup on the OLD path finds the
+  // original doco, not a freshly-inserted one at the same name. They run here at
+  // plan time; the drain only carries the old paths for the finalize cache purge.
+  let renamedCount = 0;
   for (const rn of toRename) {
     const result = await processFileRename(rn.oldPath, rn.newPath, ctx2.gitSourceId);
-    if (result.status === "renamed") renameCounts.renamed += 1;
-  }
-
-  // Sitemap source: the nav (a constant) for Mintlify; the doco_sitemap.yaml
-  // cascade resolver otherwise.
-  let resolveSitemap: (docoPath: string) => Promise<SitemapResolution | null>;
-  let resolver: SitemapResolver | null = null;
-  if (mintlify !== null) {
-    const navSitemap = mintlify.sitemap;
-    const navResolution: SitemapResolution | null =
-      navSitemap === null ? null : { sitemap: navSitemap, sourcePath: ctx2.subpath ?? "" };
-    resolveSitemap = () => Promise.resolve(navResolution);
-  } else {
-    const r = makeResolver(ctx2, resolvedSha);
-    resolver = r;
-    resolveSitemap = (path) => r.resolve(path);
+    if (result.status === "renamed") renamedCount += 1;
   }
 
   const versionTag = await resolveTagForSha(ctx2.forge, resolvedSha);
-  const { counts, changedPaths } = await processFiles(
-    toProcess,
-    toRename,
-    toDelete,
-    ctx2,
-    resolvedSha,
-    versionTag,
-    resolveSitemap,
-    mintlify !== null,
-    mintlify?.iconLibrary ?? "fontawesome",
-  );
-  counts.renamed = renameCounts.renamed;
 
+  // processPlanBatch consumes `pending`; finalizePlan applies `deletes` and the
+  // sitemap re-resolution carried in changedSitemaps / configChanged.
+  return {
+    kind: "plan",
+    plan: {
+      isInitial: false,
+      targetSha: resolvedSha,
+      baseSha: base,
+      versionTag,
+      mintlify,
+      pending: toProcess,
+      deletes: toDelete,
+      renameOlds: toRename.map((r) => r.oldPath),
+      renamedCount,
+      processedSeed: toProcess,
+      changedSitemaps: [...changedSitemaps.entries()].map(([path, removed]) => ({ path, removed })),
+      configChanged,
+    },
+  };
+}
+
+// ---------- plan execution (drain) ----------
+
+// The effective context for a plan: the source subpath may have been overridden
+// by Mintlify auto-detection at plan time and is persisted on the plan.
+function planContext(ctx: ModeBase, plan: SyncPlan): ModeBase {
+  return { ...ctx, subpath: plan.mintlify?.subpath ?? ctx.subpath };
+}
+
+// Rebuilds the sitemap resolver for a plan from its persisted Mintlify mode and
+// target commit (the resolver/forge closures can't be serialized into the job).
+// Returns the resolve function plus, for a docolin repo, the underlying resolver
+// (finalize needs it to validate changed sitemap files).
+function buildResolveSitemap(
+  ctx2: ModeBase,
+  plan: SyncPlan,
+): {
+  resolveSitemap: (docoPath: string) => Promise<SitemapResolution | null>;
+  resolver: SitemapResolver | null;
+} {
+  if (plan.mintlify !== null) {
+    const navSitemap = plan.mintlify.sitemap;
+    const navResolution: SitemapResolution | null =
+      navSitemap === null ? null : { sitemap: navSitemap, sourcePath: ctx2.subpath ?? "" };
+    return { resolveSitemap: () => Promise.resolve(navResolution), resolver: null };
+  }
+  const resolver = makeResolver(ctx2, plan.targetSha);
+  return { resolveSitemap: (path) => resolver.resolve(path), resolver };
+}
+
+// Processes one batch of a plan's pending upserts (called repeatedly by the
+// drain). Rebuilds the per-file context from the plan so it works across bounded
+// invocations, then reuses processFiles. Renames ran at plan time and deletes run
+// at finalize, so only upserts are passed here.
+export async function processPlanBatch(
+  ctx: ModeBase,
+  plan: SyncPlan,
+  batchPaths: string[],
+): Promise<{ counts: SyncRunCounts; changedPaths: string[] }> {
+  const ctx2 = planContext(ctx, plan);
+  const { resolveSitemap } = buildResolveSitemap(ctx2, plan);
+  return await processFiles(
+    batchPaths,
+    [],
+    [],
+    ctx2,
+    plan.targetSha,
+    plan.versionTag,
+    resolveSitemap,
+    plan.mintlify !== null,
+    plan.mintlify?.iconLibrary ?? "fontawesome",
+  );
+}
+
+// ---------- atomic validation gate ----------
+
+// Validates a batch of changed doco files (fetch + parse + authors, no render or
+// write) and records or clears each file's error. The drain's `validating` phase
+// runs this over every changed file before any version is written, so a broken
+// file blocks the whole sync instead of half-publishing it.
+export async function validatePlanBatch(
+  ctx: ModeBase,
+  plan: SyncPlan,
+  paths: string[],
+): Promise<void> {
+  const ctx2 = planContext(ctx, plan);
+  const fileCtx: ProcessFileContext = {
+    bucket: ctx2.bucket,
+    forge: ctx2.forge,
+    repoUrl: ctx2.repoUrl,
+    projectId: ctx2.projectId,
+    gitSourceId: ctx2.gitSourceId,
+    ref: plan.targetSha,
+    versionTag: plan.versionTag,
+    orgSlug: ctx2.orgSlug,
+    projectSlug: ctx2.projectSlug,
+    subpath: ctx2.subpath,
+    mintlifyIconLibrary: plan.mintlify?.iconLibrary ?? "fontawesome",
+    // validateFile never resolves the sitemap; a stub keeps the validate pass cheap.
+    resolveSitemap: () => Promise.resolve(null),
+    mintlify: plan.mintlify !== null,
+  };
+  for (const path of paths) {
+    const result = await validateFile(path, fileCtx);
+    if (result.ok) {
+      await clearFileError(ctx2.projectId, path);
+    } else {
+      await recordFileError(
+        ctx2.projectId,
+        path,
+        result.error.errorCode,
+        result.error.errorMessage,
+        result.error.errorDetails,
+      );
+    }
+  }
+}
+
+// How many of the given paths currently have a recorded sync error. The atomic
+// gate aborts the sync (writes nothing, leaves lastSyncedCommit) when this is
+// non-zero after validating the whole changed set.
+export async function planErrorCount(projectId: string, paths: string[]): Promise<number> {
+  if (paths.length === 0) return 0;
+  const rows = await db
+    .select({ filePath: syncFileErrors.filePath })
+    .from(syncFileErrors)
+    .where(and(eq(syncFileErrors.projectId, projectId), inArray(syncFileErrors.filePath, paths)));
+  return rows.length;
+}
+
+// The badge message when the atomic gate blocks a sync. Generic (it reaches the
+// project owner via the dashboard); the per-file errors are listed separately.
+export function atomicGateMessage(count: number): string {
+  return count === 1
+    ? "1 file has an error. Fix it and push again to publish your changes."
+    : `${String(count)} files have errors. Fix them and push again to publish your changes.`;
+}
+
+// Runs the once-per-sync tail after every file is processed: deletions, the
+// initial-sync reconciliation sweep, sitemap re-resolution for changed sidebars,
+// then markIdle + cache purge. Every step is idempotent, so a retried finalize
+// (after a crash) is safe. `counts` and `changedPaths` carry the accumulation
+// from the processing chunks.
+export async function finalizePlan(
+  ctx: ModeBase,
+  plan: SyncPlan,
+  counts: SyncRunCounts,
+  changedPaths: string[],
+): Promise<SyncRunResult> {
+  const ctx2 = planContext(ctx, plan);
+
+  // Incremental deletions (removed files). Initial syncs carry none here; the
+  // sweep below handles their removals.
+  for (const path of plan.deletes) {
+    const deletion = await processFileDelete(path, ctx2.gitSourceId);
+    if (deletion.status === "deleted") {
+      counts.deleted += 1;
+      await clearFileError(ctx2.projectId, path);
+      changedPaths.push(path);
+    }
+  }
+
+  // Initial / forced reconciliation sweep: any live doco whose source file is no
+  // longer in the tree was removed (or moved) upstream and must be tombstoned.
+  if (plan.isInitial) {
+    const present = new Set(plan.processedSeed);
+    const liveRows = await db
+      .select({ pathInSource: docos.pathInSource })
+      .from(docos)
+      .where(and(eq(docos.gitSourceId, ctx2.gitSourceId), isNull(docos.deletedAt)));
+    for (const row of liveRows) {
+      if (row.pathInSource === null || present.has(row.pathInSource)) continue;
+      const deletion = await processFileDelete(row.pathInSource, ctx2.gitSourceId);
+      if (deletion.status === "deleted") {
+        counts.deleted += 1;
+        await clearFileError(ctx2.projectId, row.pathInSource);
+        changedPaths.push(row.pathInSource);
+      }
+    }
+  }
+
+  // Sitemap subtree re-resolution (incremental only): a changed sidebar source
+  // updates the affected docos in place, skipping those just re-processed.
   let sitemapTouched: string[] = [];
-  if (mintlify !== null) {
-    // A changed Mintlify config means the whole sidebar changed: re-apply the new
-    // nav to every doco (skipping those just re-processed with it).
-    if (configChanged) {
+  const { resolveSitemap, resolver } = buildResolveSitemap(ctx2, plan);
+  const skip = new Set(plan.processedSeed);
+  if (plan.mintlify !== null) {
+    if (plan.configChanged) {
       sitemapTouched = await reresolveAffectedDocos(
         ctx2,
         resolveSitemap,
         new Set([""]),
-        new Set(toProcess),
-        resolvedSha,
+        skip,
+        plan.targetSha,
         true,
       );
     }
-  } else if (resolver !== null) {
-    // Changed doco_sitemap.yaml files: validate (surface authoring errors), then
-    // re-resolve the subtrees they govern so existing docos pick up the new
-    // sidebar without needing a content change.
+  } else if (plan.changedSitemaps.length > 0 && resolver !== null) {
     await validateSitemapFiles(
       ctx2.projectId,
       resolver,
-      [...changedSitemaps.entries()].filter(([, removed]) => !removed).map(([path]) => path),
+      plan.changedSitemaps.filter((s) => !s.removed).map((s) => s.path),
     );
-    for (const [path, removed] of changedSitemaps) {
-      if (removed) await clearFileError(ctx2.projectId, path);
+    for (const s of plan.changedSitemaps) {
+      if (s.removed) await clearFileError(ctx2.projectId, s.path);
     }
     sitemapTouched = await reresolveAffectedDocos(
       ctx2,
       resolveSitemap,
-      new Set([...changedSitemaps.keys()].map(dirOf)),
-      new Set(toProcess),
-      resolvedSha,
+      new Set(plan.changedSitemaps.map((s) => dirOf(s.path))),
+      skip,
+      plan.targetSha,
       false,
     );
   }
 
-  // Renames also invalidate the OLD URL: it used to serve the doco, now it's a
-  // 404 (or whatever replaced it). The new path is already in changedPaths via
-  // toProcess (renames are always paired with a process call in the loop above).
-  const renameOldPaths = toRename.map((r) => r.oldPath);
-  const result = await markIdle(ctx2.gitSourceId, resolvedSha, counts);
-  await purgeChangedDocos(ctx2, [...changedPaths, ...renameOldPaths, ...sitemapTouched]);
+  const result = await markIdle(ctx2.gitSourceId, plan.targetSha, counts);
+  await purgeChangedDocos(ctx2, [...changedPaths, ...plan.renameOlds, ...sitemapTouched]);
   return result;
 }
 
@@ -835,7 +1039,7 @@ async function markIdle(
   return { status: "success", resolvedSha, counts };
 }
 
-async function markError(
+export async function markError(
   gitSourceId: string,
   message: string,
   counts: SyncRunCounts,

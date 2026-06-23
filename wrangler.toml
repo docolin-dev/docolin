@@ -26,6 +26,9 @@ routes = [{ pattern = "docolin.com", custom_domain = true }]
 WORKOS_CLIENT_ID = "client_01KRJQZ8DPMA346EB8XBB5Q6Y5"
 WORKOS_REDIRECT_URI = "https://docolin.com/callback"
 R2_PUBLIC_BASE = "https://media.docolin.com"
+# Canonical origin the sync drain self-kick targets. Pinned here (not the
+# request Host) so the CRON_SECRET bearer is never sent to a spoofed origin.
+APP_ORIGIN = "https://docolin.com"
 
 # SvelteKit's client build (static assets + prerendered pages). The Worker
 # serves these directly; ASSETS is the binding adapter-cloudflare expects.

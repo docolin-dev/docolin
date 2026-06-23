@@ -4,7 +4,7 @@ import type { Actions, PageServerLoad } from "./$types";
 import { db } from "$lib/server/db";
 import { orgs, orgMembers, projects } from "$lib/server/db/schema";
 import { dev } from "$app/environment";
-import { syncProject } from "$lib/sync/run";
+import { enqueueSync } from "$lib/sync/job";
 
 // Shell for /dashboard/[org]/[project]. Project + sync state + docos load
 // client-side from /api/dashboard/orgs/[org]/projects/[project] so the page
@@ -21,7 +21,7 @@ export const load: PageServerLoad = ({ setHeaders, isDataRequest }) => {
 };
 
 export const actions = {
-  resync: async ({ locals, params, platform }) => {
+  resync: async ({ locals, params, platform, url }) => {
     const userId = locals.dbUser?.id;
     if (!userId) return fail(401, { error: "not_authenticated" });
 
@@ -54,7 +54,12 @@ export const actions = {
     if (platform) {
       // In dev, force a full re-sync on every manual Refresh so pipeline / renderer
       // changes take effect without pushing a new commit. Prod stays incremental.
-      platform.context.waitUntil(syncProject(projectRows[0].id, platform.env.MEDIA_BUCKET, dev));
+      // Enqueue + kick the drain; the chunked job replaces the old waitUntil sync.
+      await enqueueSync(projectRows[0].id, {
+        force: dev,
+        origin: url.origin,
+        waitUntil: platform.context.waitUntil.bind(platform.context),
+      });
     }
 
     return { ok: true };

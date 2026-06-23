@@ -18,10 +18,14 @@ export const gitSources = pgTable(
     // Optional subdirectory inside the repo where docs live (e.g. "docs/").
     // Null = repo root. Surfaced as a form field on project create.
     subpath: text("subpath"),
-    // Stored hashed; raw secret never round-trips through the database.
+    // The raw webhook secret (the HMAC-SHA256 key). Despite the column name it is
+    // NOT a one-way hash: verifying a forge's push signature needs the same secret
+    // the forge holds, so it must round-trip. Shown to the user once on generate.
     // Nullable: projects without a configured webhook rely on polling only.
-    // The webhook is an optional power-user opt-in for instant updates on top.
     webhookSecretHash: text("webhook_secret_hash"),
+    // Last time a valid webhook delivery arrived; surfaced in the dashboard as a
+    // "last push received" affordance so the user can confirm the webhook is wired.
+    webhookLastEventAt: timestamp("webhook_last_event_at", { withTimezone: true }),
     lastSyncedCommit: text("last_synced_commit"),
     lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
     syncStatus: text("sync_status").notNull().default("idle").$type<"idle" | "syncing" | "error">(),

@@ -43,7 +43,7 @@ A sync runs in two cases today:
 - **The first sync**, the moment you create the project.
 - **The scheduled poll**, docolin re-checks every connected repo on a schedule. This is the default and needs no setup. The polling window is **about a day**: a project that hasn't synced in 24 hours gets picked up on the next pass, so a quiet repo refreshes roughly once daily.
 
-Each sync compares your repo against the last commit docolin saw, and only processes what changed. To pull a new commit sooner than the next poll, hit **Refresh** on the project page. Instant-on-push updates (webhooks) are coming soon; until then, the poll (plus Refresh) is what keeps everything current.
+Each sync compares your repo against the last commit docolin saw, and only processes what changed. To pull a new commit sooner than the next poll, hit **Refresh** on the project page, or turn on [auto-sync on push](./auto-sync-on-push.md) so a webhook syncs the moment you push. The poll (plus Refresh) is the fallback that keeps everything current.
 
 ## Every change is a version
 
