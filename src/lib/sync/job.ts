@@ -336,22 +336,24 @@ async function handleDrainFailure(job: SyncJobRow, err: unknown): Promise<boolea
     attempts: job.attempts,
     detail,
   });
-  // A push that landed after we claimed this chunk supersedes the failing plan:
-  // replan to the new HEAD instead of retrying it (or, at the cap, erroring out
-  // and dropping the newer request with it).
-  if (await replanIfSuperseded(job.gitSourceId, job.requestedAt)) return true;
-
   const attempts = job.attempts + 1;
   if (attempts >= MAX_ATTEMPTS) {
-    await markError(
-      job.gitSourceId,
-      "The sync failed repeatedly. Try resyncing, and report it if it keeps happening.",
-      ZERO_COUNTS,
-    );
-    await deleteJob(job.gitSourceId);
-    return false;
+    // Out of retries: mark the source errored and drop the job, UNLESS a push
+    // arrived since we claimed it (requestedAt moved past the watermark) in which
+    // case replan to the new HEAD instead of erroring out and losing it. The
+    // delete-or-replan is atomic, so a push landing right here can't be dropped.
+    return await concludeOrReplan(job.gitSourceId, job.requestedAt, async () => {
+      await markError(
+        job.gitSourceId,
+        "The sync failed repeatedly. Try resyncing, and report it if it keeps happening.",
+        ZERO_COUNTS,
+      );
+    });
   }
-  // Bump attempts and free the lease so the next kick / cron tick retries.
+  // Transient failure: replan if a newer push landed, otherwise bump attempts and
+  // free the lease so the next kick / cron tick retries the same plan (a push that
+  // lands later is still caught by the finalize-time replan).
+  if (await replanIfSuperseded(job.gitSourceId, job.requestedAt)) return true;
   await db
     .update(syncJobs)
     .set({ attempts, leaseUntil: null, updatedAt: new Date() })
