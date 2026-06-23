@@ -3,23 +3,23 @@ import { requireEnv } from "$lib/server/env";
 import type { RequestHandler } from "./$types";
 import { drainSyncJob } from "$lib/sync/job";
 
-// Internal endpoint: drains one bounded chunk of a sync job, then self-kicks if
-// work remains. Called by enqueueSync's kick and the cron backstop, never by a
-// user. Auth is the shared CRON_SECRET, same as /api/cron/sync.
-export const POST: RequestHandler = async ({ request, platform, url }) => {
+// Internal endpoint: drains one bounded chunk of a sync job and reports whether
+// more remains. The docolin-cron queue consumer calls this once per message; when
+// work remains we re-enqueue a follow-up message so the next chunk runs in a fresh
+// invocation (reliable, in-request, never a dropped waitUntil self-fetch). Auth is
+// the shared CRON_SECRET, same as /api/cron/sync. Never called by a user.
+export const POST: RequestHandler = async ({ request, platform }) => {
   const auth = request.headers.get("authorization");
   if (auth !== `Bearer ${requireEnv("CRON_SECRET")}`) error(401, "unauthorized");
   if (!platform?.env.MEDIA_BUCKET) error(500, "MEDIA_BUCKET binding is not available");
+  if (!platform.env.SYNC_QUEUE) error(500, "SYNC_QUEUE binding is not available");
+  const queue = platform.env.SYNC_QUEUE;
 
   const body = (await request.json().catch(() => null)) as { gitSourceId?: unknown } | null;
   const gitSourceId = body?.gitSourceId;
   if (typeof gitSourceId !== "string") error(400, "gitSourceId required");
 
-  await drainSyncJob(
-    gitSourceId,
-    platform.env.MEDIA_BUCKET,
-    url.origin,
-    platform.context.waitUntil.bind(platform.context),
-  );
-  return json({ ok: true });
+  const { more } = await drainSyncJob(gitSourceId, platform.env.MEDIA_BUCKET);
+  if (more) await queue.send({ gitSourceId });
+  return json({ more });
 };

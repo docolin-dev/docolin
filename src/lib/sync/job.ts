@@ -1,8 +1,9 @@
 import { and, eq, gt, isNull, lt, lte, or, sql } from "drizzle-orm";
-import type { R2Bucket } from "@cloudflare/workers-types";
+import type { Queue, R2Bucket } from "@cloudflare/workers-types";
+import { dev } from "$app/environment";
 import { db } from "$lib/server/db";
 import { gitSources, syncJobs, type SyncJobPlan } from "$lib/server/db/schema";
-import { env } from "$lib/server/env";
+import type { SyncQueueMessage } from "./queue";
 import {
   atomicGateMessage,
   buildPlan,
@@ -21,8 +22,12 @@ import {
 // A sync is chunked into a sync_jobs row that a drain loop advances one bounded
 // chunk per invocation, so a large diff never evicts mid-run. enqueueSync is the
 // single entry point for every trigger (webhook, resync, project-create, cron);
-// drainSyncJob does the work, kicked immediately on enqueue and continued by the
-// cron backstop after a crash.
+// it sends a durable queue message that the docolin-cron consumer turns into a
+// drain of one chunk. The drain endpoint re-enqueues itself while work remains,
+// and the cron backstop re-sends any job whose lease lapsed. No waitUntil: every
+// trigger is an awaited queue send inside a real invocation, never fire-and-forget.
+
+type SyncQueue = Queue<SyncQueueMessage>;
 
 // How long a worker owns a job while draining one chunk. A lapsed lease means the
 // worker died mid-chunk; the cron backstop reclaims it.
@@ -42,16 +47,19 @@ type SyncJobRow = typeof syncJobs.$inferSelect;
 
 export interface EnqueueOptions {
   force?: boolean;
-  // Origin of the running worker (e.g. https://docolin.com), used to self-fetch
-  // the drain endpoint.
-  origin: string;
-  waitUntil: (promise: Promise<unknown>) => void;
+  // Sync queue producer (platform.env.SYNC_QUEUE): a { gitSourceId } message is
+  // the durable trigger the docolin-cron consumer drains. Undefined in `vite dev`
+  // (no binding); the dev branch drains inline and never reads it.
+  queue: SyncQueue | undefined;
+  // R2 bucket, used only by the dev inline-drain fallback (no consumer runs in
+  // `vite dev`).
+  bucket: R2Bucket;
 }
 
-// Queues (or refreshes) a sync for a project's git source and kicks an immediate
-// drain. Idempotent: a burst of pushes collapses to one job (PK on git_source_id)
-// that re-plans to the latest HEAD. Cheap so a webhook / resync returns at once.
-// A native project (no git source) is a no-op.
+// Queues (or refreshes) a sync for a project's git source. Idempotent: a burst of
+// pushes collapses to one job (PK on git_source_id) that re-plans to the latest
+// HEAD. Cheap so a webhook / resync returns at once. A native project (no git
+// source) is a no-op.
 export async function enqueueSync(projectId: string, opts: EnqueueOptions): Promise<void> {
   const force = opts.force ?? false;
   const sources = await db
@@ -75,63 +83,38 @@ export async function enqueueSync(projectId: string, opts: EnqueueOptions): Prom
     .set({ syncStatus: "syncing", updatedAt: now })
     .where(eq(gitSources.id, gitSourceId));
 
-  kickDrain(gitSourceId, opts.origin, opts.waitUntil);
-}
-
-// Fire-and-forget POST to the drain endpoint: a fresh full-budget invocation picks
-// up the job. Skipped when CRON_SECRET is unset (dev without the secret); the cron
-// backstop is then the only driver.
-function kickDrain(
-  gitSourceId: string,
-  origin: string,
-  waitUntil: (promise: Promise<unknown>) => void,
-): void {
-  const secret = env.CRON_SECRET;
-  if (!secret) return;
-  // The CRON_SECRET bearer must only ever go to our own origin, never a
-  // request-derived Host a client could spoof. Prefer the configured APP_ORIGIN;
-  // in dev (unset) fall back to the request origin only when it is loopback. No
-  // trusted target => skip the kick loudly; the durable job still drains on the
-  // cron backstop, so we degrade safely instead of leaking the secret.
-  const base = drainOrigin(origin);
-  if (base === null) {
-    console.error("sync: no trusted drain origin (set APP_ORIGIN); cron backstop will drain", {
-      gitSourceId,
-    });
+  if (dev) {
+    // No queue consumer runs in `vite dev`, so a sent message would never be
+    // picked up. Drain inline (awaited) instead; prod always uses the queue.
+    await drainInline(gitSourceId, opts.bucket);
     return;
   }
-  waitUntil(
-    fetch(`${base}/api/sync/drain`, {
-      method: "POST",
-      headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
-      body: JSON.stringify({ gitSourceId }),
-    })
-      .then(() => undefined)
-      .catch((err: unknown) => {
-        console.error("sync drain kick failed", { gitSourceId, detail: String(err) });
-      }),
-  );
+  if (!opts.queue) {
+    // Unreachable in a real deploy: wrangler fails the deploy if the SYNC_QUEUE
+    // producer points at a missing queue. Log instead of throwing so a webhook /
+    // resync still returns; the job row stands for the cron backstop.
+    console.error("sync: SYNC_QUEUE binding missing, job left for cron reclaim", { gitSourceId });
+    return;
+  }
+  // Reliable, in-request send (never waitUntil); the docolin-cron consumer drives
+  // the drain and the drain endpoint re-enqueues itself while work remains.
+  await opts.queue.send({ gitSourceId });
 }
 
-// Resolves the origin the secret-bearing drain self-kick may target: APP_ORIGIN
-// when configured, else the request origin but only when it is loopback (local
-// dev). Returns null when neither is safe, so the caller skips the kick rather
-// than send the secret to an untrusted Host.
-function drainOrigin(requestOrigin: string): string | null {
-  if (env.APP_ORIGIN) return env.APP_ORIGIN;
-  const host = new URL(requestOrigin).hostname;
-  if (host === "localhost" || host === "127.0.0.1") return requestOrigin;
-  return null;
+// Dev only: with no queue consumer in `vite dev`, drain the whole job inside the
+// request that enqueued it. Bounded so a logic bug can't spin forever.
+async function drainInline(gitSourceId: string, bucket: R2Bucket): Promise<void> {
+  for (let i = 0; i < 500; i++) {
+    const { more } = await drainSyncJob(gitSourceId, bucket);
+    if (!more) return;
+  }
+  console.error("sync: inline drain hit its cap without completing", { gitSourceId });
 }
 
-// Cron backstop: kick a drain for every job whose lease is free or lapsed (a
-// crashed worker mid-chunk, or a job whose self-kick fetch was dropped). Bounded
-// per tick. Jobs actively draining hold an unexpired lease and are skipped.
-export async function reclaimStalledJobs(
-  origin: string,
-  waitUntil: (promise: Promise<unknown>) => void,
-  limit: number,
-): Promise<number> {
+// Cron backstop: re-enqueue every job whose lease is free or lapsed (a crashed
+// worker mid-chunk, or a dropped queue message). Bounded per tick. Jobs actively
+// draining hold an unexpired lease and are skipped.
+export async function reclaimStalledJobs(queue: SyncQueue, limit: number): Promise<number> {
   const now = new Date();
   const stalled = await db
     .select({ gitSourceId: syncJobs.gitSourceId })
@@ -139,7 +122,7 @@ export async function reclaimStalledJobs(
     .where(or(isNull(syncJobs.leaseUntil), lt(syncJobs.leaseUntil, now)))
     .limit(limit);
   for (const row of stalled) {
-    kickDrain(row.gitSourceId, origin, waitUntil);
+    await queue.send({ gitSourceId: row.gitSourceId });
   }
   return stalled.length;
 }
@@ -147,15 +130,14 @@ export async function reclaimStalledJobs(
 // ---------- drain ----------
 
 // Advances one job by a single bounded chunk: claim the lease, run the current
-// phase, persist progress, then self-kick if work remains. The lease (one drain
-// per source) plus commit-SHA-idempotent file processing make a crashed chunk
-// safe to retry.
+// phase, persist progress. Returns whether more work remains so the caller (the
+// drain endpoint) re-enqueues a follow-up message. The lease (one drain per
+// source) plus commit-SHA-idempotent file processing make a crashed chunk safe
+// to retry.
 export async function drainSyncJob(
   gitSourceId: string,
   bucket: R2Bucket,
-  origin: string,
-  waitUntil: (promise: Promise<unknown>) => void,
-): Promise<void> {
+): Promise<{ more: boolean }> {
   const now = new Date();
   const claimed = await db
     .update(syncJobs)
@@ -167,15 +149,15 @@ export async function drainSyncJob(
       ),
     )
     .returning();
-  if (claimed.length === 0) return; // no job, or another worker holds the lease
+  // No job, or another worker holds the lease (it re-enqueues when its chunk
+  // finishes), so there is nothing for us to continue.
+  if (claimed.length === 0) return { more: false };
   const job = claimed[0];
 
   try {
-    const more = await runDrainStep(job, bucket);
-    if (more) kickDrain(gitSourceId, origin, waitUntil);
+    return { more: await runDrainStep(job, bucket) };
   } catch (err) {
-    const retry = await handleDrainFailure(job, err);
-    if (retry) kickDrain(gitSourceId, origin, waitUntil);
+    return { more: await handleDrainFailure(job, err) };
   }
 }
 

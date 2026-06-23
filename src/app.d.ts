@@ -1,8 +1,9 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
 import type { AuthResult } from "@workos/authkit-session";
-import type { Ai, R2Bucket } from "@cloudflare/workers-types";
+import type { Ai, Queue, R2Bucket } from "@cloudflare/workers-types";
 import type { DbOrg, DbUser } from "$lib/server/users";
+import type { SyncQueueMessage } from "$lib/sync/queue";
 
 declare global {
   namespace App {
@@ -37,6 +38,11 @@ declare global {
         // Workers AI binding: runs the bge-m3 embedding model (and future
         // rerankers) on Cloudflare's infra so search text never leaves our boundary.
         AI: Ai;
+        // Sync queue producer: enqueueSync / the drain endpoint / cron reclaim
+        // push a { gitSourceId } trigger here; the docolin-cron worker consumes it
+        // and drives the drain. Undefined in `vite dev` (no consumer runs there),
+        // where enqueueSync drains inline instead.
+        SYNC_QUEUE?: Queue<SyncQueueMessage>;
       };
       // CF Workers' ExecutionContext. `waitUntil` keeps the Worker alive
       // until the promise resolves; used by sync engine to fire-and-forget

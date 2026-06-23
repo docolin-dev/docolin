@@ -21,7 +21,7 @@ export const load: PageServerLoad = ({ setHeaders, isDataRequest }) => {
 };
 
 export const actions = {
-  resync: async ({ locals, params, platform, url }) => {
+  resync: async ({ locals, params, platform }) => {
     const userId = locals.dbUser?.id;
     if (!userId) return fail(401, { error: "not_authenticated" });
 
@@ -57,8 +57,8 @@ export const actions = {
       // Enqueue + kick the drain; the chunked job replaces the old waitUntil sync.
       await enqueueSync(projectRows[0].id, {
         force: dev,
-        origin: url.origin,
-        waitUntil: platform.context.waitUntil.bind(platform.context),
+        queue: platform.env.SYNC_QUEUE,
+        bucket: platform.env.MEDIA_BUCKET,
       });
     }
 

@@ -25,7 +25,7 @@ export const load: PageServerLoad = ({ setHeaders, isDataRequest }) => {
 };
 
 export const actions = {
-  default: async ({ request, params, locals, platform, url }) => {
+  default: async ({ request, params, locals, platform }) => {
     const userId = locals.dbUser?.id;
     if (!userId) return fail(401, { error: "not_authenticated" });
 
@@ -164,8 +164,8 @@ export const actions = {
         try {
           await enqueueSync(projectId, {
             force: reviving !== null,
-            origin: url.origin,
-            waitUntil: platform.context.waitUntil.bind(platform.context),
+            queue: platform.env.SYNC_QUEUE,
+            bucket: platform.env.MEDIA_BUCKET,
           });
         } catch (err) {
           console.error("initial sync enqueue failed", err);
