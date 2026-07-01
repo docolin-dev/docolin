@@ -3,6 +3,8 @@ title: Diagrams
 description: Flowcharts, sequence diagrams, and more from ```mermaid blocks, server-rendered as a fallback and re-drawn to match light or dark.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

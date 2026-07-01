@@ -3,6 +3,8 @@ title: Import a Mintlify project
 description: Already on Mintlify? Add docolin frontmatter to each page and connect the repo. docolin reads your .mdx directly and converts the components, no rewrite.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

@@ -3,6 +3,8 @@ title: Finding a guide
 description: Three ways to search docolin, results that lead with what's proven and favor your setup, and a facet rail to narrow by topic, system, type, and verification.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

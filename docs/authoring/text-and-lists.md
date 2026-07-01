@@ -3,6 +3,8 @@ title: Text, lists, and links
 description: The everyday Markdown, headings, emphasis, lists, quotes, links, images, and inline icons, that the rest of a doco hangs from.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

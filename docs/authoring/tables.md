@@ -3,6 +3,8 @@ title: Tables
 description: GFM tables with column alignment and rich cell content, plus the one-line trick that turns a table into a bar or line chart docolin renders for you.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

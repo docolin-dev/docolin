@@ -3,6 +3,8 @@ title: How sync works
 description: docolin keeps a live mirror of your repo's docs. Pushes become new versions, deletions become tombstones instead of dead links, and bad frontmatter skips one file, not the sync.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

@@ -3,6 +3,8 @@ title: Publish your guide
 description: Step four of the docolin walkthrough. Point docolin at your repo, watch the first sync, and see your guide go live, callouts, attribution, and verification rail and all.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

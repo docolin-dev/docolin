@@ -3,6 +3,8 @@ title: Licensing and reuse
 description: docolin's code is AGPL-licensed and can't be bought or closed off. Your writing stays yours, free to read and cite, as long as your name rides along with it.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

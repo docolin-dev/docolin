@@ -3,6 +3,8 @@ title: Write your first guide
 description: Step three of the docolin walkthrough. Make a repository to hold your guides, write your first one as a plain Markdown file, and grab the address docolin will read from.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

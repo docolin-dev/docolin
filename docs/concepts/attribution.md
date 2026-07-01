@@ -3,6 +3,8 @@ title: Attribution
 description: Every doco names its author, and that credit follows the work everywhere docolin is read, on the page for a human and in the citation an AI is required to give.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

@@ -3,6 +3,8 @@ title: Verifying that a guide worked
 description: When you've tried a guide, one tap records whether it worked on your system, the best feedback you can give the next reader.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

@@ -3,6 +3,8 @@ title: Frontmatter
 description: The YAML block at the top of every doco that says what it is, who wrote it, where it belongs in docolin's taxonomy, and how it's verified and versioned.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

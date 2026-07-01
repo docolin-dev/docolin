@@ -3,6 +3,8 @@ title: Cards
 description: A Markdown list inside !!! cards becomes a responsive grid of linked cards, each with an icon, an optional type color, and a column or horizontal layout.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

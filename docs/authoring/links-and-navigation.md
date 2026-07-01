@@ -3,6 +3,8 @@ title: Links & navigation
 description: Internal and external links, soft links by kind, hard and pinned URLs, prev/next, and the sidebar sitemap.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

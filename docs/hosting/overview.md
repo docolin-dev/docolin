@@ -3,6 +3,8 @@ title: Host your docs on docolin
 description: docolin reads your docs straight from a public GitHub or Codeberg repo and keeps them in sync. Pick the path that fits you, from never-made-a-repo to already-fluent.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

@@ -3,6 +3,8 @@ title: docolin and your privacy
 description: What docolin collects (the minimum), what it never does (no fingerprinting, no trackers, no selling data), and how your setup profile stays on your device.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

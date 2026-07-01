@@ -3,6 +3,8 @@ title: Terms of use
 description: The terms for using docolin, acceptable use, how content is licensed and attributed, and the no-warranty basis of community verification.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

@@ -3,6 +3,8 @@ title: How an AI agent uses docolin
 description: Connected over MCP, an agent grounds its answer in verified guides, checks the proof, credits the author, and records whether the steps actually worked.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

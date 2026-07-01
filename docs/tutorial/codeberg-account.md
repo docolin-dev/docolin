@@ -3,6 +3,8 @@ title: Make a Codeberg account
 description: Step one of the docolin walkthrough. Create the Codeberg account that will hold your guides, every screen shown, no git or command line needed.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

@@ -3,6 +3,8 @@ title: Privacy by design
 description: docolin collects the minimum, defaults to anonymous, and keeps the one thing it personalizes, your setup, on your own device instead of on a server.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

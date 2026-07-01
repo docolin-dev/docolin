@@ -34,9 +34,12 @@
 
   const hero = $derived(feed.trending.at(0) ?? null);
   // Graduated density: the lead carries the story, ranks 2-3 keep their
-  // descriptions and reason chips, the tail is one scannable line each.
+  // descriptions and reason chips, the tail is one scannable line each. The tail
+  // is capped so the trending column's height stays close to the right rail
+  // (Fresh + For your setup); the shared-row grid then aligns the bottoms without
+  // stretching the shorter side's rows sparse.
   const trendingMedium = $derived(feed.trending.slice(1, 3));
-  const trendingCompact = $derived(feed.trending.slice(3));
+  const trendingCompact = $derived(feed.trending.slice(3, 5));
 
   const heroKindPath = $derived(
     hero === null ? "" : hero.kind.split("/").map(kindLabel).join(" / "),
@@ -69,7 +72,10 @@
       : m.browse_hero_pango_other({ score: hero.pangoScore, count: hero.stampCount });
   });
 
-  const LOOK_ROWS = 4;
+  // Sized so the For your setup rail's natural height matches the trending
+  // column: the shared-row alignment then lands the bottoms without stretching
+  // these rows (the setup rail renders at the same compact height as Fresh).
+  const LOOK_ROWS = 5;
   // Server-rendered default; onMount swaps in setup-matched picks (writable
   // derived so a navigation resets it to the new payload's slice).
   let lookDocos: ListedDoco[] = $derived(feed.pool.slice(0, LOOK_ROWS));

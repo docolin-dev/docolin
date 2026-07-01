@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { page } from "$app/state";
   import { localizeHref } from "$paraglide/runtime";
   import { m } from "$paraglide/messages";
   import Search from "@lucide/svelte/icons/search";
@@ -56,6 +57,13 @@
   const visibleCrumbs = $derived(crumbs.slice(hiddenCount));
   // Apple shows ⌘, everything else Ctrl. False on SSR, swaps after hydration.
   const isMac = $derived(isMacPlatform());
+
+  // The wordmark is the commons "home": it points at /browse everywhere in the
+  // reader (matching the kind-path crumbs beside it, which all resolve to browse
+  // pages) rather than the marketing homepage. On /browse itself it steps up to
+  // the marketing home instead of linking to the page you're already on.
+  // page.route.id is locale-independent, so this holds under /de/ and friends.
+  const logoHref = $derived(page.route.id === "/browse" ? "/" : "/browse");
 
   function remeasure(): void {
     if (crumbEl === null || measureEl === null) return;
@@ -169,7 +177,7 @@
     <!-- Left: docolin logo + collapsing kind-path breadcrumb. -->
     <div class="flex min-w-0 items-baseline gap-2">
       <a
-        href={localizeHref("/")}
+        href={localizeHref(logoHref)}
         class="text-foreground shrink-0 font-semibold tracking-tight whitespace-nowrap"
       >
         docolin
