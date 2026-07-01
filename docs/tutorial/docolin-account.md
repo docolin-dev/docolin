@@ -3,6 +3,8 @@ title: Make your docolin account
 description: Step two of the docolin walkthrough. Sign up for docolin and claim your handle, the identity every guide you publish and every verification you leave is credited to.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

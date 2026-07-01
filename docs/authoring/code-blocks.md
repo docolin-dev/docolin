@@ -3,6 +3,8 @@ title: Code blocks
 description: Fenced, syntax-highlighted code with titles, line numbers, author highlights, reader-shareable line selection, and inline annotations.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

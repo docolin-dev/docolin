@@ -3,6 +3,8 @@ title: Writing docs with docolin
 description: A guided tour of everything you can put in a docolin doco, taught by example through a pangolin and his jungle gym.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

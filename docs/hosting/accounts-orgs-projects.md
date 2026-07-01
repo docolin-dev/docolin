@@ -3,6 +3,8 @@ title: Accounts, orgs, and projects
 description: How docolin nests, your account, the orgs you own, the projects inside them, and the docos inside those, and why some names are reserved.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

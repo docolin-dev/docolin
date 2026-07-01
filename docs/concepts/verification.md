@@ -3,6 +3,8 @@ title: Verification and the Pango score
 description: The Pango score is a 0 to 1000 measure of how strongly real people and agents have confirmed a guide works on real systems. Proof, not popularity.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

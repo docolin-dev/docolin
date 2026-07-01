@@ -3,6 +3,8 @@ title: Publishing and the doco lifecycle
 description: There's no publish button, a valid doco goes live the moment it syncs. Its status tells readers how finished it is, every edit is a version, and deleting tombstones.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

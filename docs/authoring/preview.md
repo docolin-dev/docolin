@@ -3,6 +3,8 @@ title: Preview on save
 description: Open a local docs folder and see your docos rendered exactly as they'll publish, live as you save, before you commit anything.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

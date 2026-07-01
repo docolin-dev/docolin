@@ -3,6 +3,8 @@ title: Your first doco
 description: Write a complete docolin doco from an empty file to a publishable page, one piece at a time.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

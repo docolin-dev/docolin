@@ -3,6 +3,8 @@ title: What's next
 description: The last stop in the docolin walkthrough. You published a real, verifiable doco, here's how to get it verified, write your next one for real, and let your AI read from docolin.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

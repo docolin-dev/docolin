@@ -3,6 +3,8 @@ title: Connect a git repo
 description: The fast path for git users, point docolin at a public GitHub or Codeberg repo, set the docs folder, and your Markdown publishes and stays in sync.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

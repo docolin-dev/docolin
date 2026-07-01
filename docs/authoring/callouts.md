@@ -3,6 +3,8 @@ title: Callouts
 description: Notes, tips, and warnings readers cannot skim past, plus collapsible sections that tuck away the long stuff, all from one simple block syntax.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

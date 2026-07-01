@@ -3,6 +3,8 @@ title: Auto-sync on push
 description: Add a webhook so docolin re-syncs your docos the moment you push, instead of waiting for the daily poll. Works with GitHub and Codeberg.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

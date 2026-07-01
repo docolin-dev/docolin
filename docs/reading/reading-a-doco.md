@@ -3,6 +3,8 @@ title: Reading a doco
 description: "A doco shows more than the steps, it shows how far to trust them: the Pango score, the systems it applies to, its full version history, and where to raise a fix."
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

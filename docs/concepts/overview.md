@@ -3,6 +3,8 @@ title: What docolin is
 description: docolin is an open documentation commons where every guide is verified on real systems, credited to its author, and read by people and AI from the same source.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

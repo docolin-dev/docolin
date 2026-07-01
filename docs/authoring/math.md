@@ -3,6 +3,8 @@ title: Math
 description: Inline and display math written in LaTeX, rendered to HTML on the server with KaTeX, so equations load instantly with no client-side JavaScript.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

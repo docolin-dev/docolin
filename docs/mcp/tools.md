@@ -3,6 +3,8 @@ title: MCP tool reference
 description: The six tools docolin's MCP server gives a connected agent, lookup, search, browse_kind, fetch, list_discussions, and verify, cheapest first, with when to use each.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

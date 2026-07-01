@@ -3,6 +3,8 @@ title: Reading on docolin
 description: Find the guide that fits your setup, see how well it's proven before you follow it, and tell the commons whether it worked, no account required to read.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

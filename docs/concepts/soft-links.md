@@ -3,6 +3,8 @@ title: Soft links
 description: A soft link points at a topic, not a single page. Following it lists the guides under that topic, with the best fit for the reader's setup ranked toward the top.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

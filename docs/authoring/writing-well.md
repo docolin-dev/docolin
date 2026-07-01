@@ -3,6 +3,8 @@ title: Writing well
 description: How to choose the right structure and the lightest construct, write accessibly, and remember that every doco is public and read by both people and machines.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

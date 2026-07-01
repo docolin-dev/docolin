@@ -3,6 +3,8 @@ title: Content tabs
 description: Group alternatives behind a single set of labels, with code tabs that stay in sync across the whole page.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

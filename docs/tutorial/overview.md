@@ -3,6 +3,8 @@ title: The docolin walkthrough
 description: A complete, follow-along walk from a blank slate to a real guide on docolin, published, verified, and readable by an AI. Codeberg-based, every screen shown.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

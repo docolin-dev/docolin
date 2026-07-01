@@ -3,6 +3,8 @@ title: Kinds and the path taxonomy
 description: Every doco lives at a path like os/linux/firewall/ufw. The path files it next to everything related, powers browse pages, and gives fallbacks for free.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

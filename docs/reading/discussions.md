@@ -3,6 +3,8 @@ title: Discussions
 description: Every doco has discussions, the place to ask, report a snag, or post a fix, with an open/closed/resolved status so you can see where each one stands.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

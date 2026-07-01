@@ -3,6 +3,8 @@ title: Footnotes & annotations
 description: Footnote references collected at the bottom of the page, and inline annotations that pin a note to an exact spot.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

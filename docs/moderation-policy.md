@@ -3,6 +3,8 @@ title: docolin moderation policy
 description: How docolin moderates content, who can report it, the fixed set of reasons something is hidden or redacted, why disagreement is never one of them, and how to appeal.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1

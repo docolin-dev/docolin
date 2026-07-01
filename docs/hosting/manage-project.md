@@ -3,6 +3,8 @@ title: Manage a project
 description: Your project's page is its control room, watch the sync, fix files that didn't publish, and rename or delete the project.
 authors:
   - handle: imgajeed
+  - name: Claude
+    url: https://claude.ai
 
 docolin:
   schema_version: 1
