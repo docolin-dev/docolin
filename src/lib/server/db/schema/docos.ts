@@ -119,8 +119,15 @@ export const versions = pgTable(
     // resolved at sync time. Recursive { title, url?, children? } shape with
     // url xor children per entry.
     sitemap: jsonb("sitemap"),
+    // The doco's original frontmatter object as parsed (title, authors, the
+    // author's `docolin:` block, and any custom keys), stored verbatim so the raw
+    // output can replay the author-written frontmatter alongside a computed
+    // `docolin_generated` block. The column name is historical ("extra"); it now
+    // holds the whole original, not just leftover keys. `{}` for versions synced
+    // before this was wired up (they fall back to a minimal reconstruction).
     frontmatterExtra: jsonb("frontmatter_extra")
       .notNull()
+      .$type<Record<string, unknown>>()
       .default(sql`'{}'::jsonb`),
 
     // Body.
