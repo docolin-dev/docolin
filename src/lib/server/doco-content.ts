@@ -71,8 +71,10 @@ export interface DocoContent {
   nextLink: string | null;
   supersededBy: string | null;
   bodyText: string;
-  /** The doco's original frontmatter, replayed verbatim in the raw output (empty
-   *  for versions synced before capture; the builder falls back to title/description). */
+  /** The doco's original frontmatter, as authored, replayed in the raw output. It is
+   *  the parsed fields re-serialized, so not byte-exact YAML (comments / quoting / key
+   *  order are not kept); the byte-exact file is the source commit. Empty for versions
+   *  synced before capture; the builder then falls back to title/description. */
   frontmatterExtra: Record<string, unknown>;
   /** Forge URL of the source file pinned to this version's commit: the byte-exact
    *  original, so "the original lives upstream" travels with the bytes. */
@@ -271,7 +273,7 @@ function isoDate(value: Date | string): string {
 }
 
 // Reconstructs the doco's frontmatter in two clearly-separated layers: the
-// author's original frontmatter replayed verbatim at the top level (title,
+// author's original frontmatter, as authored, replayed at the top level (title,
 // description, their own `docolin:` block, any custom keys), then a single
 // `docolin_generated` key holding everything docolin resolves or computes, the
 // resolved classification, the upstream source pointer, live verification,
@@ -336,7 +338,8 @@ function buildFrontmatter(content: DocoContent, baseUrl: string): Record<string,
     url: `${baseUrl}${base}/discussions`,
   };
 
-  // Replay the author's original frontmatter verbatim. A version synced before
+  // Replay the author's original frontmatter as authored (parsed fields, not byte-
+  // exact YAML; the byte-exact file is the source commit). A version synced before
   // capture has an empty object, so fall back to the reconstructed title /
   // description. Override `authors` with the resolved list (a retired handle never
   // leaks) and always overwrite `docolin_generated` so an author-written key of
