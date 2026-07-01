@@ -44,11 +44,11 @@ An ordered list inside `!!! steps` becomes a numbered vertical stepper. A title 
     3. Bounce to the next bar
 ```
 
-!!! cards
-    - !!! steps
-          1. Sniff the first bar
-          2. Climb it anyway
-          3. Bounce to the next bar
+!!! output "Rendered"
+    !!! steps
+        1. Sniff the first bar
+        2. Climb it anyway
+        3. Bounce to the next bar
 
 Steps can be rich. Each one holds whatever Markdown you need, code blocks, lists, prose, so a real walkthrough fits naturally.
 
@@ -68,20 +68,20 @@ Steps can be rich. Each one holds whatever Markdown you need, code blocks, lists
     3. Reboot and run `nvidia-smi`
 ````
 
-!!! cards
-    - !!! steps "Install the driver"
-          1. Add the repo, then install:
+!!! output "Rendered"
+    !!! steps "Install the driver"
+        1. Add the repo, then install:
 
-             ```bash
-             sudo dnf install rpmfusion-free-release
-             ```
+           ```bash
+           sudo dnf install rpmfusion-free-release
+           ```
 
-          2. Pick your card from the list:
+        2. Pick your card from the list:
 
-             - desktop GPU
-             - laptop hybrid
+           - desktop GPU
+           - laptop hybrid
 
-          3. Reboot and run `nvidia-smi`
+        3. Reboot and run `nvidia-smi`
 
 ## Accordion
 
@@ -102,19 +102,19 @@ An unordered list inside `!!! accordion` becomes a group of collapsible rows. It
       Yes. He hoards ants and runs without a network.
 ```
 
-!!! cards
-    - !!! accordion
-          - **How do I reset my key?**
+!!! output "Rendered"
+    !!! accordion
+        - **How do I reset my key?**
 
-            Open Settings, then Security, then Reset. A fresh key is emailed to you.
+          Open Settings, then Security, then Reset. A fresh key is emailed to you.
 
-          - **Where are logs stored?**
+        - **Where are logs stored?**
 
-            Under `~/.local/state/pango/`, rotated weekly.
+          Under `~/.local/state/pango/`, rotated weekly.
 
-          - **Can Pango work offline?**
+        - **Can Pango work offline?**
 
-            Yes. He hoards ants and runs without a network.
+          Yes. He hoards ants and runs without a network.
 
 ## Which one (and which neither)
 

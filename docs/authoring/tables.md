@@ -45,12 +45,12 @@ A header row, a separator row of dashes, then one row per record. The pipes do n
 | Mystery grub | ???    | 3/5            |
 ```
 
-!!! cards
-    - | Snack        | Crunch | Pango's rating |
-      | ------------ | ------ | -------------- |
-      | Black ants   | high   | 5/5            |
-      | Termites     | medium | 4/5            |
-      | Mystery grub | ???    | 3/5            |
+!!! output "Rendered"
+    | Snack        | Crunch | Pango's rating |
+    | ------------ | ------ | -------------- |
+    | Black ants   | high   | 5/5            |
+    | Termites     | medium | 4/5            |
+    | Mystery grub | ???    | 3/5            |
 
 ## Column alignment
 
@@ -63,11 +63,11 @@ Colons in the separator row set each column's alignment: left (the default), cen
 | grubs |  few   |    10 |
 ```
 
-!!! cards
-    - | Left  | Center | Right |
-      | :---- | :----: | ----: |
-      | ants  |  many  |    70 |
-      | grubs |   few  |    10 |
+!!! output "Rendered"
+    | Left  | Center | Right |
+    | :---- | :----: | ----: |
+    | ants  |  many  |    70 |
+    | grubs |   few  |    10 |
 
 Right-align columns of numbers so the digits line up by place value; it makes them far easier to compare down a column.
 
@@ -83,12 +83,12 @@ Cells take inline Markdown: emphasis, `code`, links, even an inline icon like `:
 | [docs](/docolin/docolin/authoring/overview) | Sends you here |
 ```
 
-!!! cards
-    - | Command                                     | What it does           |
-      | ------------------------------------------- | ---------------------- |
-      | `pango climb`                               | Goes **up** :arrow-up: |
-      | `pango roll`                                | The _involuntary_ one  |
-      | [docs](/docolin/docolin/authoring/overview) | Sends you here         |
+!!! output "Rendered"
+    | Command                                     | What it does           |
+    | ------------------------------------------- | ---------------------- |
+    | `pango climb`                               | Goes **up** :arrow-up: |
+    | `pango roll`                                | The _involuntary_ one  |
+    | [docs](/docolin/docolin/authoring/overview) | Sends you here         |
 
 ## From table to chart
 
@@ -103,13 +103,13 @@ Add a single `{ .chart ... }` line right after a table and docolin paints a char
 { .chart type=bar title="Snacks per month" }
 ```
 
-!!! cards
-    - | Month | Ants | Termites |
-      | ----- | ---- | -------- |
-      | Jan   | 186  | 80       |
-      | Feb   | 305  | 200      |
+!!! output "Rendered"
+    | Month | Ants | Termites |
+    | ----- | ---- | -------- |
+    | Jan   | 186  | 80       |
+    | Feb   | 305  | 200      |
 
-      { .chart type=bar title="Snacks per month" }
+    { .chart type=bar title="Snacks per month" }
 
 The full set of chart types and options lives on the [Charts](./charts.md) page.
 

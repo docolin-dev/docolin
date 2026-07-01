@@ -30,6 +30,8 @@ sitemap:
             url: ./tables.md
           - title: Code blocks
             url: ./code-blocks.md
+          - title: Diffs
+            url: ./diffs.md
       - title: Rich blocks
         children:
           - title: Callouts

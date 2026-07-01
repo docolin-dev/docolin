@@ -49,14 +49,14 @@ graph TD
 ```
 ````
 
-!!! cards
-    - ```mermaid
-      graph TD
-          A[Pango opens a page] --> B{Any diagrams?}
-          B -->|Yes| C[Lazy-load Mermaid]
-          B -->|No| D[Carry nothing extra]
-          C --> E[Chalk in the SVG]
-      ```
+!!! output "Rendered"
+    ```mermaid
+    graph TD
+        A[Pango opens a page] --> B{Any diagrams?}
+        B -->|Yes| C[Lazy-load Mermaid]
+        B -->|No| D[Carry nothing extra]
+        C --> E[Chalk in the SVG]
+    ```
 
 ## Sequence diagram
 
@@ -71,15 +71,15 @@ sequenceDiagram
 ```
 ````
 
-!!! cards
-    - ```mermaid
-      sequenceDiagram
-          participant P as Pango
-          participant S as Server
-          P->>S: GET /pangos/jungle-gym/mermaid
-          S-->>P: HTML with the diagram source
-          P->>P: draw the SVG on arrival
-      ```
+!!! output "Rendered"
+    ```mermaid
+    sequenceDiagram
+        participant P as Pango
+        participant S as Server
+        P->>S: GET /pangos/jungle-gym/mermaid
+        S-->>P: HTML with the diagram source
+        P->>P: draw the SVG on arrival
+    ```
 
 ## State diagram
 
@@ -96,15 +96,15 @@ stateDiagram-v2
 ```
 ````
 
-!!! cards
-    - ```mermaid
-      stateDiagram-v2
-          [*] --> Draft
-          Draft --> Review: submit
-          Review --> Published: approve
-          Review --> Draft: needs more grip
-          Published --> [*]
-      ```
+!!! output "Rendered"
+    ```mermaid
+    stateDiagram-v2
+        [*] --> Draft
+        Draft --> Review: submit
+        Review --> Published: approve
+        Review --> Draft: needs more grip
+        Published --> [*]
+    ```
 
 Flowcharts, sequence, state, class, entity-relationship, gantt, pie, and the rest of Mermaid's grammar all work; these three just cover the common cases. The full syntax is in the [Mermaid docs](https://mermaid.js.org).
 

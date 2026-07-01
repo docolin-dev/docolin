@@ -102,9 +102,9 @@ Then the part that actually matters. A plain warning would get skimmed, so reach
     ball, bounce twice, and lose all your style points.
 ```
 
-!!! cards
-    - !!! warning "Never dismount head-first"
-          A head-first drop triggers the curl reflex mid-air. You will land as a ball, bounce twice, and lose all your style points.
+!!! output "Rendered"
+    !!! warning "Never dismount head-first"
+        A head-first drop triggers the curl reflex mid-air. You will land as a ball, bounce twice, and lose all your style points.
 
 And when there is an exact command to run, a [code block](./code-blocks.md) keeps it copyable and highlighted:
 
@@ -115,11 +115,11 @@ pango dismount --roll-on-contact
 ```
 ````
 
-!!! cards
-    - ```bash
-      # the only safe descent Pango trusts
-      pango dismount --roll-on-contact
-      ```
+!!! output "Rendered"
+    ```bash
+    # the only safe descent Pango trusts
+    pango dismount --roll-on-contact
+    ```
 
 That is a complete, useful page. Everything past this point is polish.
 
