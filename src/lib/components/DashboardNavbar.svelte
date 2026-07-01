@@ -43,8 +43,11 @@
          parent nav row stays items-center so the whole breadcrumb block
          still centers against the right-side h-9 buttons. -->
     <div class="flex min-w-0 items-baseline gap-2">
+      <!-- The wordmark goes to the commons (browse), not the marketing homepage:
+           inside the app that's almost always where you actually want to land.
+           The dashboard root stays reachable via the "dashboard" crumb. -->
       <a
-        href={localizeHref("/")}
+        href={localizeHref("/browse")}
         class="text-foreground shrink-0 font-semibold tracking-tight whitespace-nowrap"
       >
         docolin
