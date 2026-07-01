@@ -316,7 +316,7 @@ Validation runs at publish time. An invalid guide is rejected with a specific me
 
 docolin republishes every doco's raw Markdown (readers can grab it, and AI agents fetch it), and the frontmatter it carries stays **yours**: the fields you wrote, including any custom keys docolin doesn't know, are replayed as authored at the top level. They're the parsed fields re-serialized, so comments and quoting style aren't kept, the byte-exact file stays in your repo, but nothing you wrote is dropped or renamed.
 
-Everything docolin resolves or computes lands under a single added key, `docolin_generated`: the resolved classification, a source pointer pinned to the exact commit, the live verification state, the version history, and the discussion link. Two things to know:
+Everything docolin computes lands under a single added key, `docolin_generated`: a source pointer pinned to the exact commit, the canonical URL, the live verification state, the version history, and the discussion link. Your classification (`kind`, `type`, and the rest of the `docolin:` block) stays where you wrote it. Two things to know:
 
 - **Don't author a `docolin_generated` key.** It is always overwritten with docolin's own block, so anything you put there is lost.
 - **`authors` is replaced with the resolved credit list**, so a deleted account shows its retirement instead of leaking a stale handle.

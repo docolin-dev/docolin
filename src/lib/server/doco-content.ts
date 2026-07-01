@@ -274,34 +274,18 @@ function isoDate(value: Date | string): string {
 
 // Reconstructs the doco's frontmatter in two clearly-separated layers: the
 // author's original frontmatter, as authored, replayed at the top level (title,
-// description, their own `docolin:` block, any custom keys), then a single
-// `docolin_generated` key holding everything docolin resolves or computes, the
-// resolved classification, the upstream source pointer, live verification,
-// version history, and discussion pointer, so a reader can tell exactly what the
-// author wrote apart from what docolin added. `authors` is overridden with the
-// resolved (deleted-account-safe) list. URLs use baseUrl (the serving origin) so
-// dev links resolve and production links are canonical. A re-ingest reads the
+// description, their `docolin:` classification block, any custom keys), then a
+// single `docolin_generated` key holding only what docolin computes, the
+// upstream source pointer, the canonical url, live verification, version
+// history, and discussion pointer, so a reader can tell exactly what the author
+// wrote apart from what docolin added. The classification (kind, type, ...) is
+// authored content and lives in the author's own `docolin:` block, never in
+// `docolin_generated`. `authors` is overridden with the resolved
+// (deleted-account-safe) list. URLs use baseUrl (the serving origin) so dev
+// links resolve and production links are canonical. A re-ingest reads the
 // author's fields and ignores `docolin_generated`.
 function buildFrontmatter(content: DocoContent, baseUrl: string): Record<string, unknown> {
-  const generated: Record<string, unknown> = {
-    kind: content.kindPath,
-    type: content.type,
-  };
-  if (content.appliesTo.length > 0) generated.applies_to = content.appliesTo;
-  generated.language = content.language;
-  if (content.difficulty !== null) generated.difficulty = content.difficulty;
-  if (content.timeEstimateMinMinutes !== null) {
-    const min = content.timeEstimateMinMinutes;
-    const max = content.timeEstimateMaxMinutes ?? min;
-    generated.time_estimate =
-      min === max ? formatDuration(min) : `${formatDuration(min)}-${formatDuration(max)}`;
-  }
-  generated.status = content.status;
-  if (content.supersededBy !== null) generated.superseded_by = content.supersededBy;
-  if (content.aliases.length > 0) generated.aliases = content.aliases;
-  if (content.references.length > 0) generated.references = content.references;
-  if (content.prevLink !== null) generated.prev = content.prevLink;
-  if (content.nextLink !== null) generated.next = content.nextLink;
+  const generated: Record<string, unknown> = {};
 
   // The upstream original, pinned to this version's commit: commit first, then url.
   const source: Record<string, unknown> = {};
@@ -340,18 +324,48 @@ function buildFrontmatter(content: DocoContent, baseUrl: string): Record<string,
 
   // Replay the author's original frontmatter as authored (parsed fields, not byte-
   // exact YAML; the byte-exact file is the source commit). A version synced before
-  // capture has an empty object, so fall back to the reconstructed title /
-  // description. Override `authors` with the resolved list (a retired handle never
+  // capture has an empty object, so reconstruct the authored layer, title,
+  // description, and the `docolin:` classification block, from the resolved
+  // fields. Override `authors` with the resolved list (a retired handle never
   // leaks) and always overwrite `docolin_generated` so an author-written key of
   // that name can't spoof docolin's block.
   const original: Record<string, unknown> = { ...content.frontmatterExtra };
   if (Object.keys(original).length === 0) {
     original.title = content.title;
     if (content.description !== null) original.description = content.description;
+    original.docolin = reconstructedDocolinBlock(content);
   }
   original.authors = content.authors.map(frontmatterAuthor);
   original.docolin_generated = generated;
   return original;
+}
+
+// The author's `docolin:` classification block rebuilt from the resolved fields,
+// for versions synced before frontmatter capture (their original YAML was not
+// stored). Values are the resolved forms, so e.g. prev/next are links rather
+// than the author's relative paths; close enough for a re-ingestable fallback.
+function reconstructedDocolinBlock(content: DocoContent): Record<string, unknown> {
+  const block: Record<string, unknown> = {
+    schema_version: 1,
+    kind: content.kindPath,
+    type: content.type,
+  };
+  if (content.appliesTo.length > 0) block.applies_to = content.appliesTo;
+  block.language = content.language;
+  if (content.difficulty !== null) block.difficulty = content.difficulty;
+  if (content.timeEstimateMinMinutes !== null) {
+    const min = content.timeEstimateMinMinutes;
+    const max = content.timeEstimateMaxMinutes ?? min;
+    block.time_estimate =
+      min === max ? formatDuration(min) : `${formatDuration(min)}-${formatDuration(max)}`;
+  }
+  block.status = content.status;
+  if (content.supersededBy !== null) block.superseded_by = content.supersededBy;
+  if (content.aliases.length > 0) block.aliases = content.aliases;
+  if (content.references.length > 0) block.references = content.references;
+  if (content.prevLink !== null) block.prev = content.prevLink;
+  if (content.nextLink !== null) block.next = content.nextLink;
+  return block;
 }
 
 /**
