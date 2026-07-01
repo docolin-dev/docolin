@@ -70,6 +70,12 @@ export function normalizeColor(text: string): string | null {
   const args = value.slice(open + 1, value.length - 1);
   if (args.length === 0) return null;
   for (const ch of args) if (!isFunctionArgChar(ch)) return null;
+  // A real color's arguments always carry at least one digit (30deg, 50%, 0.5);
+  // bare keywords like rgb(red) or color(url) do not, and would render a broken
+  // swatch, so they stay plain inline code.
+  let hasDigit = false;
+  for (const ch of args) if (ch >= "0" && ch <= "9") hasDigit = true;
+  if (!hasDigit) return null;
   return value;
 }
 

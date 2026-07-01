@@ -68,7 +68,8 @@ export function youtubeId(raw: string): string | null {
 export function remarkMedia() {
   return (tree: Root): undefined => {
     visit(tree, "image", (node) => {
-      // Video file -> native <video controls> (no JS).
+      // Video file -> native <video controls> (no JS). The alt text becomes the
+      // player's accessible name, mirroring what an <img> would announce.
       if (isVideoUrl(node.url)) {
         const data = node.data ?? (node.data = {});
         data.hName = "video";
@@ -77,6 +78,9 @@ export function remarkMedia() {
           controls: true,
           preload: "metadata",
           className: ["doco-video"],
+          ...(typeof node.alt === "string" && node.alt.length > 0
+            ? { "aria-label": node.alt }
+            : {}),
         };
         data.hChildren = [];
         return;

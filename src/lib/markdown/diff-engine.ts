@@ -107,6 +107,11 @@ export function diffToRows(before: readonly string[], after: readonly string[]):
   return rows;
 }
 
+// The widest absolute-line span diffToRowsAligned will walk. The span is driven by
+// author-supplied linenums, so a typo'd start (linenums="900000" vs "1") must not
+// spin the alignment loop and freeze readers' tabs.
+const MAX_ALIGNED_SPAN = 10_000;
+
 /** Positional diff for offset snippets (the author gave the two sides different
  *  `linenums` starts, saying "these are offset windows of the same file"): lines
  *  pair by absolute file line number instead of by content. Same number + same
@@ -121,6 +126,32 @@ export function diffToRowsAligned(
 ): DiffRow[] {
   const lo = Math.min(beforeStart, afterStart);
   const hi = Math.max(beforeStart + before.length, afterStart + after.length) - 1;
+  if (hi - lo > MAX_ALIGNED_SPAN) {
+    // Offsets too far apart to be a sane pair of windows: degrade to a plain
+    // full removal + full addition instead of walking the huge gap.
+    return [
+      ...before.map(
+        (text, b): DiffRow => ({
+          type: "del",
+          moved: false,
+          moveId: null,
+          before: b,
+          after: null,
+          text,
+        }),
+      ),
+      ...after.map(
+        (text, a): DiffRow => ({
+          type: "add",
+          moved: false,
+          moveId: null,
+          before: null,
+          after: a,
+          text,
+        }),
+      ),
+    ];
+  }
   const rows: DiffRow[] = [];
   // Buffer a changed region so its removals all land before its additions.
   let dels: DiffRow[] = [];

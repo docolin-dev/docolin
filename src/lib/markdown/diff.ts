@@ -83,6 +83,9 @@ async function mountDiff(figure: HTMLElement): Promise<void> {
     // CSS collapses the now-redundant source blocks once the viewer is up.
     figure.setAttribute("data-diff-mounted", "");
   } catch (error) {
+    // Unclaim so a transient failure (chunk load, render error) can retry on the
+    // next reveal instead of leaving the figure dead for the page session.
+    claimed.delete(figure);
     console.error("docolin: diff failed to mount", error);
   }
 }

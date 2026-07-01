@@ -8,6 +8,11 @@
 
 export const DIFF_LINE_PREFIX = "__diffline-";
 
+// The widest range one hash token may expand to. The hash arrives via shared
+// links, so a crafted `...-1-999999999` token must not expand line-by-line and
+// freeze the tab of whoever opens the link.
+const MAX_RANGE = 5_000;
+
 export type DiffSide = "b" | "a";
 
 /** Selection key for one line: "{side}-{line}" with the absolute line number. */
@@ -28,6 +33,7 @@ export function parseDiffHash(hash: string, diff: number): Set<string> {
     const from = Number(parts[2]);
     const to = parts.length === 4 ? Number(parts[3]) : from;
     if (!Number.isInteger(from) || !Number.isInteger(to) || from < 1 || to < 1) continue;
+    if (Math.abs(to - from) > MAX_RANGE) continue;
     const lo = Math.min(from, to);
     const hi = Math.max(from, to);
     for (let line = lo; line <= hi; line++) keys.add(diffLineKey(side, line));

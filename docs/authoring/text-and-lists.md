@@ -42,7 +42,7 @@ docolin:
 # Text, lists, and links
 
 !!! info "In one line"
-    The everyday Markdown, headings, emphasis, lists, quotes, links, images, and inline icons, that the rest of a doco hangs from.
+    The everyday Markdown, headings, emphasis, lists, quotes, links, images, video, color swatches, and inline icons, that the rest of a doco hangs from.
 
 Most of any doco is just words. Pango can climb all the fancy apparatus he likes, but the guide still rests on plain paragraphs, a few lists, and the odd link. docolin speaks standard [CommonMark](https://commonmark.org) with [GitHub-Flavored Markdown](https://github.github.com/gfm/) on top, so if you have written a README, you already know most of this.
 

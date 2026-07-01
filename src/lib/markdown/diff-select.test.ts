@@ -21,6 +21,11 @@ describe("parseDiffHash", () => {
   it("normalizes a reversed range", () => {
     expect(parseDiffHash("#__diffline-0-a-7-5", 0)).toEqual(new Set(["a-5", "a-6", "a-7"]));
   });
+
+  it("drops an absurd crafted range instead of expanding it", () => {
+    // The hash arrives via shared links; a huge range must not freeze the tab.
+    expect(parseDiffHash("#__diffline-0-b-1-999999999", 0).size).toBe(0);
+  });
 });
 
 describe("buildDiffTokens", () => {

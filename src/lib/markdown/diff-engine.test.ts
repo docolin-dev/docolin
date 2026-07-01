@@ -65,6 +65,12 @@ describe("diffToRowsAligned", () => {
     const rows = diffToRowsAligned(["keep", "old"], ["keep", "new"], 10, 10);
     expect(rows[0]).toMatchObject({ type: "same", before: 0, after: 0 });
   });
+
+  it("degrades to plain removal + addition when the offset span is absurd", () => {
+    // A typo'd linenums (1 vs 900000) must not walk the whole gap.
+    const rows = diffToRowsAligned(["a"], ["a"], 1, 900000);
+    expect(rows.map((r) => r.type)).toEqual(["del", "add"]);
+  });
 });
 
 describe("refineLine", () => {
