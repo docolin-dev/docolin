@@ -41,8 +41,8 @@ Wrap an expression in single `$` to set it in a line of text.
 The mass-energy relation $E = mc^2$, or Euler's identity $e^{i\pi} + 1 = 0$.
 ```
 
-!!! cards
-    - The mass-energy relation $E = mc^2$, or Euler's identity $e^{i\pi} + 1 = 0$.
+!!! output "Rendered"
+    The mass-energy relation $E = mc^2$, or Euler's identity $e^{i\pi} + 1 = 0$.
 
 ## Display math
 
@@ -54,10 +54,10 @@ $$
 $$
 ```
 
-!!! cards
-    - $$
-      \int_0^1 x^2 \, dx = \frac{1}{3}
-      $$
+!!! output "Rendered"
+    $$
+    \int_0^1 x^2 \, dx = \frac{1}{3}
+    $$
 
 Bigger constructions, sums and matrices, work the same way:
 
@@ -69,12 +69,12 @@ $$
 $$
 ```
 
-!!! cards
-    - $$
-      \sum_{k=1}^{n} k = \frac{n(n + 1)}{2}
-      \qquad
-      \begin{bmatrix} a & b \\ c & d \end{bmatrix}
-      $$
+!!! output "Rendered"
+    $$
+    \sum_{k=1}^{n} k = \frac{n(n + 1)}{2}
+    \qquad
+    \begin{bmatrix} a & b \\ c & d \end{bmatrix}
+    $$
 
 ## Inside other constructs
 
@@ -85,9 +85,9 @@ Math nests anywhere prose does, in [callouts](./callouts.md), [tabs](./tabs.md),
     Asked to add $1$ through $100$, he saw $\sum_{k=1}^{100} k = 5050$.
 ```
 
-!!! cards
-    - !!! tip "A young Gauss"
-          Asked to add $1$ through $100$, he saw $\sum_{k=1}^{100} k = 5050$.
+!!! output "Rendered"
+    !!! tip "A young Gauss"
+        Asked to add $1$ through $100$, he saw $\sum_{k=1}^{100} k = 5050$.
 
 ## Gotchas
 

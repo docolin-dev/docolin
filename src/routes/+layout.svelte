@@ -28,9 +28,7 @@
   let markdown: typeof import("$lib/markdown/hydrate") | null = null;
 
   afterNavigate(() => {
-    markdown?.applyTabPreference();
-    markdown?.renderMermaid();
-    markdown?.renderCharts();
+    markdown?.enhanceRenderedMarkdown();
   });
 
   // Session lives client-side so public HTML can be edge-cached without
@@ -52,9 +50,7 @@
         markdown = mod;
         teardownMarkdown = mod.setupMarkdownHydration();
         // afterNavigate for the first page may have run before this resolved.
-        mod.applyTabPreference();
-        mod.renderMermaid();
-        mod.renderCharts();
+        mod.enhanceRenderedMarkdown();
       });
     }
     return () => {

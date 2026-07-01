@@ -5,6 +5,7 @@ import type { State } from "mdast-util-to-hast";
 import { admonitionTitle, type Admonition } from "$lib/markdown/docomd";
 import { iconHast, type IconName } from "./icons.ts";
 import { renderCards } from "./cards.ts";
+import { renderDiff } from "./diff.ts";
 
 // docolin's design layer for admonitions: turns a docomd `admonition` mdast node
 // into the styled hast (Tailwind classes + Lucide icons) the doco viewer renders.
@@ -13,9 +14,9 @@ import { renderCards } from "./cards.ts";
 // matches what the markdown CSS and the .markdown-collapsible animation in
 // layout.css expect.
 //
-// Five callout types plus three list-wrapping constructs: steps (a numbered
-// vertical stepper), cards (a responsive grid), and accordion (grouped
-// exclusive-open <details>).
+// Five callout types, three list-wrapping constructs (steps: a numbered vertical
+// stepper; cards: a responsive grid; accordion: grouped exclusive-open <details>),
+// and an expected-output box (a labeled green fieldset wrapping any markdown).
 
 export const BODY_RESET = ["[&>*:first-child]:mt-0", "[&>*:last-child]:mb-0"];
 
@@ -245,6 +246,50 @@ function renderAccordion(state: State, node: Admonition): Element {
   return h("div", { class: ["divide-border", "my-4", "divide-y", "border"] }, rows);
 }
 
+// ---------- Expected-output box ----------
+
+// A plain box with a colored border and a label notched into the top border,
+// wrapping whatever markdown the author puts inside. Deliberately unlike the
+// callouts: no icon, no header bar, no body tint, just labeled separation for a
+// command's expected output. Uses a native <fieldset>/<legend> so the label sits
+// in the border with no background-masking hacks and it composes inside any
+// container. The label defaults to "Expected Output"; the admonition title
+// overrides it. The border + label default to green (confirmed output) but can be
+// recolored to any callout palette via `{ type=warning }`, mirroring typed cards.
+
+// Reads a `{ type=<callout> }` opener token, mapping a known callout name to its
+// palette. Absent / unknown -> null, so the box keeps its default green.
+function outputTheme(attrs: string): AdmonitionConfig | null {
+  for (const token of attrs.split(" ")) {
+    if (token.startsWith("type=")) {
+      const type = token.slice("type=".length);
+      return Object.prototype.hasOwnProperty.call(CALLOUTS, type) ? CALLOUTS[type] : null;
+    }
+  }
+  return null;
+}
+
+function renderOutput(state: State, node: Admonition): Element {
+  const label = node.title.length > 0 ? node.title : "Expected Output";
+  const theme = outputTheme(node.attrs);
+  const border = theme !== null ? theme.border : "border-emerald-500/50";
+  const labelColor = theme !== null ? theme.text : "text-emerald-700 dark:text-emerald-300";
+  return h(
+    "fieldset",
+    {
+      class: ["doco-output", "my-4", "min-w-0", "border", border, "px-4", "pt-2", "pb-3"],
+    },
+    [
+      h(
+        "legend",
+        { class: ["doco-output-label", "px-1.5", "text-xs", "font-semibold", labelColor] },
+        label,
+      ),
+      h("div", { class: [...BODY_RESET] }, state.all(node)),
+    ],
+  );
+}
+
 // ---------- Entry ----------
 
 /** remark-rehype handler: an `admonition` mdast node to styled hast. */
@@ -252,5 +297,7 @@ export function admonitionHandler(state: State, node: Admonition): Element {
   if (node.atype === "steps") return renderSteps(state, node);
   if (node.atype === "cards") return renderCards(state, node);
   if (node.atype === "accordion") return renderAccordion(state, node);
+  if (node.atype === "output") return renderOutput(state, node);
+  if (node.atype === "diff") return renderDiff(state, node);
   return renderCallout(state, node);
 }

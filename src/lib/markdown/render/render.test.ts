@@ -37,6 +37,64 @@ describe("admonitions", () => {
   });
 });
 
+describe("expected-output box", () => {
+  it("renders a green fieldset + legend with the default label and no icon", async () => {
+    const html = await render("!!! output\n    Server running on port 3000\n");
+    expect(html).toContain("<fieldset");
+    expect(html).toContain("<legend");
+    expect(html).toContain("border-emerald-500/50");
+    expect(html).toContain("Expected Output"); // default label
+    expect(html).toContain("Server running on port 3000");
+    expect(html).not.toContain("<svg"); // no callout icon, unlike a callout
+  });
+
+  it("uses the admonition title as the output label", async () => {
+    const html = await render('!!! output "Server response"\n    200 OK\n');
+    expect(html).toContain("Server response");
+    expect(html).not.toContain("Expected Output");
+  });
+
+  it("wraps arbitrary markdown, not only code", async () => {
+    const html = await render("!!! output\n    - one\n    - two\n");
+    expect(html).toContain("<fieldset");
+    expect(html).toContain("<li>");
+  });
+
+  it("recolors the border and label from { type=<callout> }", async () => {
+    const html = await render("!!! output { type=warning }\n    heads up\n");
+    expect(html).toContain("border-amber-500/50"); // warning palette border
+    expect(html).not.toContain("border-emerald-500/50"); // not the default green
+  });
+});
+
+describe("inline color swatches + copy", () => {
+  it("tags a hex color as a copyable swatch carrying its data-color", async () => {
+    const html = await render("Brand `#76b900` green.\n");
+    expect(html).toContain("doco-swatch");
+    expect(html).toContain('data-color="#76b900"');
+    expect(html).toContain("doco-copy"); // swatches are copyable
+  });
+
+  it("tags a functional color too", async () => {
+    const html = await render("Try `oklch(0.7 0.15 145)` here.\n");
+    expect(html).toContain("doco-swatch");
+    expect(html).toContain("data-color");
+  });
+
+  it("leaves non-color inline code alone", async () => {
+    const html = await render("Run `npm install` now.\n");
+    expect(html).not.toContain("doco-swatch");
+    expect(html).toContain("<code");
+  });
+
+  it("makes inline code copyable with a { .copy } attr list, consuming the marker", async () => {
+    const html = await render("Run `npm install`{ .copy } now.\n");
+    expect(html).toContain("doco-copy");
+    expect(html).not.toContain("{ .copy }");
+    expect(html).toContain("now."); // trailing text preserved
+  });
+});
+
 describe("standard markdown parity", () => {
   it("gives headings ids that match extractToc", async () => {
     expect(await render("## Hello World\n")).toContain('id="hello-world"');
@@ -282,11 +340,89 @@ describe("code blocks", () => {
     expect(await render('```ts linenums="1"\nx\n```\n')).toContain("code-linenums");
   });
 
+  it("starts numbering at the given linenums value and sizes the gutter", async () => {
+    const html = await render('```ts linenums="42"\nconst a = 1;\nconst b = 2;\n```\n');
+    expect(html).toContain('data-line-start="42"');
+    expect(html).toContain("--line-start:41"); // counter offset, so the first line shows 42
+    expect(html).toContain("--line-digits:2"); // spans 42..43, two digits wide
+  });
+
+  it("rejects a non-positive linenums start, falling back to 1", async () => {
+    const html = await render('```ts linenums="-5"\nx\n```\n');
+    expect(html).toContain('data-line-start="1"');
+  });
+
   it("falls back for unknown grammars but still wraps with a copy button", async () => {
     const html = await render("```doesnotexist\n??\n```\n");
     expect(html).toContain("code-block");
     expect(html).toContain("data-code-copy");
     expect(html).toContain("<pre");
+  });
+
+  it("highlights a git-style ```diff block via shiki (not the plain fallback)", async () => {
+    const html = await render("```diff\n-const old = 1;\n+const next = 2;\n```\n");
+    expect(html).toContain("code-block");
+    expect(html).toContain("shiki"); // known grammar, so shiki coloring, not fallback
+    expect(html).toContain("const old = 1;");
+    expect(html).toContain("const next = 2;");
+  });
+});
+
+describe("auto-diff (!!! diff)", () => {
+  it("renders a diff figure with a mount canvas and both source blocks kept", async () => {
+    const html = await render(
+      '!!! diff "Change the threshold"\n' +
+        "    ```ts\n    const t = 1;\n    ```\n\n" +
+        "    ```ts\n    const t = 2;\n    ```\n",
+    );
+    expect(html).toContain("doco-diff");
+    expect(html).toContain("data-doco-diff");
+    expect(html).toContain('data-diff-lang="ts"');
+    expect(html).toContain("doco-diff-canvas"); // client mount slot
+    expect(html).toContain("doco-diff-source"); // fallback source
+    expect((html.match(/code-block/g) ?? []).length).toBe(2); // both blocks kept
+    expect(html).toContain("Change the threshold"); // figcaption title
+    expect(html).toContain(">Before<"); // fallback side labels
+    expect(html).toContain(">After<");
+    // shiki tokenizes the code, so assert each block rendered via its line ids
+    expect(html).toContain('id="__codeline-0-1"');
+    expect(html).toContain('id="__codeline-1-1"');
+  });
+});
+
+describe("media (video + youtube)", () => {
+  it("renders a video-file image as a <video controls>", async () => {
+    const html = await render("![clip](https://cdn.example.com/demo.mp4)\n");
+    expect(html).toContain("<video");
+    expect(html).toContain('src="https://cdn.example.com/demo.mp4"');
+    expect(html).toContain("controls");
+    expect(html).not.toContain("<img");
+  });
+
+  it("leaves a normal image alone", async () => {
+    const html = await render("![shot](https://cdn.example.com/pic.png)\n");
+    expect(html).toContain("<img");
+    expect(html).not.toContain("<video");
+  });
+
+  it("turns a youtube image into a thumbnail facade, no iframe", async () => {
+    const html = await render("![](https://www.youtube.com/watch?v=dQw4w9WgXcQ)\n");
+    expect(html).toContain("doco-youtube");
+    expect(html).toContain('data-yt-id="dQw4w9WgXcQ"');
+    expect(html).toContain("i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg"); // lazy thumbnail
+    expect(html).toContain('loading="lazy"');
+    expect(html).not.toContain("<iframe"); // no player / cookies until the reader clicks
+  });
+
+  it("puts the image alt text into the facade's screen-reader label", async () => {
+    const html = await render("![Big Buck Bunny](https://youtu.be/dQw4w9WgXcQ)\n");
+    expect(html).toContain("Play the YouTube video: Big Buck Bunny");
+  });
+
+  it("leaves a youtube link (not an image) as a plain link", async () => {
+    const html = await render("Watch [this](https://youtu.be/dQw4w9WgXcQ) later.\n");
+    expect(html).toContain('href="https://youtu.be/dQw4w9WgXcQ"');
+    expect(html).not.toContain("doco-youtube");
   });
 });
 

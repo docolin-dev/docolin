@@ -313,18 +313,21 @@ html {
   /* Line numbers only when the author asked for them, drawn with a CSS counter so
    * they are never selected or copied. */
   .code-block.code-linenums code {
-    counter-reset: docoline;
+    /* --line-start (set inline when the author gives linenums a value) offsets the
+       counter so the first line shows that number; defaults to 0 => first line is 1. */
+    counter-reset: docoline var(--line-start, 0);
   }
   .code-block.code-linenums .line {
     position: relative;
     counter-increment: docoline;
-    padding-left: 3rem;
+    /* Gutter scales with the widest line number (--line-digits) so high starts fit. */
+    padding-left: calc(var(--line-digits, 2) * 1ch + 1.5rem);
   }
   .code-block.code-linenums .line::before {
     content: counter(docoline);
     position: absolute;
     left: 0.5rem;
-    width: 1.75rem;
+    width: calc(var(--line-digits, 2) * 1ch);
     text-align: right;
     color: var(--muted-foreground);
     opacity: 0.55;
@@ -589,6 +592,155 @@ html:not(.dark) .dark-only {
 .prose [data-footnote-ref]:hover,
 .prose [data-footnote-ref]:focus-visible {
   background: var(--muted);
+}
+
+/* Inline code (prose) + docomd inline enhancements. The typography plugin wraps
+   inline code in literal backticks and bolds it to 600; we drop both for a clean,
+   subtle tag on the theme's muted fill, then layer the color-swatch chip and
+   click-to-copy on top. Unlayered so it beats the .prose typography utilities.
+   `.code-block` (fenced) is `not-prose` and its `<code>` sits under `<pre>`, so
+   none of this touches it. */
+.prose :not(pre) > code {
+  font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  font-weight: 500;
+  padding: 0.1em 0.35em;
+  background: color-mix(in oklch, var(--muted) 70%, transparent);
+  color: var(--foreground);
+  border-radius: 0;
+  overflow-wrap: break-word;
+}
+.prose :not(pre) > code::before,
+.prose :not(pre) > code::after {
+  content: none;
+}
+/* A color written as inline code gets a chip; its background is injected by the
+   client from the validated data-color, so no inline style ships in the HTML. */
+.doco-swatch-chip {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  margin-right: 0.4em;
+  vertical-align: -0.1em;
+  border: 1px solid color-mix(in oklch, var(--foreground) 25%, transparent);
+  background-clip: padding-box;
+}
+/* Keep the chip and its color code together: the inline-block chip otherwise lets
+   the line wrap between the swatch and its value. Colors are short, so no overflow. */
+.doco-swatch {
+  white-space: nowrap;
+}
+/* Click-to-copy inline code (swatches + `{.copy}`): a pointer cursor and a
+   background that shifts on hover and on copy (no outline, no text to translate). */
+.doco-copy {
+  cursor: pointer;
+  transition: background-color 150ms;
+}
+.doco-copy:hover {
+  background: color-mix(in oklch, var(--primary) 12%, var(--muted));
+}
+.doco-copy[data-copied] {
+  background: color-mix(in oklch, var(--primary) 26%, var(--muted));
+}
+
+/* Native video (docomd): an image whose URL is a video file renders as <video>. */
+.prose .doco-video {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-block: 1rem;
+}
+
+/* YouTube facade (docomd): a click-to-load placeholder. It contacts YouTube only
+   after the reader clicks it (the client then swaps in a youtube-nocookie iframe),
+   so no player, cookies, or tracking load on the page. The play button uses the rust
+   primary, not YouTube red, to stay on-theme. */
+.doco-youtube {
+  display: block;
+  width: 100%;
+  margin-block: 1rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.doco-youtube-media {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--muted);
+}
+.doco-youtube-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  object-fit: cover;
+}
+.doco-youtube-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  color: var(--primary-foreground);
+  background: var(--primary);
+  transform: translate(-50%, -50%);
+  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.doco-youtube:hover .doco-youtube-play,
+.doco-youtube:focus-visible .doco-youtube-play {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+.doco-youtube-frame {
+  display: block;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  margin-block: 1rem;
+  border: 0;
+}
+
+/* Auto-diff (docomd `!!! diff`): the two source code blocks are the no-JS / AI
+   fallback and the client's source of truth. Once the interactive viewer mounts, its
+   client marks the figure and this hides the now-redundant source. */
+.doco-diff[data-diff-mounted] > .doco-diff-source,
+.doco-diff[data-diff-mounted] > .doco-diff-title {
+  display: none;
+}
+
+/* Fallback framing (pre-mount / no-JS): the figure itself reads as one bordered
+   panel, like the viewer it becomes. The border lives here, not on a class, so the
+   mounted viewer (which brings its own border) does not get double-framed. The
+   source blocks sit flush inside it. */
+.doco-diff:not([data-diff-mounted]) {
+  border: 1px solid var(--border);
+}
+.doco-diff-source .code-block {
+  margin: 0;
+}
+
+/* The viewer reuses the source blocks' shiki output: its token spans carry shiki's
+   color vars (same as .code-block .shiki span), and its body uses the shiki
+   background handed over from the source block, so the diff reads like a code block.
+   A token with no color (an unknown grammar's fallback) uses the foreground. */
+.doco-diff-body {
+  background: var(--diff-bg-light);
+}
+.dark .doco-diff-body {
+  background: var(--diff-bg-dark);
+}
+.doco-diff-code span {
+  color: var(--shiki-light, var(--foreground));
+}
+.dark .doco-diff-code span {
+  color: var(--shiki-dark, var(--foreground));
 }
 
 /* GitHub-style heading anchor: a link icon that fades in to the left of an

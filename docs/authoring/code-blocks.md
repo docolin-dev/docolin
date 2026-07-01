@@ -23,7 +23,7 @@ docolin:
   aliases: [code blocks, syntax highlighting, code fences, line highlighting, code annotations]
 
   prev: ./tables.md
-  next: ./callouts.md
+  next: ./diffs.md
 ---
 
 # Code blocks
@@ -44,27 +44,27 @@ def somersaults(height_m: float) -> int:
 ```
 ````
 
-!!! cards
-    - ```python
-      def somersaults(height_m: float) -> int:
-          return int(height_m // 0.5)
-      ```
+!!! output "Rendered"
+    ```python
+    def somersaults(height_m: float) -> int:
+        return int(height_m // 0.5)
+    ```
 
 Highlighting covers every language [Shiki](https://shiki.style) ships with. An unknown language falls back to a plain block instead of erroring, and a fence with no language is left unhighlighted, handy for shell output or ASCII art.
 
-!!! cards
-    - ```
-         .--.
-        ( o_o )   pango approves
-         > ^ <
-      ```
+!!! output "Rendered"
+    ```
+       .--.
+      ( o_o )   pango approves
+       > ^ <
+    ```
 
 ## Title, line numbers, and highlights
 
 Three options go on the opening fence, after the language:
 
 - `title="..."` adds a filename bar across the top.
-- `linenums="1"` turns on always-visible line numbers, counted from 1.
+- `linenums="1"` turns on always-visible line numbers. The value is the starting number, so `linenums="42"` counts from 42, letting a snippet carry the line numbers it has in its real file; the gutter widens to fit big numbers.
 - `hl_lines="2"` highlights one or more lines you want to draw the eye to (`hl_lines="2 5-7"` works too).
 
 ````md
@@ -81,18 +81,18 @@ export function feedPango(p: Pangolin, ants: number): Pangolin {
 ```
 ````
 
-!!! cards
-    - ```ts title="feed-pango.ts" linenums="1" hl_lines="7"
-      interface Pangolin {
-        name: string;
-        scales: number;
-        rolledUp: boolean;
-      }
+!!! output "Rendered"
+    ```ts title="feed-pango.ts" linenums="1" hl_lines="7"
+    interface Pangolin {
+      name: string;
+      scales: number;
+      rolledUp: boolean;
+    }
 
-      export function feedPango(p: Pangolin, ants: number): Pangolin {
-        return { ...p, rolledUp: ants > 5000 };
-      }
-      ```
+    export function feedPango(p: Pangolin, ants: number): Pangolin {
+      return { ...p, rolledUp: ants > 5000 };
+    }
+    ```
 
 ## Copy and shareable lines
 
@@ -113,12 +113,12 @@ const grip = "firm";
 ````
 `````
 
-!!! cards
-    - ````md
-      ```ts
-      const grip = "firm";
-      ```
-      ````
+!!! output "Rendered"
+    ````md
+    ```ts
+    const grip = "firm";
+    ```
+    ````
 
 The rule is simply "more backticks on the outside than anywhere inside." Four wraps three; five wraps four. (This whole guide is written that way.)
 
@@ -138,14 +138,14 @@ sudo dnf install akmod-nvidia            # (2)!
 2. Pulls the driver as an akmod, so it rebuilds for each new kernel.
 ````
 
-!!! cards
-    - ```bash
-      sudo dnf install rpmfusion-free-release  # (1)!
-      sudo dnf install akmod-nvidia            # (2)!
-      ```
+!!! output "Rendered"
+    ```bash
+    sudo dnf install rpmfusion-free-release  # (1)!
+    sudo dnf install akmod-nvidia            # (2)!
+    ```
 
-      1. Enables the RPM Fusion repo, where the driver lives.
-      2. Pulls the driver as an akmod, so it rebuilds for each new kernel.
+    1. Enables the RPM Fusion repo, where the driver lives.
+    2. Pulls the driver as an akmod, so it rebuilds for each new kernel.
 
 A note can hold rich Markdown of its own, including another code block. The same annotation mechanism works on non-code blocks too, with `{ .annotate }`; both are covered in [Footnotes & annotations](./footnotes-and-annotations.md).
 
@@ -157,5 +157,6 @@ A note can hold rich Markdown of its own, including another code block. The same
 
 ## See also
 
+- [Diffs](./diffs.md), for showing what changed between two versions of a block, with an interactive before/after viewer.
 - [Content tabs](./tabs.md), for offering the same command across npm, pnpm, yarn, and bun in synced tabs.
 - [Footnotes & annotations](./footnotes-and-annotations.md), for annotating prose and other blocks the same way.

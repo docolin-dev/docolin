@@ -24,6 +24,8 @@ import { rehypeIconShortcodes } from "./icon-shortcode.ts";
 import { remarkCode, codeHandler, type Highlight } from "./code.ts";
 import { chartHandler } from "./chart.ts";
 import { rehypeAnnotations } from "./annotations.ts";
+import { remarkInlineEnhance } from "./inline-enhance.ts";
+import { remarkMedia } from "./media.ts";
 import { iconHast } from "./icons.ts";
 import { rehypeSanitizeUrls } from "./sanitize.ts";
 
@@ -37,7 +39,9 @@ import { rehypeSanitizeUrls } from "./sanitize.ts";
 
 // Bump to invalidate every cached rendered page on the next read (it changes the
 // cache key); no DB backfill needed.
-export const RENDERER_VERSION = "2";
+// 3: docomd feature wave (diff viewer, output box, swatches/copy, media, linenums
+//    starts, labeled diff fallback).
+export const RENDERER_VERSION = "3";
 
 /** Shiki dual theme: light + dark emitted together as CSS variables
  *  (`defaultColor: false`), so rendered code switches with the `.dark` class with
@@ -227,6 +231,8 @@ export function createMarkdownRenderer(highlight: Highlight): (source: string) =
     .use(remarkAttrList)
     .use(remarkChart)
     .use(remarkBlockAttrList)
+    .use(remarkInlineEnhance)
+    .use(remarkMedia)
     .use(remarkHeadingIds)
     .use(remarkCode, highlight)
     .use(remarkRehype, {

@@ -51,14 +51,14 @@ The first column is the x-axis; every other column is a series named by its head
 { .chart type=bar title="Snacks eaten per month" }
 ```
 
-!!! cards
-    - | Month | Ants | Termites |
-      | ----- | ---- | -------- |
-      | Jan   | 186  | 80       |
-      | Feb   | 305  | 200      |
-      | Mar   | 237  | 120      |
+!!! output "Rendered"
+    | Month | Ants | Termites |
+    | ----- | ---- | -------- |
+    | Jan   | 186  | 80       |
+    | Feb   | 305  | 200      |
+    | Mar   | 237  | 120      |
 
-      { .chart type=bar title="Snacks eaten per month" }
+    { .chart type=bar title="Snacks eaten per month" }
 
 ## The types
 
@@ -81,15 +81,15 @@ Set `type=` to one of five. The same table works across all of them, so try a co
 { .chart type=line title="Reps over the week" }
 ```
 
-!!! cards
-    - | Day | Curls | Rolls |
-      | --- | ----- | ----- |
-      | Mon | 12    | 4     |
-      | Tue | 19    | 7     |
-      | Wed | 15    | 11    |
-      | Thu | 22    | 9     |
+!!! output "Rendered"
+    | Day | Curls | Rolls |
+    | --- | ----- | ----- |
+    | Mon | 12    | 4     |
+    | Tue | 19    | 7     |
+    | Wed | 15    | 11    |
+    | Thu | 22    | 9     |
 
-      { .chart type=line title="Reps over the week" }
+    { .chart type=line title="Reps over the week" }
 
 For a part-of-whole, use one value column:
 
@@ -103,14 +103,14 @@ For a part-of-whole, use one value column:
 { .chart type=donut title="Diet" }
 ```
 
-!!! cards
-    - | Snack    | Share |
-      | -------- | ----- |
-      | Ants     | 70    |
-      | Termites | 20    |
-      | Grubs    | 10    |
+!!! output "Rendered"
+    | Snack    | Share |
+    | -------- | ----- |
+    | Ants     | 70    |
+    | Termites | 20    |
+    | Grubs    | 10    |
 
-      { .chart type=donut title="Diet" }
+    { .chart type=donut title="Diet" }
 
 ## Options
 
@@ -131,14 +131,14 @@ Stack them after `type` on the same line:
 { .chart type=bar stacked title="Foraging by time of day" }
 ```
 
-!!! cards
-    - | Time    | Ants | Termites |
-      | ------- | ---- | -------- |
-      | Morning | 40   | 10       |
-      | Midday  | 30   | 25       |
-      | Evening | 50   | 15       |
+!!! output "Rendered"
+    | Time    | Ants | Termites |
+    | ------- | ---- | -------- |
+    | Morning | 40   | 10       |
+    | Midday  | 30   | 25       |
+    | Evening | 50   | 15       |
 
-      { .chart type=bar stacked title="Foraging by time of day" }
+    { .chart type=bar stacked title="Foraging by time of day" }
 
 ## Hidden until revealed
 

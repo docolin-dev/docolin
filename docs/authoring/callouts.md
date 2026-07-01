@@ -20,9 +20,9 @@ docolin:
 
   status: stable
 
-  aliases: [admonitions, notes, warnings, callout boxes, collapsible]
+  aliases: [admonitions, notes, warnings, callout boxes, collapsible, expected output]
 
-  prev: ./code-blocks.md
+  prev: ./diffs.md
   next: ./tabs.md
 ---
 
@@ -42,9 +42,9 @@ Open a callout with three exclamation marks, a type, and an optional quoted titl
     The high bars get slippery after the 1,000th ant.
 ```
 
-!!! cards
-    - !!! warning "Chalk up first"
-          The high bars get slippery after the 1,000th ant.
+!!! output "Rendered"
+    !!! warning "Chalk up first"
+        The high bars get slippery after the 1,000th ant.
 
 Drop the title and the type's own name becomes the heading:
 
@@ -53,9 +53,9 @@ Drop the title and the type's own name becomes the heading:
     Scales are self-cleaning. Please do not polish the pangolin.
 ```
 
-!!! cards
-    - !!! note
-          Scales are self-cleaning. Please do not polish the pangolin.
+!!! output "Rendered"
+    !!! note
+        Scales are self-cleaning. Please do not polish the pangolin.
 
 ### The six types
 
@@ -82,24 +82,24 @@ Pick by what you mean, not by which colour you like. Readers (and screen readers
     Stop and read. Real consequences: data loss, broken systems, lost claws.
 ```
 
-!!! cards
-    - !!! note
-          Neutral aside. Context the reader may want, but can live without.
+!!! output "Rendered"
+    !!! note
+        Neutral aside. Context the reader may want, but can live without.
 
-      !!! info
-          Background worth knowing. A little more weight than a note.
+    !!! info
+        Background worth knowing. A little more weight than a note.
 
-      !!! tip
-          A shortcut, a better way, a thing Pango wishes he'd known sooner.
+    !!! tip
+        A shortcut, a better way, a thing Pango wishes he'd known sooner.
 
-      !!! check
-          Something is confirmed working, finished, or verified. Same green tint as `tip`, but the check icon reads as "yes, this is the right thing."
+    !!! check
+        Something is confirmed working, finished, or verified. Same green tint as `tip`, but the check icon reads as "yes, this is the right thing."
 
-      !!! warning
-          Proceed carefully. Something here bites if you ignore it.
+    !!! warning
+        Proceed carefully. Something here bites if you ignore it.
 
-      !!! danger
-          Stop and read. Real consequences: data loss, broken systems, lost claws.
+    !!! danger
+        Stop and read. Real consequences: data loss, broken systems, lost claws.
 
 ### Rich bodies
 
@@ -119,17 +119,17 @@ A callout body is full Markdown. Lists, code, tables, even other callouts all wo
     ```
 ````
 
-!!! cards
-    - !!! danger "Do not unroll a pangolin"
-          Do **not** unroll a curled pangolin. It can wait you out for hours, and it will:
+!!! output "Rendered"
+    !!! danger "Do not unroll a pangolin"
+        Do **not** unroll a curled pangolin. It can wait you out for hours, and it will:
 
-          - ignore you completely
-          - win
+        - ignore you completely
+        - win
 
-          ```bash
-          # the only correct move
-          leave-some-ants && back-away-slowly
-          ```
+        ```bash
+        # the only correct move
+        leave-some-ants && back-away-slowly
+        ```
 
 ## Collapsible hatches
 
@@ -141,9 +141,9 @@ Some equipment only opens when Pango pokes it. Swap the `!!!` for `???` and the 
     contingency planning.
 ```
 
-!!! cards
-    - ??? note "What's behind the loose scale?"
-          A spare snack and a folded map of every air vent. Standard pangolin contingency planning.
+!!! output "Rendered"
+    ??? note "What's behind the loose scale?"
+        A spare snack and a folded map of every air vent. Standard pangolin contingency planning.
 
 Add a `+` (`???+`) to start it open. Same collapsible behaviour, but the reader sees the content first and can fold it away.
 
@@ -152,9 +152,9 @@ Add a `+` (`???+`) to start it open. Same collapsible behaviour, but the reader 
     Chalk first. The fall is short but the somersault is involuntary.
 ```
 
-!!! cards
-    - ???+ warning "Read before the high bars"
-          Chalk first. The fall is short but the somersault is involuntary.
+!!! output "Rendered"
+    ???+ warning "Read before the high bars"
+        Chalk first. The fall is short but the somersault is involuntary.
 
 Reach for a hatch when the content is genuinely optional: a long aside, a troubleshooting dump, a "why does this work" tangent. For a one-liner that everyone should read, a plain `!!!` callout is better; never hide the important thing behind a click.
 
@@ -170,12 +170,55 @@ Callouts nest inside each other and inside other constructs. Keep adding four sp
         Hidden tip content, two levels deep.
 ```
 
-!!! cards
-    - !!! info "Open the hatch"
-          Some intro, then a collapsible inside the callout:
+!!! output "Rendered"
+    !!! info "Open the hatch"
+        Some intro, then a collapsible inside the callout:
 
-          ??? tip "Click to expand"
-              Hidden tip content, two levels deep.
+        ??? tip "Click to expand"
+            Hidden tip content, two levels deep.
+
+## The expected-output box
+
+After a "run this" step, show the reader what success looks like. `!!! output` wraps its body in a labeled box, green by default because green means "this is what you should see":
+
+````md
+!!! output
+    ```text
+    Pango: curled, content, 1,000 ants logged.
+    Gym: open. Air vents: mapped.
+    ```
+````
+
+!!! output "Rendered"
+    !!! output
+        ```text
+        Pango: curled, content, 1,000 ants logged.
+        Gym: open. Air vents: mapped.
+        ```
+
+The label defaults to "Expected Output"; a title replaces it, and the body takes any Markdown, not just a code block:
+
+```md
+!!! output "You should now see"
+    - The loose scale clicks shut.
+    - The high bar stops swinging.
+```
+
+!!! output "Rendered"
+    !!! output "You should now see"
+        - The loose scale clicks shut.
+        - The high bar stops swinging.
+
+Need a different color? Pass one of the six callout types and the border and label recolor while the box keeps its shape:
+
+```md
+!!! output "Careful" { type=warning }
+    Running `pango --reset` clears every logged ant. There is no undo.
+```
+
+!!! output "Rendered"
+    !!! output "Careful" { type=warning }
+        Running `pango --reset` clears every logged ant. There is no undo.
 
 ## A typo degrades gracefully
 
@@ -187,9 +230,9 @@ Write a type docolin doesn't know and the callout falls back to a neutral box in
     fix it to `mystery`... which also isn't a type. Use one of the six.
 ```
 
-!!! cards
-    - !!! mistery "Not a real type"
-          `mistery` isn't a type, so this renders as a plain box. Spot the typo, fix it to `mystery`... which also isn't a type. Use one of the six.
+!!! output "Rendered"
+    !!! mistery "Not a real type"
+        `mistery` isn't a type, so this renders as a plain box. Spot the typo, fix it to `mystery`... which also isn't a type. Use one of the six.
 
 ## Gotchas
 

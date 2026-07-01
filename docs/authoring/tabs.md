@@ -48,15 +48,15 @@ Write consecutive `=== "Label"` blocks, each with a four-space-indented body. Ad
     Pango tolerates ants from the Microsoft Store, grudgingly.
 ```
 
-!!! cards
-    - === "Linux"
-          Pango installs ants via the system package manager.
+!!! output "Rendered"
+    === "Linux"
+        Pango installs ants via the system package manager.
 
-      === "macOS"
-          Pango prefers a fresh jar of ants from Homebrew.
+    === "macOS"
+        Pango prefers a fresh jar of ants from Homebrew.
 
-      === "Windows"
-          Pango tolerates ants from the Microsoft Store, grudgingly.
+    === "Windows"
+        Pango tolerates ants from the Microsoft Store, grudgingly.
 
 ## Synced code tabs
 
@@ -81,21 +81,21 @@ Because each panel is a full [code block](./code-blocks.md), the title bar, copy
     ```
 ````
 
-!!! cards
-    - === "npm"
-          ```bash
-          npm install pangolin
-          ```
+!!! output "Rendered"
+    === "npm"
+        ```bash
+        npm install pangolin
+        ```
 
-      === "pnpm"
-          ```bash
-          pnpm add pangolin
-          ```
+    === "pnpm"
+        ```bash
+        pnpm add pangolin
+        ```
 
-      === "bun"
-          ```bash
-          bun add pangolin
-          ```
+    === "bun"
+        ```bash
+        bun add pangolin
+        ```
 
 ## Rich panels
 
@@ -110,13 +110,13 @@ A panel holds any Markdown, callouts, tables, lists, even other tabs.
         A frightened pango rolls into a ball. Do not unroll it by force.
 ```
 
-!!! cards
-    - === "Overview"
-          Pangolins are the only mammals **wholly covered in scales**.
+!!! output "Rendered"
+    === "Overview"
+        Pangolins are the only mammals **wholly covered in scales**.
 
-      === "Care"
-          !!! warning "Handle gently"
-              A frightened pango rolls into a ball. Do not unroll it by force.
+    === "Care"
+        !!! warning "Handle gently"
+            A frightened pango rolls into a ball. Do not unroll it by force.
 
 ## Labels can be anything
 
@@ -130,12 +130,12 @@ Emojis, symbols, or a whole phrase, all fine. A long label is shown in full, nev
     Shown in full, not cut off.
 ```
 
-!!! cards
-    - === "🐧 Linux"
-          The usual home.
+!!! output "Rendered"
+    === "🐧 Linux"
+        The usual home.
 
-      === "A whole sentence works as a label, if you want one"
-          Shown in full, not cut off.
+    === "A whole sentence works as a label, if you want one"
+        Shown in full, not cut off.
 
 ## Gotchas
 

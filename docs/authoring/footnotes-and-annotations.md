@@ -74,12 +74,12 @@ sudo dnf install akmod-nvidia  # (1)!
 1. Pulls the driver as an akmod, so it rebuilds for each new kernel.
 ````
 
-!!! cards
-    - ```bash
-      sudo dnf install akmod-nvidia  # (1)!
-      ```
+!!! output "Rendered"
+    ```bash
+    sudo dnf install akmod-nvidia  # (1)!
+    ```
 
-      1. Pulls the driver as an akmod, so it rebuilds for each new kernel.
+    1. Pulls the driver as an akmod, so it rebuilds for each new kernel.
 
 On a code block, the trailing `!` (`(n)!`) strips the comment that carried the marker, leaving just the badge.
 
@@ -94,11 +94,11 @@ Tag any block with a marker, here (1), and list the notes underneath.
 1. A note holds rich Markdown: **bold**, `code`, even a nested annotation.
 ```
 
-!!! cards
-    - Tag any block with a marker, here (1), and list the notes underneath.
-      { .annotate }
+!!! output "Rendered"
+    Tag any block with a marker, here (1), and list the notes underneath.
+    { .annotate }
 
-      1. A note holds rich Markdown: **bold**, `code`, even a nested annotation.
+    1. A note holds rich Markdown: **bold**, `code`, even a nested annotation.
 
 Notes can hold whole constructs and can nest, an annotation inside an annotation, as deep as you care to climb.
 

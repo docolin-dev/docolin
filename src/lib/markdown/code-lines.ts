@@ -6,6 +6,8 @@
 // :target if this script never runs. Run once on mount; the returned function
 // detaches the listeners.
 
+import { replaceHashTokens } from "./hash-tokens";
+
 const PREFIX = "__codeline-";
 
 interface LineRef {
@@ -93,7 +95,9 @@ function apply(): void {
 }
 
 function writeHash(): void {
-  const hash = buildHash(selection);
+  // Replace only our own tokens; diff-line tokens in the same hash survive.
+  const own = buildHash(selection);
+  const hash = replaceHashTokens(location.hash, PREFIX, own === "" ? [] : own.split(","));
   const url = hash === "" ? location.pathname + location.search : `#${hash}`;
   // Preserve whatever state SvelteKit's router stored; we only change the hash,
   // and via replaceState so fiddling with lines neither spams Back nor jumps.
