@@ -29,7 +29,7 @@ Stack & conventions:
 - **Styling:** Tailwind CSS 4 (plus `@tailwindcss/forms` and `@tailwindcss/typography`). Theme CSS lives in `src/routes/layout.css`.
 - **Components:** shadcn-svelte (style: `vega`, baseColor: `stone`) under `src/lib/components/ui/`. Domain-specific components live under `src/lib/components/`.
 - **Icons:** Lucide (`@lucide/svelte`)
-- **i18n:** ParaglideJS (`@inlang/paraglide-js`), already set up. Base locale: `en`. Additional locale: `de`. Source messages live in `messages/{locale}.json`. Generated runtime lives in `src/paraglide/` (do not edit by hand). Never hardcode user-facing strings.
+- **i18n:** ParaglideJS (`@inlang/paraglide-js`), already set up. Base locale: `en`. Additional locales: `de`, `fr`. Source messages live in `messages/{locale}.json`; every key must exist in every locale (`bun run check:messages` enforces sync). Generated runtime lives in `src/paraglide/` (do not edit by hand). Never hardcode user-facing strings.
 - **Theme:** Light and dark. `mode-watcher` toggles `.dark` on `<html>` (set before first paint, so no flash); a `.light` class can pin a subtree to light. App surfaces and the marketing site both theme. Use theme tokens so colors flip with the theme; reach for a `dark:` override only where a token cannot express the difference (e.g. hiding a light-only gradient, or swapping paired light/dark images).
 - **Deployment:** Currently `@sveltejs/adapter-auto`; concrete adapter TBD as the project firms up.
 - **Analytics:** None.

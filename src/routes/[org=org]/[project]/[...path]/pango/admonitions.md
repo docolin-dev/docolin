@@ -43,3 +43,29 @@ and one open by default, with nested content to prove the body still parses:
     # the only safe descent Pango trusts
     curl --into-a-ball
     ```
+
+## Expected output
+
+The `output` type wraps whatever is inside in a box with a green border and a
+label notched into the top of it. The label defaults to "Expected Output"; give it
+a title to change it. Handy for showing what a command should print.
+
+```bash
+pango --status
+```
+
+!!! output
+    ```text
+    Pango: curled, content, 1,000 ants logged.
+    Gym: open. Air vents: mapped.
+    ```
+
+!!! output "You should now see"
+    - The loose scale clicks shut.
+    - The high bar stops swinging.
+
+Need a different color? Pass a callout type; the border and label recolor while the
+box keeps its label-in-the-border look, no icon:
+
+!!! output "Careful" { type=warning }
+    Running `pango --reset` clears every logged ant. There is no undo.

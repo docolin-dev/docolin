@@ -29,7 +29,8 @@ const builtBlocks = new WeakMap<Code, Element>();
 interface CodeMeta {
   title: string | null;
   hlLines: Set<number>;
-  linenums: boolean;
+  /** The starting line number when the author enabled line numbers, else null. */
+  linenumStart: number | null;
 }
 
 function extractQuoted(meta: string, key: string): string | null {
@@ -62,15 +63,26 @@ function parseLineRanges(raw: string): Set<number> {
   return lines;
 }
 
+// `linenums` (bare or ="1") starts numbering at 1; `linenums="42"` starts at 42, so a
+// snippet can carry the line numbers it has in its real file. Non-positive / malformed
+// values fall back to 1.
+function parseLinenums(meta: string): number | null {
+  if (!meta.includes("linenums")) return null;
+  const value = extractQuoted(meta, "linenums");
+  if (value === null) return 1;
+  const start = Number(value);
+  return Number.isInteger(start) && start > 0 ? start : 1;
+}
+
 function parseCodeMeta(meta: string | null | undefined): CodeMeta {
   if (typeof meta !== "string" || meta.length === 0) {
-    return { title: null, hlLines: new Set(), linenums: false };
+    return { title: null, hlLines: new Set(), linenumStart: null };
   }
   const hl = extractQuoted(meta, "hl_lines");
   return {
     title: extractQuoted(meta, "title"),
     hlLines: hl === null ? new Set() : parseLineRanges(hl),
-    linenums: meta.includes("linenums"),
+    linenumStart: parseLinenums(meta),
   };
 }
 
@@ -252,16 +264,28 @@ async function processCode(node: Code, blockIndex: number, highlight: Highlight)
     "border",
     "border-border",
   ];
-  if (meta.linenums) wrapperClass.push("code-linenums");
+  if (meta.linenumStart !== null) wrapperClass.push("code-linenums");
   // Titled blocks get the header bar; untitled ones float the buttons over the code.
   const top = meta.title === null ? floatingActions() : header(meta.title, lang);
   const block = h("div", { class: wrapperClass }, [
     top,
     h("div", { class: ["code-body", "overflow-x-auto"] }, [pre]),
   ]);
-  // Mirror shiki's bg vars onto the wrapper so the floating chip matches the code.
+  // Mirror shiki's bg vars onto the wrapper so the floating chip matches the code, and
+  // carry the line-number start: a CSS counter offset for this block, and the value the
+  // diff viewer reads to number its gutters from.
   const style = pre.properties.style;
-  if (typeof style === "string") block.properties.style = style;
+  const styleParts = typeof style === "string" ? [style] : [];
+  if (meta.linenumStart !== null) {
+    const lineCount = node.value.split("\n").length - (node.value.endsWith("\n") ? 1 : 0);
+    const lastNumber = meta.linenumStart + Math.max(lineCount - 1, 0);
+    block.properties["data-line-start"] = String(meta.linenumStart);
+    // Offset the counter, and size the gutter to the widest number so a high start
+    // (e.g. linenums="1240") does not clip.
+    styleParts.push(`--line-start:${String(meta.linenumStart - 1)}`);
+    styleParts.push(`--line-digits:${String(String(lastNumber).length)}`);
+  }
+  if (styleParts.length > 0) block.properties.style = styleParts.join(";");
 
   builtBlocks.set(node, block);
 }

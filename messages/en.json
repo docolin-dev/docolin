@@ -549,6 +549,8 @@
   "doco_stamp_error": "Something went wrong. Please try again.",
   "doco_stamp_signin_nudge": "Sign in so your verification counts for more.",
   "doco_heading_copied": "Link copied",
+  "doco_inline_copied_toast": "Copied",
+  "doco_inline_copy_hint": "Click to copy",
   "doco_meta_applies_to": "applies to",
   "doco_meta_reading_time": "{minutes} min read",
   "doco_toc_heading": "On this page",

@@ -45,6 +45,15 @@ work too). Climb :mountain: to the top, fuel up on :drumstick:, then read the
 :book-open:. A stray colon or a time like 3:30 is left alone, and `:rocket:` in
 code stays literal.
 
+## Colors
+
+Write a color as inline code and it shows a live swatch you can click to copy:
+Pango's scales are `#4a5568`, his eyes `oklch(0.55 0.15 30)`, and the gym mat is
+`rgb(118 185 0)`. Hex, rgb/rgba, hsl, and oklch all work; ordinary inline `code`
+stays plain.
+
+Any inline code can be made click-to-copy with a marker: `pango --status`{ .copy }
+
 ## Footnotes
 
 Pango's boasts come with receipts.[^scales] He also keeps a running tally.[^ants]
