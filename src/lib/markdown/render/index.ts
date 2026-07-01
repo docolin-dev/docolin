@@ -41,7 +41,11 @@ import { rehypeSanitizeUrls } from "./sanitize.ts";
 // cache key); no DB backfill needed.
 // 3: docomd feature wave (diff viewer, output box, swatches/copy, media, linenums
 //    starts, labeled diff fallback).
-export const RENDERER_VERSION = "3";
+// 4: re-purge only. The wave's docs were synced and read while the old worker was
+//    still live, so broken renders of the new syntax got edge-cached in the
+//    deploy window. Ship renderer logic and the docs that use it in SEPARATE
+//    deploys (renderer first, docs after it is live) to avoid this window.
+export const RENDERER_VERSION = "4";
 
 /** Shiki dual theme: light + dark emitted together as CSS variables
  *  (`defaultColor: false`), so rendered code switches with the `.dark` class with
