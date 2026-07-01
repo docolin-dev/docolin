@@ -405,6 +405,7 @@ async function insertVersionRow(
       references: doc.references,
       authors,
       sitemap,
+      frontmatterExtra: parsed.frontmatterExtra,
       bodyText: convertedBody,
       bodyFormat: "commonmark",
     })
@@ -450,6 +451,7 @@ async function updateVersionRow(
       references: doc.references,
       authors,
       sitemap,
+      frontmatterExtra: parsed.frontmatterExtra,
       bodyText: convertedBody,
       bodyFormat: "commonmark",
     })

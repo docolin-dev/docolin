@@ -69,4 +69,34 @@ describe("parseDocoFile", () => {
     if (result.ok) return;
     expect(result.error.code).toBe("frontmatter_invalid");
   });
+
+  it("captures the whole original frontmatter, custom keys included, in frontmatterExtra", () => {
+    const src = [
+      "---",
+      "title: Install Nvidia drivers",
+      "description: A guide",
+      "authors:",
+      "  - handle: someuser",
+      "tags: [gpu, drivers]",
+      "sidebar_order: 3",
+      "docolin:",
+      "  schema_version: 1",
+      "  kind: hardware/gpu/nvidia/driver-install",
+      "  type: how-to",
+      "---",
+      "Body\n",
+    ].join("\n");
+    const result = parseDocoFile(src);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const extra = result.parsed.frontmatterExtra;
+    // Custom keys the schema would otherwise strip are preserved verbatim.
+    expect(extra.tags).toEqual(["gpu", "drivers"]);
+    expect(extra.sidebar_order).toBe(3);
+    // The author's own fields and their docolin block are kept alongside.
+    expect(extra.title).toBe("Install Nvidia drivers");
+    expect((extra.docolin as Record<string, unknown>).kind).toBe(
+      "hardware/gpu/nvidia/driver-install",
+    );
+  });
 });

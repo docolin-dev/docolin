@@ -24,6 +24,7 @@ import {
   rebuildPathInSource,
 } from "$lib/doco-urls";
 import { SITE_URL } from "$lib/site";
+import { forgeSourceUrl } from "$lib/git/edit-url";
 
 // Resolves a doco's full content by its public URL parts, returning the canonical
 // markdown body plus the metadata needed for attribution. Shared by the raw
@@ -70,6 +71,12 @@ export interface DocoContent {
   nextLink: string | null;
   supersededBy: string | null;
   bodyText: string;
+  /** The doco's original frontmatter, replayed verbatim in the raw output (empty
+   *  for versions synced before capture; the builder falls back to title/description). */
+  frontmatterExtra: Record<string, unknown>;
+  /** Forge URL of the source file pinned to this version's commit: the byte-exact
+   *  original, so "the original lives upstream" travels with the bytes. */
+  sourceFileUrl: string;
   authors: ResolvedAuthor[];
   pangoScore: number | null;
   verifiedCount: number;
@@ -132,6 +139,7 @@ export async function getDocoContent(
       nextLink: versions.nextLink,
       supersededBy: versions.supersededBy,
       bodyText: versions.bodyText,
+      frontmatterExtra: versions.frontmatterExtra,
       authors: versions.authors,
       verifiedCount: versions.verificationStampCount,
       pangoScore: versions.verificationScore,
@@ -151,6 +159,14 @@ export async function getDocoContent(
   const pathFromProjectRoot = pathFromSourcePath(
     v.pathInSource ?? expectedPathInSource,
     proj.subpath,
+  );
+  // The source file on the forge, pinned to this version's commit (falls back to
+  // the default branch on the rare version with no recorded SHA). Mirrors the
+  // viewer's "view source" button, so the pointer travels with copy / raw / MCP.
+  const sourceFileUrl = forgeSourceUrl(
+    proj.repoUrl,
+    v.commitSha !== null ? { commit: v.commitSha } : { branch: proj.defaultBranch },
+    v.pathInSource ?? expectedPathInSource,
   );
 
   // Self-describing extras for the raw / MCP markdown: full version history and
@@ -197,6 +213,8 @@ export async function getDocoContent(
     nextLink: v.nextLink,
     supersededBy: v.supersededBy,
     bodyText: v.bodyText,
+    frontmatterExtra: v.frontmatterExtra,
+    sourceFileUrl,
     authors,
     pangoScore: v.pangoScore,
     verifiedCount: v.verifiedCount,
@@ -252,37 +270,45 @@ function isoDate(value: Date | string): string {
   return (value instanceof Date ? value.toISOString() : value).slice(0, 10);
 }
 
-// Reconstructs the doco's frontmatter: authored fields (title, description,
-// authors) at the top level and the source-authored docolin fields under the
-// docolin-namespaced block, then a computed `docolin.live` block so the raw
-// markdown is self-describing on its own, its URL, verification, version
-// history, and discussion pointer travel with the bytes. URLs use baseUrl (the
-// serving origin), so dev links are reachable and production links are canonical.
+// Reconstructs the doco's frontmatter in two clearly-separated layers: the
+// author's original frontmatter replayed verbatim at the top level (title,
+// description, their own `docolin:` block, any custom keys), then a single
+// `docolin_generated` key holding everything docolin resolves or computes, the
+// resolved classification, the upstream source pointer, live verification,
+// version history, and discussion pointer, so a reader can tell exactly what the
+// author wrote apart from what docolin added. `authors` is overridden with the
+// resolved (deleted-account-safe) list. URLs use baseUrl (the serving origin) so
+// dev links resolve and production links are canonical. A re-ingest reads the
+// author's fields and ignores `docolin_generated`.
 function buildFrontmatter(content: DocoContent, baseUrl: string): Record<string, unknown> {
-  const docolin: Record<string, unknown> = {
-    schema_version: 1,
+  const generated: Record<string, unknown> = {
     kind: content.kindPath,
     type: content.type,
   };
-  if (content.appliesTo.length > 0) docolin.applies_to = content.appliesTo;
-  docolin.language = content.language;
-  if (content.difficulty !== null) docolin.difficulty = content.difficulty;
+  if (content.appliesTo.length > 0) generated.applies_to = content.appliesTo;
+  generated.language = content.language;
+  if (content.difficulty !== null) generated.difficulty = content.difficulty;
   if (content.timeEstimateMinMinutes !== null) {
     const min = content.timeEstimateMinMinutes;
     const max = content.timeEstimateMaxMinutes ?? min;
-    docolin.time_estimate =
+    generated.time_estimate =
       min === max ? formatDuration(min) : `${formatDuration(min)}-${formatDuration(max)}`;
   }
-  docolin.status = content.status;
-  if (content.supersededBy !== null) docolin.superseded_by = content.supersededBy;
-  if (content.aliases.length > 0) docolin.aliases = content.aliases;
-  if (content.references.length > 0) docolin.references = content.references;
-  if (content.prevLink !== null) docolin.prev = content.prevLink;
-  if (content.nextLink !== null) docolin.next = content.nextLink;
+  generated.status = content.status;
+  if (content.supersededBy !== null) generated.superseded_by = content.supersededBy;
+  if (content.aliases.length > 0) generated.aliases = content.aliases;
+  if (content.references.length > 0) generated.references = content.references;
+  if (content.prevLink !== null) generated.prev = content.prevLink;
+  if (content.nextLink !== null) generated.next = content.nextLink;
 
-  // Computed live data, kept separate from the author-written fields above so a
-  // re-ingest ignores it while a raw reader still gets everything in one place.
+  // The upstream original, pinned to this version's commit: commit first, then url.
+  const source: Record<string, unknown> = {};
+  if (content.commitSha !== null) source.commit = content.commitSha;
+  source.url = content.sourceFileUrl;
+  generated.source = source;
+
   const base = `/${content.orgSlug}/${content.projectSlug}/${content.pathFromProjectRoot}`;
+  generated.url = `${baseUrl}${docoUrlPath(content)}`;
   const verification: Record<string, unknown> = {
     pango: content.pangoScore,
     stamps: content.verifiedCount,
@@ -290,34 +316,39 @@ function buildFrontmatter(content: DocoContent, baseUrl: string): Record<string,
   if (content.lastConfirmedAt !== null) {
     verification.last_confirmed = isoDate(content.lastConfirmedAt);
   }
-  docolin.live = {
-    url: `${baseUrl}${docoUrlPath(content)}`,
-    version: {
-      number: content.versionNumber,
-      published_at: isoDate(content.publishedAt),
-      is_latest: content.isLatest,
-    },
-    verification,
-    versions: content.versions.map((ver) => ({
-      number: ver.number,
-      published_at: isoDate(ver.publishedAt),
-      pango: ver.pango,
-      url: ver.isLatest
-        ? `${baseUrl}${base}`
-        : `${baseUrl}${base}@${versionSuffix({ commitSha: ver.commitSha, versionNumber: ver.number })}`,
-    })),
-    discussions: {
-      total: content.discussions.total,
-      answered: content.discussions.answered,
-      url: `${baseUrl}${base}/discussions`,
-    },
+  generated.verification = verification;
+  generated.version = {
+    number: content.versionNumber,
+    published_at: isoDate(content.publishedAt),
+    is_latest: content.isLatest,
+  };
+  generated.versions = content.versions.map((ver) => ({
+    number: ver.number,
+    published_at: isoDate(ver.publishedAt),
+    pango: ver.pango,
+    url: ver.isLatest
+      ? `${baseUrl}${base}`
+      : `${baseUrl}${base}@${versionSuffix({ commitSha: ver.commitSha, versionNumber: ver.number })}`,
+  }));
+  generated.discussions = {
+    total: content.discussions.total,
+    answered: content.discussions.answered,
+    url: `${baseUrl}${base}/discussions`,
   };
 
-  const fm: Record<string, unknown> = { title: content.title };
-  if (content.description !== null) fm.description = content.description;
-  fm.authors = content.authors.map(frontmatterAuthor);
-  fm.docolin = docolin;
-  return fm;
+  // Replay the author's original frontmatter verbatim. A version synced before
+  // capture has an empty object, so fall back to the reconstructed title /
+  // description. Override `authors` with the resolved list (a retired handle never
+  // leaks) and always overwrite `docolin_generated` so an author-written key of
+  // that name can't spoof docolin's block.
+  const original: Record<string, unknown> = { ...content.frontmatterExtra };
+  if (Object.keys(original).length === 0) {
+    original.title = content.title;
+    if (content.description !== null) original.description = content.description;
+  }
+  original.authors = content.authors.map(frontmatterAuthor);
+  original.docolin_generated = generated;
+  return original;
 }
 
 /**

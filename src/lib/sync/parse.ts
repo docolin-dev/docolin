@@ -11,6 +11,11 @@ export interface ParsedDoco {
   frontmatter: DocoFrontmatter;
   body: string;
   timeEstimate: TimeEstimateRange | null;
+  // The original frontmatter object exactly as parsed, before the schema strips
+  // unknown keys: the author's fields, their `docolin:` block, and any custom
+  // keys. Stored in `versions.frontmatter_extra` so the raw output can replay
+  // what the author wrote, kept separate from docolin's computed block.
+  frontmatterExtra: Record<string, unknown>;
 }
 
 export interface ParseError {
@@ -75,6 +80,8 @@ export function parseDocoFile(source: string): ParseResult {
       frontmatter,
       body: fm.body,
       timeEstimate,
+      // safeParse succeeded, so fm.data is a validated object, never a primitive.
+      frontmatterExtra: fm.data as Record<string, unknown>,
     },
   };
 }
