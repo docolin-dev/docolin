@@ -1,5 +1,7 @@
 import { parseAttrs } from "$lib/markdown/docomd";
-import { expressionIdentifiers, type ExprValue } from "./expr.ts";
+import { expressionIdentifiers, BUILTIN_FUNCTIONS, type ExprValue } from "./expr.ts";
+import { normalizeColor } from "./color.ts";
+import { parseIsoDate } from "./dates.ts";
 
 // The declarations model behind `!!! inputs` cards: parsing the card's raw
 // declaration lines into typed input / computed-variable declarations, and
@@ -17,7 +19,7 @@ export interface InputDeclaration {
   name: string;
   label: string;
   /** Validation type; `text` unless the author narrows it. */
-  type: "text" | "number" | "url" | "hostname";
+  type: "text" | "number" | "url" | "hostname" | "color" | "date" | "select" | "boolean";
   /** Password-masked, memory-only, never persisted. */
   secret: boolean;
   placeholder: string | null;
@@ -28,6 +30,8 @@ export interface InputDeclaration {
   max: number | null;
   /** Maximum input length, any type. */
   maxlen: number | null;
+  /** For type=select: the allowed values, in authored order. */
+  options: string[] | null;
 }
 
 /** A hidden derived value: `- name := expr`. */
@@ -45,21 +49,30 @@ export interface ParsedDeclarations {
   problems: string[];
 }
 
-const INPUT_TYPES = new Set(["text", "number", "url", "hostname"]);
-const KNOWN_ATTRS = new Set(["secret", "type", "placeholder", "default", "min", "max", "maxlen"]);
-// Function names and literals the evaluator owns; declaring them would shadow
-// confusingly, so they are reserved.
-const RESERVED = new Set([
-  "true",
-  "false",
-  "round",
+const INPUT_TYPES = new Set([
+  "text",
+  "number",
+  "url",
+  "hostname",
+  "color",
+  "date",
+  "select",
+  "boolean",
+]);
+const KNOWN_ATTRS = new Set([
+  "secret",
+  "type",
+  "placeholder",
+  "default",
   "min",
   "max",
-  "upper",
-  "lower",
-  "trim",
-  "urlencode",
+  "maxlen",
+  "options",
 ]);
+// Function names and literals the evaluator owns; declaring them would shadow
+// confusingly, so they are reserved.
+// Literals and every built-in function name; a variable can't shadow them.
+const RESERVED = new Set(["true", "false", ...BUILTIN_FUNCTIONS]);
 
 function isNameStart(ch: string): boolean {
   return (ch >= "a" && ch <= "z") || (ch >= "A" && ch <= "Z") || ch === "_";
@@ -70,9 +83,13 @@ function isNameChar(ch: string): boolean {
 
 /** Whether `text` is a valid variable name: [A-Za-z_][A-Za-z0-9_]* and not
  *  reserved. Dotted or dashed names can never be valid, which is what keeps
- *  Helm/Jinja placeholder syntax permanently out of the feature. */
+ *  Helm/Jinja placeholder syntax permanently out of the feature. Names that
+ *  exist on Object.prototype (toString, constructor, ...) are rejected as
+ *  defense in depth: the resolver uses null-prototype maps, but a variable
+ *  named after an inherited key must never exist in the first place. */
 export function isValidVarName(text: string): boolean {
   if (text.length === 0 || RESERVED.has(text)) return false;
+  if (text in Object.prototype || text === "__proto__") return false;
   if (!isNameStart(text[0])) return false;
   for (const ch of text) if (!isNameChar(ch)) return false;
   return true;
@@ -156,6 +173,30 @@ export function parseDeclarationLine(line: string): { decl: VarDeclaration } | {
     return { problem: `unknown input type "${type}" on input "${name}"` };
   }
 
+  // `options` and `type=select` come as a pair, in either direction.
+  const options =
+    "options" in props && props.options !== undefined
+      ? props.options
+          .split("|")
+          .map((option) => option.trim())
+          .filter((option) => option.length > 0)
+      : null;
+  if (type === "select" && (options === null || options.length === 0)) {
+    return { problem: `select input "${name}" needs options="a|b|c"` };
+  }
+  if (type !== "select" && options !== null) {
+    return { problem: `options= on input "${name}" requires type=select` };
+  }
+  const defaultValue = unwrapAutolink(props.default) ?? null;
+  if (
+    type === "boolean" &&
+    defaultValue !== null &&
+    defaultValue !== "true" &&
+    defaultValue !== "false"
+  ) {
+    return { problem: `boolean input "${name}" takes default=true or default=false` };
+  }
+
   return {
     decl: {
       kind: "input",
@@ -164,10 +205,11 @@ export function parseDeclarationLine(line: string): { decl: VarDeclaration } | {
       type: type as InputDeclaration["type"],
       secret: props.secret === "true",
       placeholder: unwrapAutolink(props.placeholder) ?? null,
-      defaultValue: unwrapAutolink(props.default) ?? null,
+      defaultValue,
       min: parseBound(props.min),
       max: parseBound(props.max),
       maxlen: parseBound(props.maxlen),
+      options,
     },
   };
 }
@@ -205,7 +247,17 @@ export function parseDeclarations(lines: readonly string[]): ParsedDeclarations 
   return { declarations, problems };
 }
 
-export type InputProblem = "number" | "min" | "max" | "maxlen" | "url" | "hostname";
+export type InputProblem =
+  | "number"
+  | "min"
+  | "max"
+  | "maxlen"
+  | "url"
+  | "hostname"
+  | "color"
+  | "date"
+  | "select"
+  | "boolean";
 
 /** Validates a filled input against its declared constraints, returning a
  *  problem code (the UI maps codes to localized messages) or null when fine.
@@ -223,16 +275,32 @@ export function validateInputValue(decl: InputDeclaration, raw: string): InputPr
   if (decl.type === "url") {
     return URL.canParse(raw) ? null : "url";
   }
+  if (decl.type === "color") {
+    return normalizeColor(raw) === null ? "color" : null;
+  }
+  if (decl.type === "date") {
+    return parseIsoDate(raw) === null ? "date" : null;
+  }
+  if (decl.type === "select") {
+    return (decl.options ?? []).includes(raw) ? null : "select";
+  }
+  if (decl.type === "boolean") {
+    return raw === "true" || raw === "false" ? null : "boolean";
+  }
   if (decl.type === "hostname") {
-    // Letters, digits, dots, and hyphens; no scheme, no path, no port.
-    for (const ch of raw) {
-      const ok =
-        (ch >= "a" && ch <= "z") ||
-        (ch >= "A" && ch <= "Z") ||
-        (ch >= "0" && ch <= "9") ||
-        ch === "." ||
-        ch === "-";
-      if (!ok) return "hostname";
+    // Dot-separated labels; each 1-63 chars of letters/digits/hyphens, and a
+    // hyphen can't lead or trail a label. No scheme, path, or port.
+    for (const label of raw.split(".")) {
+      if (label.length === 0 || label.length > 63) return "hostname";
+      if (label.startsWith("-") || label.endsWith("-")) return "hostname";
+      for (const ch of label) {
+        const ok =
+          (ch >= "a" && ch <= "z") ||
+          (ch >= "A" && ch <= "Z") ||
+          (ch >= "0" && ch <= "9") ||
+          ch === "-";
+        if (!ok) return "hostname";
+      }
     }
     return null;
   }
@@ -252,9 +320,12 @@ export interface ResolvedVars {
   errors: Record<string, string>;
 }
 
-/** Coerces an input's raw string by its declared type. */
+/** Coerces an input's raw string by its declared type. Booleans become real
+ *  booleans so ternaries read naturally ({{ tls ? "https" : "http" }}). */
 function coerceInput(decl: InputDeclaration, raw: string): ExprValue {
-  return decl.type === "number" ? Number(raw) : raw;
+  if (decl.type === "number") return Number(raw);
+  if (decl.type === "boolean") return raw === "true";
+  return raw;
 }
 
 /**
@@ -269,18 +340,25 @@ export function resolveVars(
   inputValues: Readonly<Record<string, string>>,
   evaluate: (expr: string, vars: Record<string, ExprValue>) => ExprValue,
 ): ResolvedVars {
-  const values: Record<string, ExprValue> = {};
+  // Null-prototype maps: a variable legitimately named `toString` (or any
+  // Object.prototype key) must not read as already-present via `in`.
+  const values = Object.create(null) as Record<string, ExprValue>;
   const tainted = new Set<string>();
-  const errors: Record<string, string> = {};
+  const errors = Object.create(null) as Record<string, string>;
   const declared = new Set(declarations.map((decl) => decl.name));
 
   for (const decl of declarations) {
     if (decl.kind !== "input") continue;
     // A typed value (even a cleared field) wins; the default fills only a field
-    // the reader never touched.
-    const raw = decl.name in inputValues ? inputValues[decl.name] : (decl.defaultValue ?? "");
+    // the reader never touched. Own-key check so an inherited name isn't treated
+    // as filled.
+    const raw = Object.hasOwn(inputValues, decl.name)
+      ? inputValues[decl.name]
+      : (decl.defaultValue ?? "");
     values[decl.name] = coerceInput(decl, raw);
-    if (raw === "") tainted.add(decl.name);
+    // Empty OR invalid taints: a number field holding "abc" must not render a
+    // filled NaN downstream, since chips only consult `tainted`.
+    if (raw === "" || validateInputValue(decl, raw) !== null) tainted.add(decl.name);
   }
 
   // Dependency edges: computed name -> the declared names its expression reads.

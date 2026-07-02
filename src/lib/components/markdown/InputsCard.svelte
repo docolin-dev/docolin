@@ -12,6 +12,8 @@
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
   import { Button } from "$lib/components/ui/button";
+  import { Switch } from "$lib/components/ui/switch";
+  import * as Select from "$lib/components/ui/select";
   import { m } from "$paraglide/messages";
   import { SvelteSet } from "svelte/reactivity";
   import {
@@ -21,6 +23,8 @@
     type InputProblem,
   } from "$lib/markdown/inputs";
   import type { VarsStore } from "$lib/markdown/vars-store.svelte";
+  import ColorPicker from "./ColorPicker.svelte";
+  import DatePicker from "./DatePicker.svelte";
 
   interface Props {
     store: VarsStore;
@@ -52,7 +56,19 @@
     maxlen: (decl) => m.doco_inputs_error_maxlen({ maxlen: String(decl.maxlen ?? "") }),
     url: () => m.doco_inputs_error_url(),
     hostname: () => m.doco_inputs_error_hostname(),
+    color: () => m.doco_inputs_error_color(),
+    date: () => m.doco_inputs_error_date(),
+    select: () => m.doco_inputs_error_select(),
+    boolean: () => m.doco_inputs_error_boolean(),
   };
+
+  // What the field shows: the reader's own value (even a cleared one) wins,
+  // else the declared default. Own-key check so inherited names never leak in.
+  function currentValue(decl: InputDeclaration): string {
+    return Object.hasOwn(store.inputValues, decl.name)
+      ? store.inputValues[decl.name]
+      : (decl.defaultValue ?? "");
+  }
 
   function message(decl: InputDeclaration): string {
     if (!touched.has(decl.name)) return "";
@@ -74,19 +90,69 @@
       <div class="flex flex-col gap-1.5">
         <Label for={`doco-input-${decl.name}`}>{decl.label}</Label>
         <div class="flex items-center gap-2">
-          <Input
-            id={`doco-input-${decl.name}`}
-            type={fieldType(decl)}
-            placeholder={decl.placeholder ?? undefined}
-            value={store.inputValues[decl.name] ?? ""}
-            oninput={(event: Event & { currentTarget: EventTarget & HTMLInputElement }) => {
-              store.setValue(decl.name, event.currentTarget.value);
-            }}
-            onblur={() => {
-              touched.add(decl.name);
-            }}
-            class="flex-1"
-          />
+          {#if decl.type === "boolean"}
+            <!-- Same row height as a text field, so mixed cards stay aligned. -->
+            <div class="flex h-9 items-center">
+              <Switch
+                id={`doco-input-${decl.name}`}
+                checked={currentValue(decl) === "true"}
+                onCheckedChange={(checked: boolean) => {
+                  store.setValue(decl.name, checked ? "true" : "false");
+                }}
+              />
+            </div>
+          {:else if decl.type === "select"}
+            <Select.Root
+              type="single"
+              value={currentValue(decl)}
+              onValueChange={(picked: string) => {
+                store.setValue(decl.name, picked);
+              }}
+            >
+              <Select.Trigger id={`doco-input-${decl.name}`} class="w-full">
+                {currentValue(decl).length > 0 ? currentValue(decl) : (decl.placeholder ?? "")}
+              </Select.Trigger>
+              <Select.Content>
+                {#each decl.options ?? [] as option (option)}
+                  <Select.Item value={option} label={option} />
+                {/each}
+              </Select.Content>
+            </Select.Root>
+          {:else}
+            <div class="relative flex-1">
+              <Input
+                id={`doco-input-${decl.name}`}
+                type={fieldType(decl)}
+                placeholder={decl.placeholder ?? undefined}
+                value={currentValue(decl)}
+                oninput={(event: Event & { currentTarget: EventTarget & HTMLInputElement }) => {
+                  store.setValue(decl.name, event.currentTarget.value);
+                }}
+                onblur={() => {
+                  touched.add(decl.name);
+                }}
+                class={decl.type === "color" ? "pl-9" : decl.type === "date" ? "pr-9" : ""}
+              />
+              {#if decl.type === "color"}
+                <!-- The in-field swatch opens docolin's own picker; typing any CSS
+                   color in the field stays first-class. -->
+                <ColorPicker
+                  value={currentValue(decl)}
+                  onPick={(color: string) => {
+                    store.setValue(decl.name, color);
+                  }}
+                />
+              {/if}
+              {#if decl.type === "date"}
+                <DatePicker
+                  value={currentValue(decl)}
+                  onPick={(iso: string) => {
+                    store.setValue(decl.name, iso);
+                  }}
+                />
+              {/if}
+            </div>
+          {/if}
           {#if decl.secret}
             <Button
               variant="ghost"

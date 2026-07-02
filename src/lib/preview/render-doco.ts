@@ -101,7 +101,7 @@ export async function renderPreviewDoco(
       return resolved;
     },
   });
-  const bodyHtml = await renderMarkdownPreview(converted);
+  const bodyHtml = await renderMarkdownPreview(converted, doco.frontmatter.docolin.language);
 
   const sitemap =
     doco.sitemap === null || doco.sitemapBasePath === null

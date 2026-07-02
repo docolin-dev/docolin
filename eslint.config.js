@@ -65,6 +65,14 @@ export default ts.config(
       "@typescript-eslint/no-unsafe-assignment": "off",
       // shadcn primitives use `||` for fallback values; not worth rewriting.
       "@typescript-eslint/prefer-nullish-coalescing": "off",
+      // The calendar's generated snippets thread bits-ui values typed as any
+      // (month/year select items) and inline void handlers; same re-add rationale.
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-confusing-void-expression": "off",
+      "@typescript-eslint/no-unnecessary-condition": "off",
     },
   },
   {

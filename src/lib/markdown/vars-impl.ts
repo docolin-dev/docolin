@@ -3,6 +3,7 @@ import { m } from "$paraglide/messages";
 import { VarsStore } from "./vars-store.svelte.ts";
 import { evaluateExpression, expressionIdentifiers, type ExprValue } from "./expr.ts";
 import type { VarDeclaration } from "./inputs.ts";
+import { normalizeColor } from "./color.ts";
 import { refreshChart } from "./charts.ts";
 import InputsCard from "$lib/components/markdown/InputsCard.svelte";
 
@@ -78,6 +79,13 @@ function displayValue(value: ExprValue): string {
   return String(value);
 }
 
+// Strips the color-copy affordance from a chip whose value is not a color
+// (anymore). The swatch child itself is wiped by the textContent write.
+function dropColor(el: HTMLElement): void {
+  el.classList.remove("doco-copy");
+  el.removeAttribute("data-color");
+}
+
 function updateChips(state: PageState): void {
   const { values, tainted } = state.store.resolved;
   const staleCharts = new Set<HTMLElement>();
@@ -86,19 +94,42 @@ function updateChips(state: PageState): void {
     if (chip.identifiers.some((name) => tainted.has(name))) {
       chip.el.setAttribute("data-var-state", "unfilled");
       chip.el.setAttribute("title", m.doco_var_unfilled_hint());
+      dropColor(chip.el);
       chip.el.textContent = chip.raw;
     } else {
       // The evaluator throws by design on anything outside the grammar (or on a
       // reference to an errored computed variable); that renders as an error
       // chip, never as a crash.
       try {
-        const value = evaluateExpression(chip.expr, values);
+        const value = evaluateExpression(chip.expr, values, state.store.todayIso);
         chip.el.setAttribute("data-var-state", "filled");
         chip.el.removeAttribute("title");
         chip.el.textContent = displayValue(value);
+        // A color value behaves exactly like a static inline color swatch: the
+        // same chip, and the same click-to-copy contract (doco-copy class +
+        // data-color feed the shared inline-copy handler). Everything else is
+        // display only. normalizeColor is the strict validator, so the
+        // background can only ever be a self-contained color literal.
+        const color = typeof value === "string" ? normalizeColor(value) : null;
+        if (color !== null) {
+          chip.el.classList.add("doco-copy");
+          chip.el.setAttribute("data-color", color);
+          chip.el.setAttribute("title", m.doco_inline_copy_hint());
+          const swatch = document.createElement("span");
+          swatch.className = "doco-swatch-chip";
+          swatch.style.background = color;
+          swatch.setAttribute("aria-hidden", "true");
+          chip.el.prepend(swatch);
+        } else {
+          dropColor(chip.el);
+        }
       } catch (error) {
         chip.el.setAttribute("data-var-state", "error");
-        chip.el.setAttribute("title", error instanceof Error ? error.message : String(error));
+        // Localized lead-in for readers; the raw evaluator message stays as the
+        // diagnostic detail (it is author-facing English, like a compiler error).
+        const detail = error instanceof Error ? error.message : String(error);
+        chip.el.setAttribute("title", `${m.doco_var_error_hint()}: ${detail}`);
+        dropColor(chip.el);
         chip.el.textContent = chip.raw;
       }
     }
@@ -120,28 +151,6 @@ function scheduleChartRefresh(state: PageState, charts: ReadonlySet<HTMLElement>
     for (const chart of pendingCharts) refreshChart(chart);
     pendingCharts.clear();
   }, CHART_REFRESH_MS);
-}
-
-// A chip click jumps to (and focuses) the first input its expression depends
-// on, preferring an unfilled one, answering "where do I fill this in?".
-function onChipClick(event: MouseEvent): void {
-  if (page === null || !(event.target instanceof Element)) return;
-  const el = event.target.closest<HTMLElement>("span.doco-var");
-  if (el === null) return;
-  const chip = page.chips.find((entry) => entry.el === el);
-  if (chip === undefined) return;
-  const { tainted } = page.store.resolved;
-  const inputNames = page.store.declarations
-    .filter((decl) => decl.kind === "input")
-    .map((decl) => decl.name);
-  const wanted =
-    chip.identifiers.find((name) => tainted.has(name) && inputNames.includes(name)) ??
-    chip.identifiers.find((name) => inputNames.includes(name));
-  if (wanted === undefined) return;
-  const field = document.getElementById(`doco-input-${wanted}`);
-  if (field === null) return;
-  field.scrollIntoView({ block: "center", behavior: "smooth" });
-  field.focus({ preventScroll: true });
 }
 
 /** Mounts the page: one shared store across all cards, a Svelte form per card,
@@ -191,7 +200,6 @@ export function mountPage(): void {
   state.unsubscribe = store.onChange(() => {
     updateChips(state);
   });
-  document.addEventListener("click", onChipClick);
   page = state;
   updateChips(state);
 }
@@ -203,6 +211,5 @@ export function teardownPage(): void {
   if (page.chartTimer !== null) window.clearTimeout(page.chartTimer);
   pendingCharts.clear();
   for (const app of page.apps) void unmount(app);
-  document.removeEventListener("click", onChipClick);
   page = null;
 }

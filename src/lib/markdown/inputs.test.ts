@@ -25,7 +25,19 @@ describe("parseDeclarationLine", () => {
         min: null,
         max: null,
         maxlen: 128,
+        options: null,
       },
+    });
+  });
+
+  it("parses select and boolean inputs", () => {
+    expect(
+      parseDeclarationLine('region: Region { type=select options="us-east|eu-west|ap-south" }'),
+    ).toMatchObject({
+      decl: { type: "select", options: ["us-east", "eu-west", "ap-south"] },
+    });
+    expect(parseDeclarationLine("tls: TLS { type=boolean default=true }")).toMatchObject({
+      decl: { type: "boolean", defaultValue: "true" },
     });
   });
 
@@ -64,6 +76,9 @@ describe("parseDeclarationLine", () => {
     expect(problemOf("x: L { secrett }")).toContain('unknown attribute "secrett"');
     expect(problemOf("x: L { type=email }")).toContain("unknown input type");
     expect(problemOf("x :=")).toContain("no expression");
+    expect(problemOf("x: L { type=select }")).toContain('needs options="a|b|c"');
+    expect(problemOf('x: L { options="a|b" }')).toContain("requires type=select");
+    expect(problemOf("x: L { type=boolean default=yes }")).toContain("default=true or");
   });
 
   it("unwraps autolinked URLs in attr values (canonicalizer round-trip)", () => {
@@ -87,6 +102,12 @@ describe("parseDeclarationLine", () => {
     expect(isValidVarName("port_2")).toBe(true);
     expect(isValidVarName("2port")).toBe(false);
     expect(isValidVarName("a.b")).toBe(false); // dotted can never be declared
+  });
+
+  it("rejects Object.prototype names (defense in depth for the resolver)", () => {
+    for (const name of ["toString", "constructor", "hasOwnProperty", "valueOf", "__proto__"]) {
+      expect(isValidVarName(name)).toBe(false);
+    }
   });
 });
 
@@ -120,6 +141,40 @@ describe("resolveVars", () => {
     expect(errors).toEqual({});
     expect(values.url).toBe("https://example.com:8080");
     expect(tainted.size).toBe(0);
+  });
+
+  it("taints an invalid non-empty input (a NaN must not render as filled)", () => {
+    const declarations = decls(["n: N { type=number }", "site: S { type=hostname }"]);
+    const { tainted } = resolveVars(declarations, { n: "abc", site: "-bad.example" }, evaluate);
+    expect(tainted.has("n")).toBe(true);
+    expect(tainted.has("site")).toBe(true);
+  });
+
+  it("selects validate against options and booleans coerce to real booleans", () => {
+    const declarations = decls([
+      'region: Region { type=select options="us-east|eu-west" default=us-east }',
+      "tls: TLS { type=boolean default=true }",
+      'scheme := tls ? "https" : "http"',
+    ]);
+    const ok = resolveVars(declarations, {}, evaluate);
+    expect(ok.tainted.size).toBe(0);
+    expect(ok.values.tls).toBe(true);
+    expect(ok.values.scheme).toBe("https");
+    const off = resolveVars(declarations, { tls: "false" }, evaluate);
+    expect(off.values.scheme).toBe("http");
+    const bad = resolveVars(declarations, { region: "mars-1" }, evaluate);
+    expect(bad.tainted.has("region")).toBe(true);
+  });
+
+  it("validates color inputs via the shared strict color check", () => {
+    const declarations = decls(["accent: Accent { type=color }"]);
+    expect(resolveVars(declarations, { accent: "#76b900" }, evaluate).tainted.size).toBe(0);
+    expect(resolveVars(declarations, { accent: "oklch(0.7 0.2 140)" }, evaluate).tainted.size).toBe(
+      0,
+    );
+    expect(
+      resolveVars(declarations, { accent: "not-a-color" }, evaluate).tainted.has("accent"),
+    ).toBe(true);
   });
 
   it("taints everything derived from an unfilled input", () => {

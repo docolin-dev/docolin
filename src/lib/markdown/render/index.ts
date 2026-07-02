@@ -226,8 +226,14 @@ function footnoteBackContent(_referenceIndex: number, rereferenceIndex: number):
   return iconHast("undo-2", "footnote-backref-icon");
 }
 
-/** Builds a render function bound to a shiki highlighter. */
-export function createMarkdownRenderer(highlight: Highlight): (source: string) => Promise<string> {
+/** Builds a render function bound to a shiki highlighter. The optional
+ *  `language` is the DOCO's language (frontmatter), not the reader's locale:
+ *  rendered HTML is edge-cached identically for every reader, so any prerendered
+ *  chrome string (e.g. the inputs-card fallback) localizes to the content's
+ *  language and falls back to English. */
+export function createMarkdownRenderer(
+  highlight: Highlight,
+): (source: string, language?: string) => Promise<string> {
   const processor = unified()
     .use(remarkParse)
     .use(remarkGfm)
@@ -261,8 +267,11 @@ export function createMarkdownRenderer(highlight: Highlight): (source: string) =
     .use(rehypeSanitizeUrls)
     .use(rehypeStringify);
 
-  return async (source: string): Promise<string> => {
-    const file = await processor.process(source);
+  return async (source: string, language?: string): Promise<string> => {
+    const file = await processor.process({
+      value: source,
+      data: { docoLanguage: language ?? "en" },
+    });
     return String(file);
   };
 }

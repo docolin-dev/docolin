@@ -624,7 +624,7 @@ describe("interactive variables", () => {
   it("tags declared expressions in prose and leaves undeclared ones literal", async () => {
     const html = await render(`${CARD}\nUse {{ port }} or {{ port * 2 }} but not {{ nope }}.\n`);
     expect(html).toContain('data-expr="port"');
-    expect(html).toContain("port * 2");
+    expect(html).toContain('data-expr="port * 2"');
     expect(html).not.toContain('data-expr="nope"');
     expect(html).toContain("{{ nope }}"); // stays literal text
   });
@@ -661,6 +661,17 @@ describe("interactive variables", () => {
     expect(html).toContain('data-expr="address"');
     expect(html).toContain('"name":"port"'.replaceAll('"', "&#x22;"));
     expect(html).not.toContain("invalid variable name");
+  });
+
+  it("shares one namespace across cards and reports cross-card redeclarations", async () => {
+    const html = await render(
+      '!!! inputs "One"\n    - port: Port { type=number default=1 }\n\n' +
+        '!!! inputs "Two"\n    - port: Port again\n    - height: Height\n\n' +
+        "Use {{ port + 1 }} and {{ height }}.\n",
+    );
+    expect(html).toContain('data-expr="port + 1"'); // declared in card one, used after card two
+    expect(html).toContain('data-expr="height"');
+    expect(html).toContain("already declared in another inputs card");
   });
 
   it("surfaces author mistakes in the card payload, not as breakage", async () => {

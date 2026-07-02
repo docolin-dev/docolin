@@ -1,4 +1,27 @@
 import jsep from "jsep";
+import {
+  parseColor,
+  formatHex,
+  formatRgb,
+  formatHsl,
+  formatOklch,
+  colorKind,
+  formatAs,
+  toOklchParts,
+  fromOklchParts,
+  type Rgba,
+  type ColorKind,
+} from "./color-convert.ts";
+import {
+  parseIsoDate,
+  formatIsoDate,
+  parseDateUnit,
+  addToDate,
+  diffDays,
+  isoWeekday,
+  isoToday,
+  type IsoDate,
+} from "./dates.ts";
 
 // docomd's expression engine: the `{{ expr }}` half of interactive variables.
 // jsep produces the AST (battle-tested lexing, number/string literals, and
@@ -60,12 +83,143 @@ const FUNCS: Record<string, (...args: ExprValue[]) => ExprValue> = Object.assign
       if (xs.length === 0) throw new Error("max() needs at least one argument");
       return Math.max(...xs.map(Number));
     },
+    abs: (x: ExprValue): number => Math.abs(Number(x)),
+    floor: (x: ExprValue): number => Math.floor(Number(x)),
+    ceil: (x: ExprValue): number => Math.ceil(Number(x)),
+    sqrt: (x: ExprValue): number => Math.sqrt(Number(x)),
+    clamp: (x: ExprValue, lo: ExprValue, hi: ExprValue): number =>
+      Math.min(Math.max(Number(x), Number(lo)), Number(hi)),
     upper: (s: ExprValue): string => String(s).toUpperCase(),
     lower: (s: ExprValue): string => String(s).toLowerCase(),
     trim: (s: ExprValue): string => String(s).trim(),
+    capitalize: (s: ExprValue): string => {
+      const str = String(s);
+      return str.length === 0 ? str : str[0].toUpperCase() + str.slice(1);
+    },
+    length: (s: ExprValue): number => String(s).length,
+    contains: (s: ExprValue, sub: ExprValue): boolean => String(s).includes(String(sub)),
+    // Plain string replace (replaceAll), never a regex, so no ReDoS. The output
+    // cap in evaluateExpression bounds any growth from a large replacement.
+    replace: (s: ExprValue, find: ExprValue, repl: ExprValue): string =>
+      String(find).length === 0 ? String(s) : String(s).replaceAll(String(find), String(repl)),
+    slice: (s: ExprValue, start: ExprValue, end: ExprValue = NaN): string => {
+      const str = String(s);
+      const from = Math.trunc(Number(start));
+      return Number.isNaN(Number(end)) ? str.slice(from) : str.slice(from, Math.trunc(Number(end)));
+    },
+    startswith: (s: ExprValue, prefix: ExprValue): boolean => String(s).startsWith(String(prefix)),
+    endswith: (s: ExprValue, suffix: ExprValue): boolean => String(s).endsWith(String(suffix)),
+    // Padding for lining up config columns; target length clamped so it can't
+    // become a memory lever.
+    padstart: (s: ExprValue, len: ExprValue, pad: ExprValue = " "): string =>
+      String(s).padStart(clampPad(len), String(pad)),
+    padend: (s: ExprValue, len: ExprValue, pad: ExprValue = " "): string =>
+      String(s).padEnd(clampPad(len), String(pad)),
+    // Reader-locale thousands separators ("50,000" / "50.000") for prose.
+    numberformat: (n: ExprValue): string => new Intl.NumberFormat(undefined).format(Number(n)),
     urlencode: (s: ExprValue): string => encodeURIComponent(String(s)),
+    // For `Authorization: Basic {{ b64encode(user + ":" + pass) }}`. btoa throws
+    // on non-latin1 input; that surfaces as an error chip, which is honest.
+    b64encode: (s: ExprValue): string => btoa(String(s)),
+    // Color conversions (pure math over the big four formats; an unsupported or
+    // malformed color throws, i.e. renders as an error chip).
+    tohex: (c: ExprValue): string => formatHex(requireColor(c)),
+    torgb: (c: ExprValue): string => formatRgb(requireColor(c)),
+    tohsl: (c: ExprValue): string => formatHsl(requireColor(c)),
+    tooklch: (c: ExprValue): string => formatOklch(requireColor(c)),
+    // Color manipulation in OKLCH (perceptually even steps), emitted back in
+    // the same format family the input used, so a derived palette matches the
+    // author's style. `amount` is 0..1 of lightness.
+    lighten: (c: ExprValue, amount: ExprValue): string => shiftLightness(c, Number(amount)),
+    darken: (c: ExprValue, amount: ExprValue): string => shiftLightness(c, -Number(amount)),
+    alpha: (c: ExprValue, a: ExprValue): string => {
+      const kind = requireColorKind(c);
+      const color = requireColor(c);
+      return formatAs(kind, { ...color, alpha: Math.min(1, Math.max(0, Number(a))) });
+    },
+    // Black or white, whichever reads better on the given color (WCAG relative
+    // luminance), for "text on your accent" derivations.
+    contrast: (c: ExprValue): string => {
+      const color = requireColor(c);
+      const lin = (ch: number): number =>
+        ch <= 0.04045 ? ch / 12.92 : ((ch + 0.055) / 1.055) ** 2.4;
+      const luminance = 0.2126 * lin(color.r) + 0.7152 * lin(color.g) + 0.0722 * lin(color.b);
+      return luminance > 0.179 ? "#000000" : "#ffffff";
+    },
+    // Calendar math on ISO dates (yyyy-mm-dd), UTC whole days, deterministic.
+    today: (): string => frozenToday,
+    dateadd: (d: ExprValue, n: ExprValue, unit: ExprValue): string => {
+      const parsedUnit = parseDateUnit(String(unit));
+      if (parsedUnit === null) {
+        throw new Error(`unknown date unit: ${String(unit)} (use days/weeks/months/years)`);
+      }
+      return formatIsoDate(addToDate(requireDate(d), Number(n), parsedUnit));
+    },
+    datediff: (from: ExprValue, to: ExprValue): number =>
+      diffDays(requireDate(from), requireDate(to)),
+    weekday: (d: ExprValue): number => isoWeekday(requireDate(d)),
+    // Reader-locale long/short date, for prose ("published March 3, 2026").
+    dateformat: (d: ExprValue, style: ExprValue = "long"): string => {
+      const parsed = requireDate(d);
+      const dateStyle = String(style);
+      if (
+        dateStyle !== "full" &&
+        dateStyle !== "long" &&
+        dateStyle !== "medium" &&
+        dateStyle !== "short"
+      ) {
+        throw new Error(`unknown date style: ${dateStyle} (use full/long/medium/short)`);
+      }
+      return new Intl.DateTimeFormat(undefined, { dateStyle, timeZone: "UTC" }).format(
+        new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day)),
+      );
+    },
   },
 );
+
+function clampPad(len: ExprValue): number {
+  return Math.min(200, Math.max(0, Math.trunc(Number(len))));
+}
+
+function requireColorKind(value: ExprValue): ColorKind {
+  const kind = colorKind(String(value));
+  if (kind === null) {
+    throw new Error(`not a convertible color: ${String(value)} (use hex, rgb, hsl, or oklch)`);
+  }
+  return kind;
+}
+
+function shiftLightness(c: ExprValue, delta: number): string {
+  const kind = requireColorKind(c);
+  const color = requireColor(c);
+  const { l, c: chroma, h } = toOklchParts(color);
+  const shifted = fromOklchParts(Math.min(1, Math.max(0, l + delta)), chroma, h, color.alpha);
+  return formatAs(kind, shifted);
+}
+
+function requireColor(value: ExprValue): Rgba {
+  const color = parseColor(String(value));
+  if (color === null) {
+    throw new Error(`not a convertible color: ${String(value)} (use hex, rgb, hsl, or oklch)`);
+  }
+  return color;
+}
+
+function requireDate(value: ExprValue): IsoDate {
+  const date = parseIsoDate(String(value));
+  if (date === null) throw new Error(`not a date: ${String(value)} (use yyyy-mm-dd)`);
+  return date;
+}
+
+// `today()` is frozen per evaluation pass: the caller (chip updater / resolver)
+// passes one value for the whole pass, so every expression on a page agrees on
+// the date, and tests inject a fixed day. Module state is safe: JS is
+// single-threaded and evaluateExpression sets it on entry, synchronously.
+let frozenToday = "1970-01-01";
+
+/** The built-in function names; the declarations layer reserves these so a
+ *  variable can never shadow a function. Single source of truth, no drift. */
+export const BUILTIN_FUNCTIONS: readonly string[] = Object.keys(FUNCS);
 
 // Comparisons only between same-type operands; JS cross-type coercion is a
 // footgun authors should hit as an error, not a wrong answer.
@@ -201,8 +355,15 @@ function evalNode(node: ExprNode, scope: Record<string, ExprValue>, depth: numbe
 /** Evaluates one docomd expression over the given variables. Throws on any
  *  disallowed construct or malformed input; the caller renders the error (an
  *  inline error chip / preview problem), it never surfaces as a crash. `vars`
- *  must hold scalars only; the declarations layer guarantees that. */
-export function evaluateExpression(expr: string, vars: Record<string, ExprValue>): ExprValue {
+ *  must hold scalars only; the declarations layer guarantees that. `todayIso`
+ *  freezes `today()`: pass one value for a whole update pass (tests pass a
+ *  fixed date); omitted, it snapshots the local calendar day per call. */
+export function evaluateExpression(
+  expr: string,
+  vars: Record<string, ExprValue>,
+  todayIso?: string,
+): ExprValue {
+  frozenToday = todayIso ?? isoToday();
   if (expr.length > MAX_INPUT_LENGTH) throw new Error("expression too long");
   // Null-prototype copy: inherited keys (`constructor`, `toString`, ...) can
   // never resolve as variables.

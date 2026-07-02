@@ -3,6 +3,8 @@ import type { Element, ElementContent, Properties } from "hast";
 import type { Root as MdastRoot, PhrasingContent } from "mdast";
 import type { VFile } from "vfile";
 import { visit, SKIP } from "unist-util-visit";
+import { m } from "$paraglide/messages";
+import { locales, type Locale } from "$paraglide/runtime";
 import { dedentBody, type Admonition } from "$lib/markdown/docomd";
 import { parseDeclarations, type VarDeclaration } from "$lib/markdown/inputs";
 import { expressionIdentifiers } from "$lib/markdown/expr";
@@ -30,6 +32,9 @@ export interface InputsCardData {
   title: string;
   declarations: VarDeclaration[];
   problems: string[];
+  /** The DOCO's language (not the reader's locale): prerendered fallback strings
+   *  localize to the content, since the HTML is cached identically for everyone. */
+  language: string;
 }
 
 // Keyed by the mdast node, same pattern as code.ts's builtBlocks: unique per
@@ -56,11 +61,16 @@ function declarationLine(itemRaw: string): string {
   return firstLine;
 }
 
-function parseCard(node: Admonition, source: string): InputsCardData {
+function parseCard(node: Admonition, source: string, language: string): InputsCardData {
   const problems: string[] = [];
   const raw = rawSlice(source, node as Positioned);
   if (raw === null) {
-    return { title: node.title, declarations: [], problems: ["inputs card has no source span"] };
+    return {
+      title: node.title,
+      declarations: [],
+      problems: ["inputs card has no source span"],
+      language,
+    };
   }
   // Reconstruct the exact string the admonition body was re-parsed from, so the
   // children's positions index into it.
@@ -82,6 +92,7 @@ function parseCard(node: Admonition, source: string): InputsCardData {
     title: node.title,
     declarations: parsed.declarations,
     problems: [...problems, ...parsed.problems],
+    language,
   };
 }
 
@@ -207,6 +218,7 @@ export function injectLineVars(line: Element, declared: ReadonlySet<string>): vo
 export function remarkVars() {
   return (tree: MdastRoot, file: VFile): undefined => {
     const source = String(file.value);
+    const language = typeof file.data.docoLanguage === "string" ? file.data.docoLanguage : "en";
     const declared = new Set<string>();
 
     // Pass 1: every card, wherever it nests, in document order (a later card's
@@ -225,7 +237,16 @@ export function remarkVars() {
           if (node.type === "admonition") {
             const admonition = node as unknown as Admonition;
             if (admonition.atype === "inputs") {
-              const card = parseCard(admonition, space);
+              const card = parseCard(admonition, space, language);
+              // Names are doc-scoped: a name already declared by an earlier card
+              // is dropped here and reported, so "first wins" is never silent.
+              card.declarations = card.declarations.filter((decl) => {
+                if (!declared.has(decl.name)) return true;
+                card.problems.push(
+                  `variable "${decl.name}" is already declared in another inputs card (the first wins)`,
+                );
+                return false;
+              });
               cards.set(admonition, card);
               for (const decl of card.declarations) declared.add(decl.name);
             }
@@ -287,19 +308,26 @@ export function inputsCard(node: Admonition): InputsCardData | undefined {
 
 // ---------- The card's HTML (server-static; the client mounts the real form) ----------
 
+// Prerendered strings localize to the doco's language (unknown languages fall
+// back to English); the reader's own locale only drives the client-mounted form.
+function docoLocale(language: string): Locale {
+  return (locales as readonly string[]).includes(language) ? (language as Locale) : "en";
+}
+
 /** Renders an inputs card: a bordered panel with the title bar, a canvas the
  *  client mounts the Svelte form into (shadcn inputs), and a static fallback
  *  list (what agents, no-JS readers, and the pre-mount flash see). The full
  *  declaration set rides in a data attribute as JSON for the client. */
 export function renderInputsCard(card: InputsCardData): Element {
-  const title = card.title.length > 0 ? card.title : "Inputs";
+  const locale = docoLocale(card.language);
+  const title = card.title.length > 0 ? card.title : m.doco_inputs_fallback_title({}, { locale });
   const inputs = card.declarations.filter((decl) => decl.kind === "input");
   const computed = card.declarations.filter((decl) => decl.kind === "computed");
 
   const fallbackRows: ElementContent[] = inputs.map((decl) =>
     h("li", { class: ["py-0.5"] }, [
       h("span", { class: ["font-medium"] }, decl.label),
-      h("span", { class: ["text-muted-foreground"] }, [" , "]),
+      h("span", { class: ["text-muted-foreground"] }, [": "]),
       h("code", `{{ ${decl.name} }}`),
     ]),
   );
@@ -340,7 +368,10 @@ export function renderInputsCard(card: InputsCardData): Element {
               h(
                 "p",
                 { class: ["text-muted-foreground", "mt-2", "text-xs"] },
-                `Derived: ${computed.map((decl) => decl.name).join(", ")}`,
+                m.doco_inputs_fallback_derived(
+                  { names: computed.map((decl) => decl.name).join(", ") },
+                  { locale },
+                ),
               ),
             ]
           : []),

@@ -68,18 +68,26 @@ Open a card with `!!! inputs`, one list item per variable:
 
     **{{ farm }}** handles **{{ ants }}** ants a day, {{ round(ants / 86400, 2) }} a second.
 
-Each input line is `name: Label { attributes }`. The name is what expressions use (letters, digits, underscores, starting with a letter); the label is what the reader sees. Place the card where the reader should stop and fill it, right after the intro or just before the section that needs it, and use several cards if a long guide has several setups. Names are shared across the whole doco.
+Each input line is `name: Label { attributes }`. The name is what expressions use (letters, digits, underscores, starting with a letter); the label is what the reader sees. Place the card where the reader should stop and fill it, right after the intro or just before the section that needs it.
+
+### Scope: one namespace per doco
+
+- **Use as many cards as the guide needs.** A long walkthrough can put a "Server setup" card in one section and a "Client setup" card in another; every card feeds the same doco-wide variable set.
+- **Everything sees everything.** A `{{ }}` anywhere can use a variable from any card, even one declared further down the page; where the card sits is presentation, not scope.
+- **Declarations only live in cards.** Inputs and `:=` derived variables are always list items of an `!!! inputs` card, never loose in prose, but any card's derived variable can reference inputs from any other card.
+- **A name is declared once.** Redeclaring it, in the same card or another one, keeps the first declaration and reports the repeat on the later card.
 
 The attributes:
 
-| Attribute       | Meaning                                                          |
-| --------------- | ---------------------------------------------------------------- |
-| `type=`         | Validation: `text` (default), `number`, `url`, or `hostname`.    |
-| `secret`        | Password-masked with a reveal toggle. Never stored, memory only. |
-| `default="..."` | Pre-filled value, used until the reader types something.         |
-| `placeholder=`  | Hint text shown in the empty field.                              |
-| `min=` / `max=` | Value bounds for `type=number`.                                  |
-| `maxlen=`       | Maximum input length, any type.                                  |
+| Attribute        | Meaning                                                                                                                                                                                                                                                                                                                                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `type=`          | Validation: `text` (default), `number`, `url`, `hostname`, `color`, `date`, `select`, or `boolean`. `color` takes any CSS color, typed or picked from the built-in picker, and carries a live swatch wherever the value lands. `date` is `yyyy-mm-dd`, typed or picked from a calendar. `select` renders a dropdown of its `options`. `boolean` renders a switch and is a real boolean in expressions. |
+| `secret`         | Password-masked with a reveal toggle. Never stored, memory only.                                                                                                                                                                                                                                                                                                                                       |
+| `default="..."`  | Pre-filled value, used until the reader types something.                                                                                                                                                                                                                                                                                                                                               |
+| `placeholder=`   | Hint text shown in the empty field.                                                                                                                                                                                                                                                                                                                                                                    |
+| `min=` / `max=`  | Value bounds for `type=number`.                                                                                                                                                                                                                                                                                                                                                                        |
+| `maxlen=`        | Maximum input length, any type.                                                                                                                                                                                                                                                                                                                                                                        |
+| `options="a\|b"` | The choices for `type=select`, pipe-separated, shown in authored order.                                                                                                                                                                                                                                                                                                                                |
 
 ## Computed variables
 
@@ -111,18 +119,25 @@ curl -X POST "{{ feed_url }}" --data '{"antsPerDay": {{ ants }}}'
     curl -X POST "{{ feed_url }}" --data '{"antsPerDay": {{ ants }}}'
     ```
 
-Unfilled values show as dashed placeholder chips, and clicking one jumps to its input. Filled values are tinted so the reader always sees exactly where their data landed, and the copy button copies the substituted command.
+Unfilled values show as dashed placeholder chips (hover one to see why); filled values are tinted so the reader always sees exactly where their data landed. The code block's copy button copies the whole substituted command.
 
 ## The expression language
 
 Deliberately tiny: pure expressions over your declared names, numbers, strings (`"..."`), and booleans. No loops, no property access, no way to reach anything outside the doco's own variables, by design, since expressions run on every reader's machine.
 
-| What       | Syntax                                                                                  |
-| ---------- | --------------------------------------------------------------------------------------- |
-| Arithmetic | `+` `-` `*` `/` `%` (standard precedence, parentheses)                                  |
-| Comparison | `==` `!=` `<` `<=` `>` `>=`                                                             |
-| Logic      | `&&` `\|\|` `!` and the ternary `cond ? a : b`                                          |
-| Functions  | `round(x, digits)` `min(...)` `max(...)` `upper(s)` `lower(s)` `trim(s)` `urlencode(s)` |
+| What       | Syntax                                                                                                                                                                                                                                         |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Arithmetic | `+` `-` `*` `/` `%` (standard precedence, parentheses)                                                                                                                                                                                         |
+| Comparison | `==` `!=` `<` `<=` `>` `>=`                                                                                                                                                                                                                    |
+| Logic      | `&&` `\|\|` `!` and the ternary `cond ? a : b`                                                                                                                                                                                                 |
+| Math       | `round(x, digits)` `min(...)` `max(...)` `abs(x)` `floor(x)` `ceil(x)` `sqrt(x)` `clamp(x, lo, hi)` `numberformat(n)`                                                                                                                          |
+| Strings    | `upper(s)` `lower(s)` `trim(s)` `capitalize(s)` `length(s)` `contains(s, sub)` `startswith(s, p)` `endswith(s, p)` `replace(s, find, repl)` `slice(s, start, end)` `padstart(s, len, pad)` `padend(s, len, pad)` `urlencode(s)` `b64encode(s)` |
+| Colors     | `tohex(c)` `torgb(c)` `tohsl(c)` `tooklch(c)` `lighten(c, amt)` `darken(c, amt)` `alpha(c, a)` `contrast(c)`                                                                                                                                   |
+| Dates      | `today()` `dateadd(d, n, unit)` `datediff(from, to)` `weekday(d)` `dateformat(d, style)`                                                                                                                                                       |
+
+Every function is pure, total, and bounded; `replace` is plain text replacement, never a pattern. Color functions take any hex/rgb/hsl/oklch value; the manipulation ones (`lighten`, `darken`, `alpha`) step in perceptual OKLCH and answer in the same format family they were given, so one accent input can derive a whole palette. Dates are `yyyy-mm-dd` strings; `dateadd` units are `days`/`weeks`/`months`/`years` (month math clamps, so Jan 31 plus one month is Feb 28), `datediff` counts days, and `dateformat` styles are `full`/`long`/`medium`/`short` in the reader's locale.
+
+One deliberate exception to "same value for everyone": `today()` is the reader's calendar day, frozen for a whole update pass so every expression on the page agrees. A doco can say "your cert expires in `{{ datediff(today(), expiry) }}` days" and stay live for each reader, which also means a copied snapshot is only true on the day it was copied.
 
 Three rules keep results predictable: `+` concatenates when either side is a string and adds otherwise; `==` is strict (no type juggling); ordering comparisons require both sides to be the same type, mixing is an error. A math slip like dividing a string shows `NaN` honestly, and a genuinely broken expression renders an error chip whose hover explains itself, never a broken page.
 
@@ -146,6 +161,46 @@ Chips work in table cells, and a [chart](./charts.md) drawn from a table with ex
     | Night | {{ round(ants \* 0.3) }} |
 
     { .chart type=bar title="Who eats when" }
+
+## Choices and switches
+
+A `select` gives the reader a fixed choice, and a `boolean` is a switch that flips whole passages through ternaries. Together they cover the "which distro / which region / TLS on or off" pattern that otherwise forks a guide into parallel copies:
+
+```md novars
+!!! inputs "Where and how"
+    - region: Region { type=select options="us-east|eu-west|ap-south" default=eu-west }
+    - tls: TLS { type=boolean default=true }
+    - scheme := tls ? "https" : "http"
+```
+
+!!! output "Rendered"
+    !!! inputs "Where and how"
+        - region: Region { type=select options="us-east|eu-west|ap-south" default=eu-west }
+        - tls: TLS { type=boolean default=true }
+        - scheme := tls ? "https" : "http"
+
+    Your farm talks {{ scheme }} to **{{ region }}**, which is {{ tls ? "encrypted, good" : "unencrypted, only do this in a lab" }}.
+
+## Colors and dates, live
+
+A `type=color` input opens docolin's picker (or takes any typed CSS color), and every chip holding a color value carries a live swatch and copies on click, exactly like an inline color. A `type=date` input opens a calendar. Both feed the same expression language:
+
+```md novars
+!!! inputs "Look and feel"
+    - accent: Accent { type=color default="#d97706" }
+    - launch: Launch day { type=date default="2026-08-01" }
+    - hover := lighten(accent, 0.1)
+    - countdown := datediff(today(), launch)
+```
+
+!!! output "Rendered"
+    !!! inputs "Look and feel"
+        - accent: Accent { type=color default="#d97706" }
+        - launch: Launch day { type=date default="2026-08-01" }
+        - hover := lighten(accent, 0.1)
+        - countdown := datediff(today(), launch)
+
+    Your accent is {{ accent }}, hover state {{ hover }}, text on it {{ contrast(accent) }}. Launch is {{ dateformat(launch, "long") }}, {{ countdown }} days from today.
 
 ## What never substitutes
 

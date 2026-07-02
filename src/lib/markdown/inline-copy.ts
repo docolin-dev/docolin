@@ -41,7 +41,9 @@ export function setupInlineCopy(): () => void {
   enhanceSwatches();
   function handler(event: MouseEvent): void {
     if (!(event.target instanceof Element)) return;
-    const code = event.target.closest<HTMLElement>("code.doco-copy");
+    // Inline code tagged copyable, plus variable chips whose value is a color
+    // (colors are copy-on-click by convention everywhere on docolin).
+    const code = event.target.closest<HTMLElement>("code.doco-copy, span.doco-var.doco-copy");
     if (code === null) return;
     const text = copyableText(code);
     void navigator.clipboard.writeText(text).then(

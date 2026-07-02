@@ -26,8 +26,8 @@ export type { TocEntry };
 
 const render = createMarkdownRenderer(highlightCode);
 
-export function renderMarkdown(source: string): Promise<string> {
-  return render(source);
+export function renderMarkdown(source: string, language?: string): Promise<string> {
+  return render(source, language);
 }
 
 /** Top-level h2/h3 headings for the doco viewer's table of contents. */

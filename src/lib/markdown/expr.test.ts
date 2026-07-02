@@ -51,6 +51,82 @@ describe("evaluateExpression: correctness", () => {
     expect(() => evaluateExpression("min()", {})).toThrow("at least one argument");
   });
 
+  it("runs the extended helper functions", () => {
+    expect(evaluateExpression("abs(-4)", {})).toBe(4);
+    expect(evaluateExpression("floor(4.9)", {})).toBe(4);
+    expect(evaluateExpression("ceil(4.1)", {})).toBe(5);
+    expect(evaluateExpression("sqrt(16)", {})).toBe(4);
+    expect(evaluateExpression("clamp(15, 1, 10)", {})).toBe(10);
+    expect(evaluateExpression('capitalize("pango")', {})).toBe("Pango");
+    expect(evaluateExpression('length("abcd")', {})).toBe(4);
+    expect(evaluateExpression('contains("pangolin", "gol")', {})).toBe(true);
+    expect(evaluateExpression('replace("a-b-c", "-", ".")', {})).toBe("a.b.c");
+    expect(evaluateExpression('replace("abc", "", "x")', {})).toBe("abc"); // empty find is a no-op
+    expect(evaluateExpression('slice("pangolin", 0, 5)', {})).toBe("pango");
+    expect(evaluateExpression('slice("pangolin", 4)', {})).toBe("olin");
+    expect(evaluateExpression('b64encode("user:pass")', {})).toBe("dXNlcjpwYXNz");
+  });
+
+  it("converts colors between the big four formats", () => {
+    expect(evaluateExpression('tohex("rgb(118 185 0)")', {})).toBe("#76b900");
+    expect(evaluateExpression('torgb("#76b900")', {})).toBe("rgb(118 185 0)");
+    expect(evaluateExpression('tohsl("#ff0000")', {})).toBe("hsl(0 100% 50%)");
+    // The oklch round trip is lossy by one bit through the 3-decimal string
+    // form; assert it stays within one step per channel.
+    const roundTripped = String(evaluateExpression('tohex(tooklch("#76b900"))', {}));
+    for (const [i, expected] of [0x76, 0xb9, 0x00].entries()) {
+      const channel = parseInt(roundTripped.slice(1 + i * 2, 3 + i * 2), 16);
+      expect(Math.abs(channel - expected)).toBeLessThanOrEqual(1);
+    }
+    expect(() => evaluateExpression('tohex("hwb(120 0% 0%)")', {})).toThrow("not a convertible");
+    expect(() => evaluateExpression('tohex("red")', {})).toThrow("not a convertible");
+  });
+
+  it("runs the string predicates, padding, and number formatting", () => {
+    expect(evaluateExpression('startswith("pangolin", "pango")', {})).toBe(true);
+    expect(evaluateExpression('endswith("pangolin", "lin")', {})).toBe(true);
+    expect(evaluateExpression('padstart("7", 3, "0")', {})).toBe("007");
+    expect(evaluateExpression('padend("ab", 5, ".")', {})).toBe("ab...");
+    expect(evaluateExpression('padstart("x", 999999)', {}).toString().length).toBe(200); // clamped
+    expect(String(evaluateExpression("numberformat(50000)", {}))).toContain("50");
+  });
+
+  it("manipulates colors perceptually, keeping the input's format family", () => {
+    const lighter = String(evaluateExpression('lighten("#76b900", 0.2)', {}));
+    expect(lighter.startsWith("#")).toBe(true);
+    expect(lighter).not.toBe("#76b900");
+    const rgbDarker = String(evaluateExpression('darken("rgb(118 185 0)", 0.2)', {}));
+    expect(rgbDarker.startsWith("rgb(")).toBe(true);
+    expect(String(evaluateExpression('alpha("#76b900", 0.5)', {}))).toBe("#76b90080");
+    expect(evaluateExpression('contrast("#76b900")', {})).toBe("#000000");
+    expect(evaluateExpression('contrast("#1a1a2b")', {})).toBe("#ffffff");
+  });
+
+  it("does calendar math on ISO dates with a frozen today()", () => {
+    const today = "2026-07-03";
+    expect(evaluateExpression("today()", {}, today)).toBe("2026-07-03");
+    expect(evaluateExpression('dateadd(today(), 10, "days")', {}, today)).toBe("2026-07-13");
+    expect(evaluateExpression('dateadd("2026-01-31", 1, "month")', {}, today)).toBe("2026-02-28");
+    expect(evaluateExpression('dateadd("2026-07-03", 2, "weeks")', {}, today)).toBe("2026-07-17");
+    expect(evaluateExpression('dateadd("2024-02-29", 1, "years")', {}, today)).toBe("2025-02-28");
+    expect(evaluateExpression('datediff(today(), "2026-12-31")', {}, today)).toBe(181);
+    expect(evaluateExpression('weekday("2026-07-03")', {}, today)).toBe(5); // a Friday
+    expect(() => evaluateExpression('dateadd("2026-02-31", 1, "days")', {}, today)).toThrow(
+      "not a date",
+    );
+    expect(() => evaluateExpression('dateadd(today(), 1, "fortnights")', {}, today)).toThrow(
+      "unknown date unit",
+    );
+  });
+
+  it("formats dates for prose", () => {
+    const formatted = evaluateExpression('dateformat("2026-07-03", "medium")', {}, "2026-07-03");
+    expect(String(formatted)).toContain("2026");
+    expect(() => evaluateExpression('dateformat("2026-07-03", "fancy")', {})).toThrow(
+      "unknown date style",
+    );
+  });
+
   it("propagates NaN instead of throwing (presentation is the render layer's job)", () => {
     expect(evaluateExpression("0 / 0", {})).toBeNaN();
     expect(evaluateExpression('"a" * 2', {})).toBeNaN();

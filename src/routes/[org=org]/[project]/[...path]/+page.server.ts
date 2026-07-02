@@ -237,7 +237,7 @@ export const load: PageServerLoad = async ({ params, setHeaders, isDataRequest }
   // Compute path-from-project-root for the versioned-URL form in the dropdown.
   const pathFromProjectRoot = pathFromSourcePath(doco.pathInSource ?? "", proj.subpath);
 
-  const bodyHtml = await renderMarkdown(doco.bodyText);
+  const bodyHtml = await renderMarkdown(doco.bodyText, doco.language);
   const toc = extractDocoToc(doco.bodyText);
   const readingMinutes = extractReadingMinutes(doco.bodyText);
 

@@ -5,6 +5,7 @@ import {
   type ResolvedVars,
 } from "$lib/markdown/inputs";
 import { evaluateExpression } from "$lib/markdown/expr";
+import { isoToday } from "$lib/markdown/dates";
 
 // The one reactive source of truth for a page's interactive variables. Every
 // mounted inputs card reads and writes it (Svelte 5 runes, so their fields and
@@ -26,6 +27,9 @@ export class VarsStore {
   /** Raw input values as typed by the reader (or restored from storage). */
   inputValues = $state<Record<string, string>>({});
   resolved = $state<ResolvedVars>(emptyResolution());
+  /** The frozen `today()` of the current pass; the chip updater reuses it so
+   *  every expression on the page agrees on the date. */
+  todayIso = isoToday();
 
   private readonly storageKey: string;
   private readonly inputs: InputDeclaration[];
@@ -72,7 +76,10 @@ export class VarsStore {
   }
 
   private resolve(): void {
-    this.resolved = resolveVars(this.declarations, this.inputValues, evaluateExpression);
+    this.todayIso = isoToday();
+    this.resolved = resolveVars(this.declarations, this.inputValues, (expr, vars) =>
+      evaluateExpression(expr, vars, this.todayIso),
+    );
     for (const listener of this.listeners) listener();
   }
 

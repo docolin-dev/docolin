@@ -16,12 +16,19 @@ export function renderVars(): void {
   const current = ++generation;
   impl?.teardownPage();
   if (cards.length === 0) return;
-  void import("./vars-impl.ts").then((mod) => {
-    // A navigation may have raced the import; only the newest scan mounts.
-    if (current !== generation) return;
-    impl = mod;
-    mod.mountPage();
-  });
+  import("./vars-impl.ts")
+    .then((mod) => {
+      // A navigation may have raced the import; only the newest scan mounts.
+      if (current !== generation) return;
+      impl = mod;
+      mod.mountPage();
+    })
+    .catch((error: unknown) => {
+      // A failed chunk load (network blip, deploy skew) must not become an
+      // unhandled rejection; the server-rendered fallback card stays visible,
+      // which IS the user-facing degraded state.
+      console.error("docolin: interactive variables failed to load", error);
+    });
 }
 
 /** Wires interactive variables; the returned teardown unmounts everything. */
