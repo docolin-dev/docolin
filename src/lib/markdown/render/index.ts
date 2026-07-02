@@ -47,7 +47,12 @@ import { rehypeSanitizeUrls } from "./sanitize.ts";
 //    deploy window. Ship renderer logic and the docs that use it in SEPARATE
 //    deploys (renderer first, docs after it is live) to avoid this window.
 // 5: interactive variables (!!! inputs cards, {{ expr }} markers in prose + code).
-export const RENDERER_VERSION = "5";
+// 6: re-purge only, same trap as 4: the variables docs were resynced minutes
+//    after the merge, while an old worker instance was still serving, so old-
+//    renderer output got cached under version 5. The tick-tock rule (renderer
+//    deploy first, docs after it is verifiably live) applies even with webhooks
+//    off; wait for the new build to actually serve before resyncing.
+export const RENDERER_VERSION = "6";
 
 /** Shiki dual theme: light + dark emitted together as CSS variables
  *  (`defaultColor: false`), so rendered code switches with the `.dark` class with
