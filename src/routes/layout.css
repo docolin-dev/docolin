@@ -726,6 +726,34 @@ html:not(.dark) .dark-only {
   margin: 0;
 }
 
+/* Interactive variables. A `{{ expr }}` chip must be VISIBLY substituted, both
+   as trust (the reader sees exactly where their value landed) and as affordance
+   (click jumps to the input). Unfilled shows the raw placeholder dashed; filled
+   keeps a quiet primary tint; an error explains itself via title. Values are
+   plain text (textContent writes), selectable and copyable like any code. */
+.doco-var {
+  border-bottom: 1px dashed color-mix(in oklch, var(--muted-foreground) 60%, transparent);
+  cursor: pointer;
+  color: var(--muted-foreground);
+  transition: background-color 150ms;
+}
+.doco-var[data-var-state="filled"] {
+  border-bottom-color: color-mix(in oklch, var(--primary) 45%, transparent);
+  background: color-mix(in oklch, var(--primary) 12%, transparent);
+  color: inherit;
+}
+.doco-var[data-var-state="error"] {
+  border-bottom: 1px dashed var(--destructive);
+  color: var(--destructive);
+}
+.doco-var:hover {
+  background: color-mix(in oklch, var(--primary) 20%, transparent);
+}
+/* Once the live form is mounted, the static fallback list is redundant. */
+.doco-inputs[data-inputs-mounted] .doco-inputs-fallback {
+  display: none;
+}
+
 /* The viewer reuses the source blocks' shiki output: its token spans carry shiki's
    color vars (same as .code-block .shiki span), and its body uses the shiki
    background handed over from the source block, so the diff reads like a code block.

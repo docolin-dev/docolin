@@ -6,6 +6,7 @@ import { admonitionTitle, type Admonition } from "$lib/markdown/docomd";
 import { iconHast, type IconName } from "./icons.ts";
 import { renderCards } from "./cards.ts";
 import { renderDiff } from "./diff.ts";
+import { inputsCard, renderInputsCard } from "./vars.ts";
 
 // docolin's design layer for admonitions: turns a docomd `admonition` mdast node
 // into the styled hast (Tailwind classes + Lucide icons) the doco viewer renders.
@@ -299,5 +300,11 @@ export function admonitionHandler(state: State, node: Admonition): Element {
   if (node.atype === "accordion") return renderAccordion(state, node);
   if (node.atype === "output") return renderOutput(state, node);
   if (node.atype === "diff") return renderDiff(state, node);
+  if (node.atype === "inputs") {
+    // Falls through to the neutral box when remarkVars did not run (a pipeline
+    // without the plugin), so the card degrades instead of vanishing.
+    const card = inputsCard(node);
+    if (card !== undefined) return renderInputsCard(card);
+  }
   return renderCallout(state, node);
 }

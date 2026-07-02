@@ -64,6 +64,19 @@ function teardownAll(): void {
   apps.clear();
 }
 
+/** Re-mounts one chart figure, re-reading its source table. Interactive
+ *  variables call this (debounced) when a `{{ }}` chip inside the table
+ *  changed, so charts recompute live with the reader's values. */
+export function refreshChart(figure: HTMLElement): void {
+  const app = apps.get(figure);
+  if (app !== undefined) {
+    void unmount(app);
+    apps.delete(figure);
+  }
+  claimed.delete(figure);
+  void mountChart(figure);
+}
+
 // Copy the chart's source table as a Markdown table (rebuilt from the kept <table>,
 // re-aligned), with the same `data-copied` feedback the code-block copy button uses.
 function onCopyClick(event: MouseEvent): void {

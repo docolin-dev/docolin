@@ -22,6 +22,7 @@ import { admonitionHandler } from "./admonition.ts";
 import { tabbedSetHandler } from "./tabs.ts";
 import { rehypeIconShortcodes } from "./icon-shortcode.ts";
 import { remarkCode, codeHandler, type Highlight } from "./code.ts";
+import { remarkVars } from "./vars.ts";
 import { chartHandler } from "./chart.ts";
 import { rehypeAnnotations } from "./annotations.ts";
 import { remarkInlineEnhance } from "./inline-enhance.ts";
@@ -45,7 +46,8 @@ import { rehypeSanitizeUrls } from "./sanitize.ts";
 //    still live, so broken renders of the new syntax got edge-cached in the
 //    deploy window. Ship renderer logic and the docs that use it in SEPARATE
 //    deploys (renderer first, docs after it is live) to avoid this window.
-export const RENDERER_VERSION = "4";
+// 5: interactive variables (!!! inputs cards, {{ expr }} markers in prose + code).
+export const RENDERER_VERSION = "5";
 
 /** Shiki dual theme: light + dark emitted together as CSS variables
  *  (`defaultColor: false`), so rendered code switches with the `.dark` class with
@@ -235,6 +237,7 @@ export function createMarkdownRenderer(highlight: Highlight): (source: string) =
     .use(remarkAttrList)
     .use(remarkChart)
     .use(remarkBlockAttrList)
+    .use(remarkVars)
     .use(remarkInlineEnhance)
     .use(remarkMedia)
     .use(remarkHeadingIds)
