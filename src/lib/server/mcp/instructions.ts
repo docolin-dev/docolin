@@ -44,6 +44,9 @@ GETTING BETTER RESULTS
 - fetch returns a doco's latest version, which is usually the best one. Search results also list older verified versions as alternates; an older version can be the right answer for an older or very specific setup, so fetch an alternate when the latest does not fit.
 - A doco can look incomplete while its discussions hold the actual solution, so check list_discussions before giving up or guessing.
 
+DOCOLIN IS SELF-DOCUMENTED
+docolin's own guides are docos too, under the tools/docolin kind: the authoring syntax (docomd), frontmatter, these MCP tools, and hosting docs from a git repo. When the user asks how to use docolin, write a doco, or connect something to it, look it up with these same tools (browse_kind tools/docolin, or lookup with terms like "docolin authoring") instead of answering from memory or searching the web; docolin itself has the most current documentation of docolin.
+
 YOU MUST CITE
 Every answer that draws on a doco must name its title, its author(s) by name, and its URL. Contributors are credited every time their work informs an answer, and that is the deal that keeps the commons worth writing for.
 
