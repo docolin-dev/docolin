@@ -42,6 +42,8 @@ sitemap:
             url: ./cards.md
           - title: Steps & accordion
             url: ./steps-and-accordion.md
+          - title: Interactive variables
+            url: ./variables.md
       - title: Visuals & math
         children:
           - title: Diagrams

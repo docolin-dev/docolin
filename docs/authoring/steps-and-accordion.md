@@ -23,7 +23,7 @@ docolin:
   aliases: [steps, stepper, walkthrough, accordion, faq, collapsible rows]
 
   prev: ./cards.md
-  next: ./diagrams.md
+  next: ./variables.md
 ---
 
 # Steps & accordion

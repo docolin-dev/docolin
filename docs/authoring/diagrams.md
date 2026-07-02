@@ -22,7 +22,7 @@ docolin:
 
   aliases: [diagrams, mermaid, flowchart, sequence diagram, state diagram]
 
-  prev: ./steps-and-accordion.md
+  prev: ./variables.md
   next: ./charts.md
 ---
 
