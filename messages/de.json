@@ -568,6 +568,8 @@
   "doco_inputs_error_boolean": "Muss wahr oder falsch sein.",
   "doco_inputs_pick_color": "Farbe wählen",
   "doco_inputs_pick_date": "Datum wählen",
+  "doco_inputs_hue": "Farbton",
+  "doco_inputs_area_value": "Sättigung {saturation} %, Helligkeit {brightness} %",
   "doco_inputs_fallback_title": "Eingaben",
   "doco_inputs_fallback_derived": "Abgeleitet: {names}",
   "doco_var_error_hint": "Dieser Ausdruck enthält einen Fehler",

@@ -568,6 +568,8 @@
   "doco_inputs_error_boolean": "Must be true or false.",
   "doco_inputs_pick_color": "Pick a color",
   "doco_inputs_pick_date": "Pick a date",
+  "doco_inputs_hue": "Hue",
+  "doco_inputs_area_value": "Saturation {saturation}%, brightness {brightness}%",
   "doco_inputs_fallback_title": "Inputs",
   "doco_inputs_fallback_derived": "Derived: {names}",
   "doco_var_error_hint": "This expression has an error",

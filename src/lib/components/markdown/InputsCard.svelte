@@ -98,6 +98,7 @@
                 checked={currentValue(decl) === "true"}
                 onCheckedChange={(checked: boolean) => {
                   store.setValue(decl.name, checked ? "true" : "false");
+                  touched.add(decl.name);
                 }}
               />
             </div>
@@ -107,6 +108,7 @@
               value={currentValue(decl)}
               onValueChange={(picked: string) => {
                 store.setValue(decl.name, picked);
+                touched.add(decl.name);
               }}
             >
               <Select.Trigger id={`doco-input-${decl.name}`} class="w-full">

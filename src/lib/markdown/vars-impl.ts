@@ -4,6 +4,7 @@ import { VarsStore } from "./vars-store.svelte.ts";
 import { evaluateExpression, expressionIdentifiers, type ExprValue } from "./expr.ts";
 import type { VarDeclaration } from "./inputs.ts";
 import { normalizeColor } from "./color.ts";
+import { makeCopyFocusable } from "./inline-copy.ts";
 import { refreshChart } from "./charts.ts";
 import InputsCard from "$lib/components/markdown/InputsCard.svelte";
 
@@ -84,6 +85,8 @@ function displayValue(value: ExprValue): string {
 function dropColor(el: HTMLElement): void {
   el.classList.remove("doco-copy");
   el.removeAttribute("data-color");
+  el.removeAttribute("role");
+  el.removeAttribute("tabindex");
 }
 
 function updateChips(state: PageState): void {
@@ -115,6 +118,7 @@ function updateChips(state: PageState): void {
           chip.el.classList.add("doco-copy");
           chip.el.setAttribute("data-color", color);
           chip.el.setAttribute("title", m.doco_inline_copy_hint());
+          makeCopyFocusable(chip.el);
           const swatch = document.createElement("span");
           swatch.className = "doco-swatch-chip";
           swatch.style.background = color;

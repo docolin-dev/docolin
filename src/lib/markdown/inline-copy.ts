@@ -13,9 +13,14 @@ function copyableText(code: HTMLElement): string {
   return code.getAttribute("data-color") ?? code.textContent;
 }
 
+// Inline code tagged copyable, plus variable chips whose value is a color
+// (colors are copy-on-click by convention everywhere on docolin).
+const COPYABLE = "code.doco-copy, span.doco-var.doco-copy";
+
 /** Injects the color chip into every not-yet-enhanced swatch under `root`, and
- *  gives every copyable inline code its localized "click to copy" hover hint.
- *  Idempotent, so it is safe to re-run after each client navigation. */
+ *  gives every copyable inline code its localized "click to copy" hover hint
+ *  plus keyboard reachability (they are buttons, effectively). Idempotent, so
+ *  it is safe to re-run after each client navigation. */
 export function enhanceSwatches(root: ParentNode = document): void {
   const swatches = root.querySelectorAll<HTMLElement>("code.doco-swatch:not([data-swatch-ready])");
   for (const code of swatches) {
@@ -32,35 +37,54 @@ export function enhanceSwatches(root: ParentNode = document): void {
   }
   for (const code of root.querySelectorAll<HTMLElement>("code.doco-copy:not([title])")) {
     code.title = m.doco_inline_copy_hint();
+    makeCopyFocusable(code);
   }
 }
 
-/** Wires click-to-copy for inline code (swatches + `{.copy}`) and does the initial
- *  swatch enhancement. Returns a teardown. */
+/** Marks a copyable element as a keyboard-reachable button (Enter/Space copy,
+ *  handled by the shared listeners). Chips call this when they turn colored. */
+export function makeCopyFocusable(el: HTMLElement): void {
+  el.tabIndex = 0;
+  el.setAttribute("role", "button");
+}
+
+function copyFrom(code: HTMLElement): void {
+  const text = copyableText(code);
+  void navigator.clipboard.writeText(text).then(
+    () => {
+      code.setAttribute("data-copied", "");
+      window.setTimeout(() => {
+        code.removeAttribute("data-copied");
+      }, 1200);
+      // The copied value as the description, so the reader sees what actually
+      // landed in the clipboard (a swatch's color value, the text otherwise).
+      toast.success(m.doco_inline_copied_toast(), { description: text });
+    },
+    () => undefined,
+  );
+}
+
+/** Wires copy for inline code (swatches + `{.copy}`) via click and keyboard,
+ *  and does the initial swatch enhancement. Returns a teardown. */
 export function setupInlineCopy(): () => void {
   enhanceSwatches();
-  function handler(event: MouseEvent): void {
+  function onClick(event: MouseEvent): void {
     if (!(event.target instanceof Element)) return;
-    // Inline code tagged copyable, plus variable chips whose value is a color
-    // (colors are copy-on-click by convention everywhere on docolin).
-    const code = event.target.closest<HTMLElement>("code.doco-copy, span.doco-var.doco-copy");
-    if (code === null) return;
-    const text = copyableText(code);
-    void navigator.clipboard.writeText(text).then(
-      () => {
-        code.setAttribute("data-copied", "");
-        window.setTimeout(() => {
-          code.removeAttribute("data-copied");
-        }, 1200);
-        // The copied value as the description, so the reader sees what actually
-        // landed in the clipboard (a swatch's color value, the text otherwise).
-        toast.success(m.doco_inline_copied_toast(), { description: text });
-      },
-      () => undefined,
-    );
+    const code = event.target.closest<HTMLElement>(COPYABLE);
+    if (code !== null) copyFrom(code);
   }
-  document.addEventListener("click", handler);
+  function onKeydown(event: KeyboardEvent): void {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    if (!(event.target instanceof Element)) return;
+    const code = event.target.closest<HTMLElement>(COPYABLE);
+    if (code === null) return;
+    event.preventDefault();
+    copyFrom(code);
+  }
+  document.addEventListener("click", onClick);
+  document.addEventListener("keydown", onKeydown);
   return () => {
-    document.removeEventListener("click", handler);
+    document.removeEventListener("click", onClick);
+    document.removeEventListener("keydown", onKeydown);
   };
 }

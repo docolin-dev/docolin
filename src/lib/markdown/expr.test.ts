@@ -117,6 +117,9 @@ describe("evaluateExpression: correctness", () => {
     expect(() => evaluateExpression('dateadd(today(), 1, "fortnights")', {}, today)).toThrow(
       "unknown date unit",
     );
+    expect(() => evaluateExpression('dateadd(today(), "soon", "days")', {}, today)).toThrow(
+      "not an amount",
+    );
   });
 
   it("formats dates for prose", () => {

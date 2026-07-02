@@ -270,7 +270,8 @@ export function createMarkdownRenderer(
   return async (source: string, language?: string): Promise<string> => {
     const file = await processor.process({
       value: source,
-      data: { docoLanguage: language ?? "en" },
+      // Empty string falls back to English too, matching the documented contract.
+      data: { docoLanguage: language !== undefined && language.length > 0 ? language : "en" },
     });
     return String(file);
   };

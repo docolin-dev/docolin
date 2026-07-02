@@ -113,7 +113,13 @@
         style:background={`linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, ${hueColor})`}
         role="slider"
         aria-label={m.doco_inputs_pick_color()}
+        aria-valuemin={0}
+        aria-valuemax={100}
         aria-valuenow={Math.round(hsv.v * 100)}
+        aria-valuetext={m.doco_inputs_area_value({
+          saturation: String(Math.round(hsv.s * 100)),
+          brightness: String(Math.round(hsv.v * 100)),
+        })}
         tabindex="0"
         onpointerdown={onAreaPointerDown}
         onpointermove={onAreaPointerMove}
@@ -135,7 +141,7 @@
         value={hsv.h}
         oninput={onHueInput}
         class="doco-hue-slider"
-        aria-label="Hue"
+        aria-label={m.doco_inputs_hue()}
       />
 
       <div class="flex items-center gap-2">

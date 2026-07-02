@@ -9,6 +9,7 @@ import {
   formatAs,
   toOklchParts,
   fromOklchParts,
+  srgbToLinear,
   type Rgba,
   type ColorKind,
 } from "./color-convert.ts";
@@ -141,9 +142,10 @@ const FUNCS: Record<string, (...args: ExprValue[]) => ExprValue> = Object.assign
     // luminance), for "text on your accent" derivations.
     contrast: (c: ExprValue): string => {
       const color = requireColor(c);
-      const lin = (ch: number): number =>
-        ch <= 0.04045 ? ch / 12.92 : ((ch + 0.055) / 1.055) ** 2.4;
-      const luminance = 0.2126 * lin(color.r) + 0.7152 * lin(color.g) + 0.0722 * lin(color.b);
+      const luminance =
+        0.2126 * srgbToLinear(color.r) +
+        0.7152 * srgbToLinear(color.g) +
+        0.0722 * srgbToLinear(color.b);
       return luminance > 0.179 ? "#000000" : "#ffffff";
     },
     // Calendar math on ISO dates (yyyy-mm-dd), UTC whole days, deterministic.
@@ -153,7 +155,11 @@ const FUNCS: Record<string, (...args: ExprValue[]) => ExprValue> = Object.assign
       if (parsedUnit === null) {
         throw new Error(`unknown date unit: ${String(unit)} (use days/weeks/months/years)`);
       }
-      return formatIsoDate(addToDate(requireDate(d), Number(n), parsedUnit));
+      // A NaN amount would silently emit a garbage date string; an error chip
+      // is the honest rendering.
+      const amount = Number(n);
+      if (!Number.isFinite(amount)) throw new Error(`not an amount: ${String(n)}`);
+      return formatIsoDate(addToDate(requireDate(d), amount, parsedUnit));
     },
     datediff: (from: ExprValue, to: ExprValue): number =>
       diffDays(requireDate(from), requireDate(to)),

@@ -642,6 +642,12 @@ html:not(.dark) .dark-only {
 .doco-copy[data-copied] {
   background: color-mix(in oklch, var(--primary) 26%, var(--muted));
 }
+/* Copyables are keyboard-reachable buttons (Enter/Space); the ring must be
+   visible, never removed. */
+.doco-copy:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
 
 /* Native video (docomd): an image whose URL is a video file renders as <video>. */
 .prose .doco-video {
@@ -746,11 +752,13 @@ html:not(.dark) .dark-only {
   color: var(--destructive);
 }
 /* The color picker's hue slider: a native range (keyboard for free) painted as
-   the rainbow strip with a round white thumb. */
+   the rainbow strip with a round white thumb. The input is 44px tall for touch
+   targets; the visible strip stays thin via padding + content-box clipping. */
 .doco-hue-slider {
   appearance: none;
   width: 100%;
-  height: 0.75rem;
+  height: 2.75rem;
+  padding-block: 1rem;
   background: linear-gradient(
     to right,
     #f00 0%,
@@ -761,6 +769,14 @@ html:not(.dark) .dark-only {
     #f0f 83%,
     #f00 100%
   );
+  background-clip: content-box;
+}
+@media (forced-colors: active) {
+  /* The gradient is stripped in forced-colors mode; a border keeps the control
+     visible. */
+  .doco-hue-slider {
+    border: 1px solid ButtonText;
+  }
 }
 .doco-hue-slider::-webkit-slider-thumb {
   appearance: none;
