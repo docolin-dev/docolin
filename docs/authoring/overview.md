@@ -54,6 +54,12 @@ A quick walk past the apparatus. Each card opens the page that teaches it.
     - [Cards](./cards.md){ icon=layout-grid }
       Responsive grids of linked, typed, illustrated cards. Like this one.
 
+    - [Diffs](./diffs.md){ icon=file-diff }
+      Show what changed between two versions with an interactive viewer, word-level highlights and all.
+
+    - [Interactive variables](./variables.md){ icon=sliders-horizontal }
+      Readers fill in their values once and every command, table, and chart in the doco recomputes live.
+
     - [Diagrams & charts](./diagrams.md){ icon=git-branch }
       Mermaid flowcharts and data charts drawn straight from a Markdown table.
 

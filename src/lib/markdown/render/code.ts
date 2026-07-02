@@ -4,6 +4,7 @@ import type { Code, Root as MdastRoot } from "mdast";
 import type { State } from "mdast-util-to-hast";
 import { visit } from "unist-util-visit";
 import { iconHast } from "./icons.ts";
+import { injectLineVars } from "./vars.ts";
 
 // docolin's code-block renderer. We run shiki ourselves (rather than
 // rehype-pretty-code) for full control over the markup and the MkDocs-style
@@ -251,6 +252,20 @@ async function processCode(node: Code, blockIndex: number, highlight: Highlight)
   // Every block gets shareable lines (ids + a gutter number revealed on hover),
   // so a reader can highlight a line even when the author did not number the block.
   restructureLines(pre, blockIndex, meta.hlLines);
+
+  // Splice `{{ expr }}` markers into the highlighted lines (interactive
+  // variables). remarkVars annotated the node with the doc's declared names;
+  // absent when the doc declares none or this fence opted out via `novars`.
+  const varNames = (node.data as { docoVarNames?: string[] } | undefined)?.docoVarNames;
+  if (varNames !== undefined && varNames.length > 0) {
+    const declared = new Set(varNames);
+    for (const child of pre.children) {
+      if (child.type !== "element" || child.tagName !== "code") continue;
+      for (const line of child.children) {
+        if (line.type === "element") injectLineVars(line, declared);
+      }
+    }
+  }
 
   // not-prose opts the block out of @tailwindcss/typography so its own styling
   // (layout.css) applies without a specificity fight. relative anchors the floating

@@ -602,6 +602,85 @@ describe("footnotes", () => {
   });
 });
 
+describe("interactive variables", () => {
+  const CARD =
+    '!!! inputs "Your setup"\n' +
+    '    - api_key: API key { secret placeholder="sk-..." }\n' +
+    "    - port: Port { type=number default=8080 }\n" +
+    '    - endpoint := "https://h:" + port\n';
+
+  it("renders the card with its declarations payload and fallback", async () => {
+    const html = await render(CARD);
+    expect(html).toContain("data-doco-inputs");
+    expect(html).toContain("Your setup");
+    expect(html).toContain("doco-inputs-canvas");
+    expect(html).toContain("doco-inputs-fallback");
+    // The JSON payload carries the parsed declarations for the client mount.
+    expect(html).toContain("data-inputs-card=");
+    expect(html).toContain("api_key");
+    expect(html).toContain("{{ api_key }}"); // fallback shows the convention
+  });
+
+  it("tags declared expressions in prose and leaves undeclared ones literal", async () => {
+    const html = await render(`${CARD}\nUse {{ port }} or {{ port * 2 }} but not {{ nope }}.\n`);
+    expect(html).toContain('data-expr="port"');
+    expect(html).toContain('data-expr="port * 2"');
+    expect(html).not.toContain('data-expr="nope"');
+    expect(html).toContain("{{ nope }}"); // stays literal text
+  });
+
+  it("splices markers into highlighted code but never into foreign template syntax", async () => {
+    const html = await render(
+      `${CARD}\n\`\`\`bash\ncurl {{ endpoint }} # not {{ .Values.x }}\n\`\`\`\n`,
+    );
+    expect(html).toContain('data-expr="endpoint"');
+    expect(html).toContain("{{ .Values.x }}"); // Helm stays literal
+    expect(html).not.toContain('data-expr=".Values.x"');
+  });
+
+  it("respects a fence's novars opt-out", async () => {
+    const html = await render(`${CARD}\n\`\`\`bash novars\necho {{ port }}\n\`\`\`\n`);
+    expect(html).not.toContain('data-expr="port"');
+  });
+
+  it("does nothing at all in a doc with no inputs card", async () => {
+    const html = await render("Just {{ port }} here.\n");
+    expect(html).not.toContain("doco-var");
+    expect(html).toContain("{{ port }}");
+  });
+
+  it("parses a card nested inside another admonition (Rendered boxes in docs)", async () => {
+    const html = await render(
+      '!!! output "Rendered"\n' +
+        '    !!! inputs "Nested"\n' +
+        "        - port: Port { type=number default=8080 }\n" +
+        '        - address := "host:" + port\n' +
+        "\n" +
+        "Use {{ address }} here.\n",
+    );
+    expect(html).toContain('data-expr="address"');
+    expect(html).toContain('"name":"port"'.replaceAll('"', "&#x22;"));
+    expect(html).not.toContain("invalid variable name");
+  });
+
+  it("shares one namespace across cards and reports cross-card redeclarations", async () => {
+    const html = await render(
+      '!!! inputs "One"\n    - port: Port { type=number default=1 }\n\n' +
+        '!!! inputs "Two"\n    - port: Port again\n    - height: Height\n\n' +
+        "Use {{ port + 1 }} and {{ height }}.\n",
+    );
+    expect(html).toContain('data-expr="port + 1"'); // declared in card one, used after card two
+    expect(html).toContain('data-expr="height"');
+    expect(html).toContain("already declared in another inputs card");
+  });
+
+  it("surfaces author mistakes in the card payload, not as breakage", async () => {
+    const html = await render("!!! inputs\n    - bad-name: Label\n    - port: Port\n");
+    expect(html).toContain("invalid variable name");
+    expect(html).toContain("data-doco-inputs");
+  });
+});
+
 describe("code annotations", () => {
   it("turns (N) markers into buttons when a matching list follows", async () => {
     const html = await render(

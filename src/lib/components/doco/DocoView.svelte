@@ -1162,7 +1162,9 @@
                grows/shrinks based on how much of the doc is on screen.
              Items get left padding to clear the bar. No per-item borders to
              avoid two competing indicators. No CSS transition: with frequent
-             scroll updates a transition just adds visible lag. -->
+             scroll updates a transition just adds visible lag. And no
+             font-weight change on the active item: bolding widens the text and
+             re-wraps long headings every time the spy moves. -->
           <div class="relative" bind:this={tocBarEl}>
             <div class="bg-foreground/15 absolute top-0 bottom-0 left-0 w-px"></div>
             <div
@@ -1190,7 +1192,6 @@
                     }}
                     class="block py-1 pr-2 pl-3 transition-colors"
                     class:text-foreground={i === activeSectionIndex}
-                    class:font-medium={i === activeSectionIndex}
                     class:text-muted-foreground={i !== activeSectionIndex}
                     class:hover:text-foreground={i !== activeSectionIndex}
                   >
@@ -1207,7 +1208,6 @@
                             }}
                             class="block py-1 pr-2 pl-6 transition-colors"
                             class:text-foreground={activeId === h3.id}
-                            class:font-medium={activeId === h3.id}
                             class:text-muted-foreground={activeId !== h3.id}
                             class:hover:text-foreground={activeId !== h3.id}
                           >

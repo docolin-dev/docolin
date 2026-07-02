@@ -101,6 +101,10 @@ Every block carries two controls in its top-right corner:
 - **Copy** puts the block's contents on the clipboard.
 - **Select** lets a _reader_ highlight lines: click the button, then click a line (shift-click for a range). The selection is written into the page URL, so the link they share reopens with those exact lines lit. It is the fastest way to say "look at line 7" without a screenshot.
 
+## Reader variables in a block
+
+If the doco declares [interactive variables](./variables.md), any `{{ expr }}` inside a block becomes a live chip: the reader's value substitutes in place, and the copy button copies the substituted command. Undeclared names stay literal automatically, and a block documenting a template language can opt out entirely with `novars` on the opening fence.
+
 ## Showing a code block without running it
 
 To document Markdown itself, you need a fence that contains a fence. Wrap the outer block in **four** backticks and the inner three-backtick fence stays literal:

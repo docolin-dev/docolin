@@ -642,6 +642,12 @@ html:not(.dark) .dark-only {
 .doco-copy[data-copied] {
   background: color-mix(in oklch, var(--primary) 26%, var(--muted));
 }
+/* Copyables are keyboard-reachable buttons (Enter/Space); the ring must be
+   visible, never removed. */
+.doco-copy:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
 
 /* Native video (docomd): an image whose URL is a video file renders as <video>. */
 .prose .doco-video {
@@ -724,6 +730,79 @@ html:not(.dark) .dark-only {
 }
 .doco-diff-source .code-block {
   margin: 0;
+}
+
+/* Interactive variables. A `{{ expr }}` chip must be VISIBLY substituted, as
+   trust: the reader sees exactly where their value landed. Chips are display
+   only, not interactive; copying happens through the code block's copy button.
+   Unfilled shows the raw placeholder dashed; filled keeps a quiet primary tint;
+   an error explains itself via title. Values are plain text (textContent
+   writes), selectable like any code. */
+.doco-var {
+  border-bottom: 1px dashed color-mix(in oklch, var(--muted-foreground) 60%, transparent);
+  color: var(--muted-foreground);
+}
+.doco-var[data-var-state="filled"] {
+  border-bottom-color: color-mix(in oklch, var(--primary) 45%, transparent);
+  background: color-mix(in oklch, var(--primary) 12%, transparent);
+  color: inherit;
+}
+.doco-var[data-var-state="error"] {
+  border-bottom: 1px dashed var(--destructive);
+  color: var(--destructive);
+}
+/* The color picker's hue slider: a native range (keyboard for free) painted as
+   the rainbow strip with a round white thumb. The input is 44px tall for touch
+   targets; the visible strip stays thin via padding + content-box clipping. */
+.doco-hue-slider {
+  appearance: none;
+  width: 100%;
+  height: 2.75rem;
+  padding-block: 1rem;
+  background: linear-gradient(
+    to right,
+    #f00 0%,
+    #ff0 17%,
+    #0f0 33%,
+    #0ff 50%,
+    #00f 67%,
+    #f0f 83%,
+    #f00 100%
+  );
+  background-clip: content-box;
+}
+@media (forced-colors: active) {
+  /* The gradient is stripped in forced-colors mode; a border keeps the control
+     visible. */
+  .doco-hue-slider {
+    border: 1px solid ButtonText;
+  }
+}
+.doco-hue-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 9999px;
+  border: 2px solid #fff;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+  background: transparent;
+}
+.doco-hue-slider::-moz-range-thumb {
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 9999px;
+  border: 2px solid #fff;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+  background: transparent;
+}
+.doco-hue-slider:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Once the live form is mounted, the static fallback list is redundant. */
+.doco-inputs[data-inputs-mounted] .doco-inputs-fallback {
+  display: none;
 }
 
 /* The viewer reuses the source blocks' shiki output: its token spans carry shiki's

@@ -11,6 +11,7 @@ import { setupMarkdownPopovers } from "./popovers";
 import { setupInlineCopy, enhanceSwatches } from "./inline-copy";
 import { setupYoutube } from "./youtube";
 import { setupDiffs, renderDiffs } from "./diff";
+import { setupVars, renderVars } from "./vars";
 
 /** Re-runs every per-render enhancement (diagrams, charts, color swatches, diff
  *  viewers, and the saved tab choice) over the current DOM. Call it whenever new
@@ -23,6 +24,7 @@ export function enhanceRenderedMarkdown(): void {
   renderCharts();
   enhanceSwatches();
   renderDiffs();
+  renderVars();
 }
 
 /** Wires every client-side markdown widget once, returning a single teardown. */
@@ -37,6 +39,7 @@ export function setupMarkdownHydration(): () => void {
     setupInlineCopy(),
     setupYoutube(),
     setupDiffs(),
+    setupVars(),
   ];
   return () => {
     for (const teardown of teardowns) teardown();
