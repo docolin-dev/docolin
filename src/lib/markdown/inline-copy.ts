@@ -60,7 +60,11 @@ function copyFrom(code: HTMLElement): void {
       // landed in the clipboard (a swatch's color value, the text otherwise).
       toast.success(m.doco_inline_copied_toast(), { description: text });
     },
-    () => undefined,
+    () => {
+      // Clipboard can fail (permission denied, insecure context); saying so
+      // beats letting the reader paste stale contents somewhere.
+      toast.error(m.doco_inline_copy_failed_toast());
+    },
   );
 }
 
@@ -75,6 +79,8 @@ export function setupInlineCopy(): () => void {
   }
   function onKeydown(event: KeyboardEvent): void {
     if (event.key !== "Enter" && event.key !== " ") return;
+    // A held key auto-repeats; one activation per press is the button contract.
+    if (event.repeat) return;
     if (!(event.target instanceof Element)) return;
     const code = event.target.closest<HTMLElement>(COPYABLE);
     if (code === null) return;

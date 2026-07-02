@@ -550,6 +550,7 @@
   "doco_stamp_signin_nudge": "Melde dich an, damit deine Bestätigung mehr zählt.",
   "doco_heading_copied": "Link kopiert",
   "doco_inline_copied_toast": "Kopiert",
+  "doco_inline_copy_failed_toast": "Kopieren fehlgeschlagen. Bitte den Text markieren und manuell kopieren.",
   "doco_inline_copy_hint": "Klicken zum Kopieren",
   "doco_inputs_reveal": "Wert anzeigen",
   "doco_inputs_hide": "Wert verbergen",

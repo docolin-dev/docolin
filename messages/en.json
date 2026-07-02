@@ -550,6 +550,7 @@
   "doco_stamp_signin_nudge": "Sign in so your verification counts for more.",
   "doco_heading_copied": "Link copied",
   "doco_inline_copied_toast": "Copied",
+  "doco_inline_copy_failed_toast": "Copy failed. Select the text and copy it manually.",
   "doco_inline_copy_hint": "Click to copy",
   "doco_inputs_reveal": "Show value",
   "doco_inputs_hide": "Hide value",
