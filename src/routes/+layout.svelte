@@ -4,6 +4,7 @@
   import { ModeWatcher } from "mode-watcher";
   import { Toaster } from "$lib/components/ui/sonner";
   import SearchCommand from "$lib/components/SearchCommand.svelte";
+  import LeaveGuard from "$lib/components/LeaveGuard.svelte";
   import { onMount } from "svelte";
   import { afterNavigate } from "$app/navigation";
   import { page } from "$app/state";
@@ -93,5 +94,6 @@
 <ModeWatcher />
 <Toaster />
 <SearchCommand />
+<LeaveGuard />
 
 {@render children()}

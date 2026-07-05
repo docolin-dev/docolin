@@ -756,3 +756,42 @@ describe("annotations anywhere ({ .annotate })", () => {
     expect(html).toContain('id="ca-1-1"'); // nested annotation item
   });
 });
+
+describe("leave-docolin marker (external link interstitial)", () => {
+  const linkOf = (html: string, href: string): string => {
+    const anchors = [...html.matchAll(/<a\b[^>]*>/g)].map((m) => m[0]);
+    const found = anchors.find((a) => a.includes(`href="${href}"`));
+    if (found === undefined) throw new Error(`no anchor for ${href}`);
+    return found;
+  };
+
+  it("marks external, non-first-party links and opens them in a new tab", async () => {
+    const html = await render("[x](https://example.com/p?ref=y)\n");
+    const a = linkOf(html, "https://example.com/p?ref=y");
+    expect(a).toContain("data-leave");
+    expect(a).toContain('target="_blank"');
+  });
+
+  it("does not mark internal, anchor, or first-party links", async () => {
+    const html = await render(
+      "[a](/docs/x)\n\n[b](#h)\n\n[c](https://docolin.com/about)\n\n[d](https://api.docolin.com/x)\n",
+    );
+    expect(linkOf(html, "/docs/x")).not.toContain("data-leave");
+    expect(linkOf(html, "#h")).not.toContain("data-leave");
+    // first-party stays same-platform (no interstitial) even when absolute
+    expect(linkOf(html, "https://docolin.com/about")).not.toContain("data-leave");
+    expect(linkOf(html, "https://api.docolin.com/x")).not.toContain("data-leave");
+  });
+
+  it("treats protocol-relative links as external (not internal via the / prefix)", async () => {
+    const html = await render("[x](//evil.example.com/steal)\n");
+    const a = linkOf(html, "//evil.example.com/steal");
+    expect(a).toContain("data-leave");
+    expect(a).toContain('target="_blank"');
+  });
+
+  it("does not mark non-web schemes (mailto/tel)", async () => {
+    const html = await render("[mail](mailto:a@example.com)\n");
+    expect(linkOf(html, "mailto:a@example.com")).not.toContain("data-leave");
+  });
+});

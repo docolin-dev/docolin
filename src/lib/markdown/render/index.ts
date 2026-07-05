@@ -71,17 +71,45 @@ function remarkHeadingIds() {
   };
 }
 
+// Hosts that are unambiguously docolin's own; absolute links to these are not
+// "leaving the platform", so they skip the interstitial. Host-level only, so we
+// deliberately do NOT list shared hosts like github.com (community links live
+// there too). Subdomains match via the endsWith check below.
+const FIRST_PARTY_HOSTS = ["docolin.com"];
+
+// The host to warn about before following `href`, or null when the link needs
+// no interstitial: a relative/anchor link, a non-web scheme (mailto:, tel:), or
+// a first-party destination. Only http(s) and protocol-relative links qualify.
+function leaveHost(href: string): string | null {
+  const normalized = href.startsWith("//") ? `https:${href}` : href;
+  if (!URL.canParse(normalized)) return null;
+  const url = new URL(normalized);
+  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+  const host = url.hostname.toLowerCase();
+  const firstParty = FIRST_PARTY_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+  return firstParty ? null : host;
+}
+
 // hast: open external links in a new tab with noopener (internal links, starting
-// with "/" or "#", stay same-tab). Matches the previous renderer.
+// with "/" or "#", stay same-tab). Links to sites docolin does not control also
+// get `data-leave`, which the client turns into a "you are leaving docolin"
+// confirmation (see $lib/components/LeaveGuard.svelte). This only runs in the
+// content render pipeline, so chrome/marketing links (plain Svelte anchors) are
+// never marked, i.e. "links we don't control" == authored-content links.
 function rehypeExternalLinks() {
   return (tree: HastRoot): undefined => {
     visit(tree, "element", (node) => {
       if (node.tagName !== "a") return;
       const href = node.properties.href;
       if (typeof href !== "string") return;
-      if (href.startsWith("/") || href.startsWith("#")) return;
+      // Root-relative (`/x`) and anchors (`#x`) are internal. Protocol-relative
+      // (`//host/x`) is NOT internal, it resolves cross-origin, so it must not
+      // be caught by the `/` prefix and must get the external treatment below.
+      if (href.startsWith("#")) return;
+      if (href.startsWith("/") && !href.startsWith("//")) return;
       node.properties.target = "_blank";
       node.properties.rel = ["noopener", "noreferrer"];
+      if (leaveHost(href) !== null) node.properties["data-leave"] = "";
     });
   };
 }

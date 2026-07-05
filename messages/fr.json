@@ -1,5 +1,9 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
+  "common_leave_title": "Quitter docolin",
+  "common_leave_description": "Ce lien mène vers un site que docolin ne contrôle pas. Ne continuez que si vous lui faites confiance.",
+  "common_leave_cancel": "Annuler",
+  "common_leave_continue": "Continuer",
   "common_theme_toggle": "Changer de thème",
   "common_theme_light": "Clair",
   "common_theme_dark": "Sombre",
