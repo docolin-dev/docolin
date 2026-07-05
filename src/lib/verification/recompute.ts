@@ -36,20 +36,20 @@ async function voterCompetence(
       ),
     );
 
-  // Drop take-backs before the reduction, exactly as summarizeStamps does: a
-  // retraction (and the stamp it cancels) must not count toward the voter's
-  // track record, or a retracted "worked" would still move their competence.
   const retractedTargets = new Set(
     history.map((row) => row.retractsStampId).filter((id): id is string => id !== null),
   );
 
-  // Only each voter's LATEST surviving stamp per version counts, the same
-  // supersede rule the scorer applies. Without this a voter who changed their
-  // mind N times would have N entries in their own track record.
+  // Reduce to each voter's LATEST action per version FIRST, with retraction rows
+  // included as candidates so a take-back can be the newest action, then drop the
+  // take-backs. This order matters and mirrors summarizeStamps: filtering before
+  // the reduction would resurrect a superseded vote when the voter retracts a
+  // newer one (worked -> didnt_work -> retract must count as nothing, not
+  // "worked"). Without the reduction a voter who changed their mind N times would
+  // otherwise have N entries in their own track record.
   const latest = new Map<string, (typeof history)[number]>();
   for (const row of history) {
     if (row.voterUserId === null) continue;
-    if (row.retractsStampId !== null || retractedTargets.has(row.id)) continue;
     const key = `${row.voterUserId}:${row.versionId}`;
     const existing = latest.get(key);
     if (existing === undefined || row.createdAt > existing.createdAt) latest.set(key, row);
@@ -58,6 +58,8 @@ async function voterCompetence(
   const byVoter = new Map<string, VoterHistoryRow[]>();
   for (const row of latest.values()) {
     if (row.voterUserId === null || row.versionScore === null) continue;
+    // A take-back (or the stamp it cancels) counts for nothing.
+    if (row.retractsStampId !== null || retractedTargets.has(row.id)) continue;
     const list = byVoter.get(row.voterUserId) ?? [];
     list.push({ outcome: row.outcome, versionScore: row.versionScore });
     byVoter.set(row.voterUserId, list);
