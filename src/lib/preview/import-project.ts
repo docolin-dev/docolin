@@ -1,4 +1,4 @@
-import { isDocoFile } from "$lib/sync/file-scope";
+import { isDocoFile, isOptOutReadme } from "$lib/sync/file-scope";
 import { parseDocoFile, type ParseError } from "$lib/sync/parse";
 import {
   createSitemapResolver,
@@ -73,7 +73,9 @@ export async function importProject(
     const pathInSource = docoFiles[i];
     const pathFromProjectRoot = pathFromSourcePath(pathInSource, subpath);
     const text = await source.readText(pathInSource);
-    if (text !== null) {
+    // READMEs are opt-in, same rule as the sync: no `docolin:` frontmatter key,
+    // no doco and no error row (the file speaks to the forge page, not docolin).
+    if (text !== null && !isOptOutReadme(pathInSource, text)) {
       const parsed = parseDocoFile(text);
       if (!parsed.ok) {
         errors.set(pathFromProjectRoot, { pathInSource, pathFromProjectRoot, error: parsed.error });

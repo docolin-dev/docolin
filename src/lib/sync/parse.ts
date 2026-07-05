@@ -86,6 +86,31 @@ export function parseDocoFile(source: string): ParseResult {
   };
 }
 
+/** Whether the source's frontmatter carries a `docolin` key at all, regardless
+ * of validity. The opt-in gate for READMEs: presence of the key (even in a
+ * half-written block) opts the file in, so its real validation error surfaces
+ * instead of the file silently vanishing. Browser-safe (the local preview
+ * applies the same gate client-side). */
+export function hasDocolinKey(source: string): boolean {
+  try {
+    const data = splitFrontmatter(source).data;
+    return typeof data === "object" && data !== null && "docolin" in data;
+  } catch {
+    // splitFrontmatter throws (via parseYaml) on malformed YAML, which can't be
+    // prevented without parsing the YAML twice. Fall through to a raw line scan
+    // of the fence so a broken-but-intended docolin block still opts in.
+  }
+  const text = source.charCodeAt(0) === 0xfeff ? source.slice(1) : source;
+  const lines = text.split("\n");
+  if (lines.length === 0 || lines[0].trimEnd() !== "---") return false;
+  for (let i = 1; i < lines.length; i++) {
+    const t = lines[i].trimEnd();
+    if (t === "---" || t === "...") break;
+    if (lines[i].startsWith("docolin:")) return true;
+  }
+  return false;
+}
+
 // Splits a leading `---` fenced YAML frontmatter block from the body. docolin
 // only uses the `---` fence form, so a plain line scan covers it without
 // gray-matter. Throws (via parseYaml) on malformed YAML.
