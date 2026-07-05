@@ -20,7 +20,7 @@ export async function openSession(
   source: LocalFileSource,
   onProgress?: (done: number, total: number) => void,
 ): Promise<PreviewSession> {
-  const project = await importProject(source, meta.subpath, onProgress);
+  const project = await importProject(source, meta.subpath, { projectSlug: meta.id, onProgress });
   const session: PreviewSession = { meta, source, project };
   sessions.set(meta.id, session);
   return session;
@@ -36,7 +36,9 @@ export async function reimportSession(id: string): Promise<PreviewSession | null
   const session = sessions.get(id);
   if (session === undefined) return null;
   if (!session.source.live) return null;
-  const project = await importProject(session.source, session.meta.subpath);
+  const project = await importProject(session.source, session.meta.subpath, {
+    projectSlug: session.meta.id,
+  });
   const next: PreviewSession = { ...session, project };
   sessions.set(id, next);
   return next;

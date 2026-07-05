@@ -70,19 +70,26 @@ docolin never invents these fields for you. The `kind` is how the page is filed 
 
 docolin rewrites Mintlify's components into docomd as it imports:
 
-| Mintlify component                                  | Becomes                                      |
-| --------------------------------------------------- | -------------------------------------------- |
-| `<Note>`, `<Info>`, `<Tip>`, `<Warning>`, `<Check>` | [Callouts](../authoring/callouts.md)         |
-| `<Steps>`                                           | [Steps](../authoring/steps-and-accordion.md) |
-| `<CardGroup>`, `<Columns>`, `<Card>`                | [Cards](../authoring/cards.md)               |
-| `<Accordion>`, `<AccordionGroup>`, `<Expandable>`   | [Collapsibles](../authoring/callouts.md)     |
-| `<Tabs>`, `<Tab>`                                   | [Content tabs](../authoring/tabs.md)         |
-| `<CodeGroup>`                                       | A grouped code block                         |
-| `<Frame>`, images                                   | Images                                       |
+| Mintlify component                                  | Becomes                                                            |
+| --------------------------------------------------- | ------------------------------------------------------------------ |
+| `<Note>`, `<Info>`, `<Tip>`, `<Warning>`, `<Check>` | [Callouts](../authoring/callouts.md)                               |
+| `<Steps>`                                           | [Steps](../authoring/steps-and-accordion.md)                       |
+| `<CardGroup>`, `<Columns>`, `<Card>`                | [Cards](../authoring/cards.md)                                     |
+| `<Accordion>`, `<AccordionGroup>`, `<Expandable>`   | [Collapsibles](../authoring/callouts.md)                           |
+| `<Tabs>`, `<Tab>`                                   | [Content tabs](../authoring/tabs.md)                               |
+| `<CodeGroup>`                                       | A grouped code block                                               |
+| `<Frame>`, images                                   | Images, with the `caption` kept                                    |
+| `<Tree>`                                            | A [file tree](../authoring/text-and-lists.md)                      |
+| `<Icon>`                                            | An [inline icon](../authoring/text-and-lists.md)                   |
+| `<video>`, YouTube embeds                           | [Video](../authoring/text-and-lists.md), the private YouTube embed |
 
-Card icons keep their look: docolin reads `icons.library` from your `docs.json` (Font Awesome, Lucide, or Tabler) and tags each icon to the right set.
+Icons keep their look: docolin reads `icons.library` from your `docs.json` (Font Awesome, Lucide, or Tabler) and tags each icon, in cards and inline, to the right set.
 
 Anything docolin has no equivalent for, a `<Tooltip>`, a `<Badge>`, a custom component, is **unwrapped**: the wrapper is dropped and the Markdown inside it is kept, so no prose is ever lost. MDX-only machinery, `import` and `export` lines, `{expressions}`, and `{/* comments */}`, is dropped.
+
+## Preview the migration before you push
+
+Point the [local folder preview](../authoring/preview.md) at your Mintlify folder and it applies this whole import client-side: your pages render as docos, the sidebar comes from your `navigation`, and every page still missing its docolin frontmatter is listed with exactly what to add. Nothing leaves your machine, so you can walk the checklist page by page before docolin ever sees the repo.
 
 !!! note "docolin's native format is docomd"
     Importing is for docs that already exist in Mintlify. When you write something new, write it in [docomd](../authoring/overview.md): plain Markdown, no build step, and it previews [as you save](../authoring/preview.md).

@@ -19,7 +19,11 @@ export interface ParsedDoco {
 }
 
 export interface ParseError {
-  code: "yaml_parse_error" | "frontmatter_invalid";
+  // The two parser codes, plus the Mintlify-import gap the local preview
+  // reports through the same shape (the sync reports it via its own error
+  // records): the page converts fine but hasn't been given docolin
+  // frontmatter yet.
+  code: "yaml_parse_error" | "frontmatter_invalid" | "mintlify_frontmatter_required";
   message: string;
   details: Record<string, unknown>;
 }
