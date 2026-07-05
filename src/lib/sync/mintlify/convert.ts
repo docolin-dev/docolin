@@ -1,4 +1,5 @@
 import { parse as parseYaml } from "yaml";
+import { splitRawFrontmatter } from "../parse";
 import { mdxBodyToDocomd } from "./mdx-to-docomd";
 import type { MintlifyIconLibrary } from "./detect";
 
@@ -11,33 +12,7 @@ import type { MintlifyIconLibrary } from "./detect";
 //
 // No gray-matter here: it pulls in Node's Buffer and crashes in the browser,
 // and the local-folder preview runs this exact conversion client-side. The
-// fence is split with the same line scan parse.ts uses.
-
-// Splits the leading `---` fenced frontmatter at the string level. `fence` is
-// the verbatim fence text including both `---` lines (null when there is none);
-// `yamlText` its inner YAML; `body` everything after.
-function splitRawFrontmatter(source: string): {
-  fence: string | null;
-  yamlText: string;
-  body: string;
-} {
-  const text = source.charCodeAt(0) === 0xfeff ? source.slice(1) : source; // strip BOM
-  const lines = text.split("\n");
-  if (lines.length === 0 || lines[0].trimEnd() !== "---") {
-    return { fence: null, yamlText: "", body: text };
-  }
-  for (let i = 1; i < lines.length; i++) {
-    const t = lines[i].trimEnd();
-    if (t === "---" || t === "...") {
-      return {
-        fence: lines.slice(0, i + 1).join("\n"),
-        yamlText: lines.slice(1, i).join("\n"),
-        body: lines.slice(i + 1).join("\n"),
-      };
-    }
-  }
-  return { fence: null, yamlText: "", body: text };
-}
+// fence scan is shared with parse.ts (splitRawFrontmatter).
 
 /** True when the frontmatter already carries the docolin-required fields, so the
  *  page will pass validation. Used to give a tailored "add these" error instead

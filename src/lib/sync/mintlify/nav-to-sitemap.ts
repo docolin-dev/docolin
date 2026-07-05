@@ -3,13 +3,13 @@ import type { SitemapNode } from "../sitemap-schema";
 // Converts a Mintlify `navigation` config into a docolin sitemap (the sidebar).
 // Mintlify's navigation has shifted across versions, so several shapes are
 // handled: the wrapper levels `languages` / `versions` (docolin has ONE sidebar
-// per project, so the first, i.e. default, entry wins), the titled containers
-// `tabs` / `anchors` / `dropdowns` (each becomes a top-level group), plain
-// `groups` / `pages`, and the legacy array-of-groups form. Wrappers recurse, so
-// `languages -> tabs -> groups` (mintlify/docs' own layout) works at any depth.
-// Page entries are paths relative to the docs root, which is exactly docolin's
-// path-from-project-root, so links are the absolute `/{org}/{project}/{path}`
-// form.
+// per project, so the first entry that yields content wins; see firstNonEmpty
+// for the trade-off), the titled containers `tabs` / `anchors` / `dropdowns`
+// (each becomes a top-level group), plain `groups` / `pages`, and the legacy
+// array-of-groups form. Wrappers recurse, so `languages -> tabs -> groups`
+// (mintlify/docs' own layout) works at any depth. Page entries are paths
+// relative to the docs root, which is exactly docolin's path-from-project-root,
+// so links are the absolute `/{org}/{project}/{path}` form.
 
 interface NavContext {
   orgSlug: string;
@@ -34,8 +34,12 @@ export function navToSitemap(navigation: unknown, ctx: NavContext): SitemapNode[
   return [];
 }
 
-// The first wrapper entry that yields sidebar content (a language/version with
-// an empty or unrecognized nav shouldn't blank the whole sidebar).
+// The first wrapper entry that yields sidebar content, NOT strictly the first
+// (default) entry: a version stub with no pages yet, or a nav shape we don't
+// recognize, shouldn't blank the whole sidebar. Trade-off for `languages`: a
+// default language whose every page gets dropped (e.g. all OpenAPI endpoints)
+// falls through to the next language's nav. That's deliberate; some sidebar
+// beats none, and a default language with zero real pages is vanishingly rare.
 function firstNonEmpty(items: unknown[], ctx: NavContext): SitemapNode[] {
   for (const item of items) {
     const out = navToSitemap(item, ctx);
