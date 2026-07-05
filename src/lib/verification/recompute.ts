@@ -97,6 +97,7 @@ export async function recomputeVersionScore(versionId: string): Promise<void> {
       networkBucket: stamps.networkBucket,
       createdAt: stamps.createdAt,
       voterCreatedAt: users.createdAt,
+      retractsStampId: stamps.retractsStampId,
     })
     .from(stamps)
     .leftJoin(users, eq(users.id, stamps.voterUserId))

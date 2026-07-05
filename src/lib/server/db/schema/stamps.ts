@@ -1,5 +1,14 @@
 import { sql } from "drizzle-orm";
-import { check, index, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  check,
+  index,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  type AnyPgColumn,
+} from "drizzle-orm/pg-core";
 import { versions } from "./docos";
 import { users } from "./users";
 
@@ -38,6 +47,15 @@ export const stamps = pgTable(
     // verification). Null for stamps placed directly on the web. A unique index
     // over the non-null values makes each vote token single-use.
     voteTokenNonce: text("vote_token_nonce"),
+    // A "take back": on a retraction row this points at the stamp being undone;
+    // null on a normal stamp. Modeled as an append-only event (never a delete),
+    // so the ledger stays auditable and every historical score recomputable. The
+    // recompute drops both the targeted stamp and the retraction row from
+    // scoring; for a signed-in voter the retraction is simply their latest action
+    // (latest-per-voter wins), so no earlier vote resurrects.
+    retractsStampId: uuid("retracts_stamp_id").references((): AnyPgColumn => stamps.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [

@@ -30,25 +30,56 @@
 
   let submitting = $state(false);
   let chosen = $state<string | null>(null);
+  // The id of the reader's current stamp, kept locally so they can take it back
+  // (re-clicking the chosen outcome). Null when unknown (a legacy or cross-device
+  // stamp), in which case re-clicking just re-stamps instead of retracting.
+  let chosenStampId = $state<string | null>(null);
   let alreadyStamped = $state(false);
   let errored = $state(false);
 
   const STORAGE_PREFIX = "docolin:stamp:";
 
-  function readStamp(id: string): string | null {
+  interface LocalStamp {
+    outcome: string;
+    stampId: string | null;
+  }
+
+  function readStamp(id: string): LocalStamp | null {
     try {
-      return localStorage.getItem(STORAGE_PREFIX + id);
+      const raw = localStorage.getItem(STORAGE_PREFIX + id);
+      if (raw === null) return null;
+      // Legacy entries were a bare outcome string; current ones are JSON with the
+      // stamp id so a take-back can name it.
+      if (!raw.startsWith("{")) return { outcome: raw, stampId: null };
+      const parsed: unknown = JSON.parse(raw);
+      if (typeof parsed === "object" && parsed !== null && "outcome" in parsed) {
+        const record = parsed as Record<string, unknown>;
+        if (typeof record.outcome === "string") {
+          return {
+            outcome: record.outcome,
+            stampId: typeof record.stampId === "string" ? record.stampId : null,
+          };
+        }
+      }
+      return null;
     } catch {
       // Storage can throw when disabled (private mode, blocked cookies). No local
       // memory then, which is fine: the stamp still records server-side.
       return null;
     }
   }
-  function writeStamp(id: string, outcome: string): void {
+  function writeStamp(id: string, outcome: string, stampId: string | null): void {
     try {
-      localStorage.setItem(STORAGE_PREFIX + id, outcome);
+      localStorage.setItem(STORAGE_PREFIX + id, JSON.stringify({ outcome, stampId }));
     } catch {
       // Storage disabled; skip the local memory, the stamp recorded regardless.
+    }
+  }
+  function clearStamp(id: string): void {
+    try {
+      localStorage.removeItem(STORAGE_PREFIX + id);
+    } catch {
+      // Storage disabled; nothing to clear.
     }
   }
 
@@ -59,24 +90,43 @@
   // per version, so the score can't be inflated by re-tapping.
   $effect(() => {
     const prior = readStamp(versionId);
-    chosen = prior;
+    chosen = prior?.outcome ?? null;
+    chosenStampId = prior?.stampId ?? null;
     alreadyStamped = prior !== null;
     errored = false;
   });
 
-  const submit: SubmitFunction = ({ formData }) => {
+  // Re-clicking the chosen outcome takes it back (posts ?/retract), but only when
+  // we hold its id; otherwise the click just re-stamps the same outcome.
+  function isToggleOff(value: string): boolean {
+    return chosen === value && alreadyStamped && chosenStampId !== null;
+  }
+
+  const submit: SubmitFunction = ({ action, formData }) => {
     submitting = true;
     errored = false;
+    const isRetract = action.search.includes("retract");
     const outcome = formData.get("outcome");
-    chosen = typeof outcome === "string" ? outcome : null;
+    const nextChosen = typeof outcome === "string" ? outcome : null;
     return ({ result }) => {
       submitting = false;
-      if (result.type === "success" && chosen !== null) {
-        writeStamp(versionId, chosen);
-        alreadyStamped = true;
-      } else {
+      if (result.type !== "success") {
         errored = true;
+        return;
       }
+      if (isRetract) {
+        clearStamp(versionId);
+        chosen = null;
+        chosenStampId = null;
+        alreadyStamped = false;
+        return;
+      }
+      const data = result.data as { stampId?: unknown } | undefined;
+      const stampId = typeof data?.stampId === "string" ? data.stampId : null;
+      chosen = nextChosen;
+      chosenStampId = stampId;
+      alreadyStamped = true;
+      if (nextChosen !== null) writeStamp(versionId, nextChosen, stampId);
     };
   };
 
@@ -113,10 +163,15 @@
   <div title={preview ? m.preview_action_disabled() : undefined}>
     <form method="POST" action="?/stamp" use:enhance={submit} class="mt-3 flex flex-wrap gap-2">
       <input type="hidden" name="versionId" value={versionId} />
+      <!-- Carries the id for a take-back; ignored by the stamp action. -->
+      <input type="hidden" name="stampId" value={chosenStampId ?? ""} />
       <button
         type="submit"
         name="outcome"
         value="worked"
+        formaction={isToggleOff("worked") ? "?/retract" : undefined}
+        aria-pressed={chosen === "worked" && alreadyStamped}
+        title={isToggleOff("worked") ? m.doco_stamp_take_back() : undefined}
         disabled={submitting || preview}
         class={buttonClass("worked")}
       >
@@ -127,6 +182,9 @@
         type="submit"
         name="outcome"
         value="worked_with_caveats"
+        formaction={isToggleOff("worked_with_caveats") ? "?/retract" : undefined}
+        aria-pressed={chosen === "worked_with_caveats" && alreadyStamped}
+        title={isToggleOff("worked_with_caveats") ? m.doco_stamp_take_back() : undefined}
         disabled={submitting || preview}
         class={buttonClass("worked_with_caveats")}
       >
@@ -137,6 +195,9 @@
         type="submit"
         name="outcome"
         value="didnt_work"
+        formaction={isToggleOff("didnt_work") ? "?/retract" : undefined}
+        aria-pressed={chosen === "didnt_work" && alreadyStamped}
+        title={isToggleOff("didnt_work") ? m.doco_stamp_take_back() : undefined}
         disabled={submitting || preview}
         class={buttonClass("didnt_work")}
       >

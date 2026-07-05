@@ -22,8 +22,21 @@ function row(overrides: Partial<StampRow> = {}): StampRow {
     networkBucket: null,
     createdAt: NOW,
     voterCreatedAt: OLD_ACCOUNT,
+    retractsStampId: null,
     ...overrides,
   };
+}
+
+// A take-back of `target`: a later append-only row that cancels it.
+function retraction(target: StampRow, overrides: Partial<StampRow> = {}): StampRow {
+  return row({
+    voterUserId: target.voterUserId,
+    source: target.source,
+    networkBucket: target.networkBucket,
+    createdAt: new Date(target.createdAt.getTime() + 1000),
+    retractsStampId: target.id,
+    ...overrides,
+  });
 }
 
 describe("daysBetween", () => {
@@ -217,5 +230,46 @@ describe("competence in summarizeStamps", () => {
     );
     const unknown = summarizeStamps([row({ voterUserId: "newcomer" })], NOW, null, new Map());
     expect(proven.effectiveWeight).toBeGreaterThan(unknown.effectiveWeight);
+  });
+});
+
+describe("summarizeStamps take-back (retractions)", () => {
+  it("zeroes a signed-in voter who retracts their only stamp", () => {
+    const worked = row({ voterUserId: "v1", outcome: "worked" });
+    const summary = summarizeStamps([worked, retraction(worked)], NOW);
+    expect(summary.stampCount).toBe(0);
+    expect(summary.lastConfirmedAt).toBeNull();
+  });
+
+  it("does not resurrect an earlier vote when a later one is retracted", () => {
+    // worked -> didn't work -> take back: the voter must count as nothing, not
+    // fall back to the earlier "worked".
+    const v = "v-resurrect";
+    const worked = row({ voterUserId: v, outcome: "worked", createdAt: new Date("2026-01-01") });
+    const didnt = row({ voterUserId: v, outcome: "didnt_work", createdAt: new Date("2026-02-01") });
+    const summary = summarizeStamps([worked, didnt, retraction(didnt)], NOW);
+    expect(summary.stampCount).toBe(0);
+    expect(summary.lastConfirmedAt).toBeNull();
+  });
+
+  it("counts a fresh stamp placed after a take-back", () => {
+    const v = "v-restamp";
+    const a = row({ voterUserId: v, outcome: "worked", createdAt: new Date("2026-01-01") });
+    const back = retraction(a, { createdAt: new Date("2026-02-01") });
+    const c = row({ voterUserId: v, outcome: "worked", createdAt: new Date("2026-03-01") });
+    expect(summarizeStamps([a, back, c], NOW).stampCount).toBe(1);
+  });
+
+  it("removes the exact anonymous stamp a retraction targets, keeping others", () => {
+    const a = row({ voterUserId: null, source: "anonymous", outcome: "worked" });
+    const b = row({ voterUserId: null, source: "anonymous", outcome: "worked" });
+    const summary = summarizeStamps([a, b, retraction(a)], NOW);
+    expect(summary.stampCount).toBe(1); // b survives, a and its retraction gone
+  });
+
+  it("never scores the retraction row itself", () => {
+    const a = row({ voterUserId: null, source: "anonymous", outcome: "worked" });
+    // Only a retraction present (its target already filtered): contributes nothing.
+    expect(summarizeStamps([retraction(a)], NOW).stampCount).toBe(0);
   });
 });
