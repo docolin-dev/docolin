@@ -33,6 +33,8 @@ export { remarkTabGroup } from "./tab-group.ts";
 export { remarkAttrList, remarkBlockAttrList } from "./attr-list.ts";
 export { remarkChart } from "./chart.ts";
 export type { ChartSpec, ChartType, DocoChart } from "./chart.ts";
+export { remarkTree } from "./tree.ts";
+export type { DocoTree } from "./tree.ts";
 
 /** Adds docomd admonition + content-tab syntax to a unified/remark processor. */
 export const remarkDocomd: Plugin<[], Root> = function (): undefined {

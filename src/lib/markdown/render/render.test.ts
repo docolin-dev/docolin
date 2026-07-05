@@ -819,3 +819,79 @@ describe("downgradeHeadings (discussion bodies)", () => {
     expect(html).toContain("heading-anchor");
   });
 });
+
+describe("file trees", () => {
+  const TREE_MD =
+    "- src\n  - lib\n    - `utils.ts`\n  - main.ts # the entry point\n- assets/\n- package.json\n\n{ .tree }\n";
+
+  it("promotes an unordered list with a trailing { .tree } into a tree card", async () => {
+    const html = await render(TREE_MD);
+    expect(html).toContain("doco-tree"); // figure wrapper
+    expect(html).toContain("<figure");
+    expect(html).toContain("<ul"); // stays a real list (a11y / SEO / AI)
+    expect(html).toContain("border-border"); // card surface, not a floating list
+    expect(html).not.toContain("{ .tree"); // marker paragraph consumed
+  });
+
+  it("classifies folders (sublist or trailing slash) and files", async () => {
+    const html = await render(TREE_MD);
+    // src + lib + assets are folders (name span gets font-medium); utils.ts,
+    // main.ts, and package.json are files.
+    const folderRows = html.split("font-medium").length - 1;
+    expect(folderRows).toBeGreaterThanOrEqual(3);
+    // the empty-folder marker slash is stripped from the display name
+    expect(html).toContain("assets");
+    expect(html).not.toContain("assets/");
+  });
+
+  it("unwraps inline-code names (the tree is already monospace, no chips)", async () => {
+    const html = await render(TREE_MD);
+    expect(html).toContain("utils.ts");
+    expect(html).not.toContain("<code"); // backticked name renders plain
+  });
+
+  it("renders a ` # ` suffix as a muted shell-style comment", async () => {
+    const html = await render(TREE_MD);
+    expect(html).toContain("# the entry point");
+    expect(html).toContain("text-muted-foreground");
+    // the separator is cut out of the name itself
+    expect(html).not.toContain("main.ts # the");
+  });
+
+  it("keeps inline markdown in names and comments", async () => {
+    const html = await render("- **web.config** # required, see **docs**\n\n{ .tree }\n");
+    const bolds = (await render("- **web.config** # required, see **docs**\n\n{ .tree }\n")).split(
+      "<strong",
+    ).length;
+    expect(html).toContain("<strong"); // bold survives
+    expect(bolds - 1).toBe(2); // in the name AND in the comment
+  });
+
+  it("leaves an ordered list alone (the marker renders visibly as a cue)", async () => {
+    const html = await render("1. src\n2. main.ts\n\n{ .tree }\n");
+    expect(html).not.toContain("doco-tree");
+    expect(html).toContain("<ol");
+  });
+
+  it("leaves a normal list untouched", async () => {
+    const html = await render("- a\n- b\n");
+    expect(html).not.toContain("doco-tree");
+  });
+
+  it("composes with annotations via { .tree .annotate }", async () => {
+    const html = await render(
+      "- src\n  - main.ts (1)\n- package.json\n\n{ .tree .annotate }\n\n1. The entry point.\n",
+    );
+    expect(html).toContain("doco-tree");
+    expect(html).toContain("code-annotation"); // (1) became a badge
+    expect(html).toContain("code-annotations"); // the popover source list
+    expect(html).toContain("sr-only"); // hidden, screen readers still get it
+    expect(html).not.toContain("(1)"); // marker text consumed
+  });
+
+  it("leaves a (1) literal without .annotate", async () => {
+    const html = await render("- main.ts (1)\n\n{ .tree }\n\n1. Not an annotation.\n");
+    expect(html).toContain("(1)"); // stays plain text
+    expect(html).not.toContain("code-annotation");
+  });
+});

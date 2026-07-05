@@ -14,6 +14,7 @@ import pangoAccordion from "./accordion.md?raw";
 import pangoTabs from "./tabs.md?raw";
 import pangoMermaid from "./mermaid.md?raw";
 import pangoCharts from "./charts.md?raw";
+import pangoTrees from "./trees.md?raw";
 import pangoMedia from "./media.md?raw";
 import pangoInputs from "./inputs.md?raw";
 import pangoNesting from "./nesting.md?raw";
@@ -41,6 +42,7 @@ export const PANGO_PAGES: PangoPage[] = [
   { slug: "tabs", raw: pangoTabs },
   { slug: "mermaid", raw: pangoMermaid },
   { slug: "charts", raw: pangoCharts },
+  { slug: "trees", raw: pangoTrees },
   { slug: "media", raw: pangoMedia },
   { slug: "inputs", raw: pangoInputs },
   { slug: "nesting", raw: pangoNesting },
@@ -80,6 +82,7 @@ export const PANGO_SITEMAP = [
       { title: "Content tabs", url: "/pangos/jungle-gym/tabs" },
       { title: "Mermaid diagrams", url: "/pangos/jungle-gym/mermaid" },
       { title: "Charts", url: "/pangos/jungle-gym/charts" },
+      { title: "File trees", url: "/pangos/jungle-gym/trees" },
       { title: "Video & embeds", url: "/pangos/jungle-gym/media" },
       { title: "Interactive variables", url: "/pangos/jungle-gym/inputs" },
     ],
