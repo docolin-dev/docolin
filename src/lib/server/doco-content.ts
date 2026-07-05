@@ -10,12 +10,10 @@ import {
   listThreads,
   getDiscussionEditHistory,
   getReplyEditHistory,
-  type ThreadDetail,
-  type ThreadPost,
-  type ThreadReply,
   type ThreadFilter,
   type EditVersion,
 } from "$lib/server/discussions";
+import { buildDiscussionMarkdown } from "$lib/server/discussion-markdown";
 import {
   discussionRef,
   parseDiscussionNumber,
@@ -380,115 +378,6 @@ export function buildDocoMarkdown(content: DocoContent, baseUrl: string): string
 }
 
 // ── Discussions ─────────────────────────────────────────────────────────────
-
-function postAuthor(post: {
-  authorHandle: string;
-  authorDisplayName: string | null;
-  authorDeleted: boolean;
-}): string {
-  if (post.authorDeleted) return "deleted account";
-  return post.authorDisplayName !== null
-    ? `${post.authorDisplayName} (@${post.authorHandle})`
-    : `@${post.authorHandle}`;
-}
-
-function authorEntry(post: {
-  authorHandle: string;
-  authorDisplayName: string | null;
-  authorDeleted: boolean;
-}): Record<string, unknown> {
-  if (post.authorDeleted) return { deleted: true };
-  return post.authorDisplayName !== null
-    ? { name: post.authorDisplayName, handle: post.authorHandle }
-    : { handle: post.authorHandle };
-}
-
-// `--- label ---` bounds each post, so a body's own markdown (headings,
-// thematic breaks) renders verbatim without colliding with the thread structure.
-// The triple-hyphen is the markdown delimiter, not prose punctuation; separators
-// use `·`, never an em dash (CLAUDE.md).
-function postDelimiter(label: string, post: ThreadPost): string {
-  const when = post.createdAt.slice(0, 10);
-  const edited = post.isEdited ? " (edited)" : "";
-  return `--- ${label} · ${postAuthor(post)} · ${when}${edited} ---`;
-}
-
-function replyLabel(reply: ThreadReply): string {
-  const marks = [reply.isAnswer ? "accepted answer" : "", reply.isOpAuthor ? "author" : ""]
-    .filter((m) => m.length > 0)
-    .join(", ");
-  return marks.length > 0 ? `Reply (${marks})` : "Reply";
-}
-
-function appendEdits(parts: string[], edits: EditVersion[]): void {
-  for (const edit of edits) {
-    const when = edit.editedAt.slice(0, 16).replace("T", " ");
-    // The leading arrow marks the edit as nested under the post above without
-    // indenting the body (4-space indent would turn it into a code block).
-    parts.push(
-      `--- ↳ Edit · ${when} ---`,
-      edit.removed ? "_This earlier version was removed._" : edit.bodySource,
-    );
-  }
-}
-
-interface DiscussionRender {
-  thread: ThreadDetail;
-  url: string;
-  /** Canonical path of the guide the thread is attached to. */
-  docoPath: string;
-  opEdits: EditVersion[];
-  replyEdits: Map<string, EditVersion[]>;
-}
-
-function buildDiscussionFrontmatter(r: DiscussionRender): Record<string, unknown> {
-  const { thread } = r;
-  const visibleReplies = thread.replies.filter((reply) => !reply.removed);
-  const participants: Record<string, unknown>[] = [];
-  const seen = new Set<string>();
-  for (const post of [thread.op, ...visibleReplies]) {
-    if (seen.has(post.authorHandle)) continue;
-    seen.add(post.authorHandle);
-    participants.push(authorEntry(post));
-  }
-  const fm: Record<string, unknown> = {
-    number: thread.number,
-    title: thread.title,
-    status: thread.status,
-    answered: thread.answeredReplyId !== null,
-  };
-  if (thread.isPinned) fm.pinned = true;
-  fm.source = r.url;
-  fm.doco = r.docoPath;
-  fm.author = authorEntry(thread.op);
-  fm.created_at = thread.op.createdAt;
-  fm.reply_count = visibleReplies.length;
-  fm.participants = participants;
-  return fm;
-}
-
-/** Renders a discussion thread to standalone markdown: frontmatter with the
- * thread's metadata, then each post bounded by `--- label ---` delimiters (so
- * bodies render verbatim), with each post's prior edited versions inline. */
-export function buildDiscussionMarkdown(r: DiscussionRender): string {
-  const frontmatter = stringifyYaml(buildDiscussionFrontmatter(r)).trimEnd();
-  const parts: string[] = [
-    `---\n${frontmatter}\n---`,
-    `# Discussion #${String(r.thread.number)}: ${r.thread.title}`,
-    postDelimiter("Original post", r.thread.op),
-    r.thread.op.bodySource,
-  ];
-  appendEdits(parts, r.opEdits);
-  for (const reply of r.thread.replies) {
-    if (reply.removed) {
-      parts.push("--- Reply (removed) ---", "_This reply was removed._");
-      continue;
-    }
-    parts.push(postDelimiter(replyLabel(reply), reply), reply.bodySource);
-    appendEdits(parts, r.replyEdits.get(reply.id) ?? []);
-  }
-  return `${parts.join("\n\n")}\n`;
-}
 
 export interface DiscussionMarkdownOptions {
   /** Include each post's prior edited versions inline (default true). */
