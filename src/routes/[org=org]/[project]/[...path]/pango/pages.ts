@@ -18,6 +18,7 @@ import pangoMedia from "./media.md?raw";
 import pangoInputs from "./inputs.md?raw";
 import pangoNesting from "./nesting.md?raw";
 import pangoCrazy from "./crazy.md?raw";
+import pangoSecurity from "./security.md?raw";
 
 export interface PangoPage {
   slug: string;
@@ -44,6 +45,7 @@ export const PANGO_PAGES: PangoPage[] = [
   { slug: "inputs", raw: pangoInputs },
   { slug: "nesting", raw: pangoNesting },
   { slug: "crazy", raw: pangoCrazy },
+  { slug: "security", raw: pangoSecurity },
 ].map(({ slug, raw }) => {
   const { data, content } = matter(raw);
   const fm = data as Record<string, unknown>;
@@ -87,6 +89,7 @@ export const PANGO_SITEMAP = [
     children: [
       { title: "Nesting & edge cases", url: "/pangos/jungle-gym/nesting" },
       { title: "Crazy nesting", url: "/pangos/jungle-gym/crazy" },
+      { title: "Variables, red team", url: "/pangos/jungle-gym/security" },
     ],
   },
 ];
