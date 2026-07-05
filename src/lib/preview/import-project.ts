@@ -1,5 +1,5 @@
 import { isDocoFile, isOptOutReadme } from "$lib/sync/file-scope";
-import { parseDocoFile, type ParseError } from "$lib/sync/parse";
+import { parseDocoFile, MINTLIFY_FRONTMATTER_REQUIRED, type ParseError } from "$lib/sync/parse";
 import {
   createSitemapResolver,
   resolveDocoSitemap,
@@ -83,14 +83,9 @@ export interface ImportOptions {
   onProgress?: (done: number, total: number) => void;
 }
 
-// Mirrors the sync's tailored message (process-file.ts) so a migrating
-// maintainer sees the same guidance in the preview as on the project page.
-const MINTLIFY_FRONTMATTER_ERROR: ParseError = {
-  code: "mintlify_frontmatter_required",
-  message:
-    "Imported from Mintlify. Add docolin frontmatter to this page: an `authors` list (at least one) and a `docolin:` block with `kind` and `type`.",
-  details: {},
-};
+// The sync's tailored guidance (shared via parse.ts) in the preview's error
+// shape, so a migrating maintainer sees the same words in both places.
+const MINTLIFY_FRONTMATTER_ERROR: ParseError = { ...MINTLIFY_FRONTMATTER_REQUIRED, details: {} };
 
 interface MintlifyMode {
   iconLibrary: MintlifyIconLibrary;

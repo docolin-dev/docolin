@@ -860,11 +860,14 @@ describe("file trees", () => {
 
   it("keeps inline markdown in names and comments", async () => {
     const html = await render("- **web.config** # required, see **docs**\n\n{ .tree }\n");
-    const bolds = (await render("- **web.config** # required, see **docs**\n\n{ .tree }\n")).split(
-      "<strong",
-    ).length;
     expect(html).toContain("<strong"); // bold survives
-    expect(bolds - 1).toBe(2); // in the name AND in the comment
+    expect(html.split("<strong").length - 1).toBe(2); // in the name AND in the comment
+  });
+
+  it("strips the empty-folder slash even inside inline formatting", async () => {
+    const html = await render("- **assets/**\n\n{ .tree }\n");
+    expect(html).toContain("assets"); // bold folder, slash gone
+    expect(html).not.toContain("assets/");
   });
 
   it("leaves an ordered list alone (the marker renders visibly as a cue)", async () => {

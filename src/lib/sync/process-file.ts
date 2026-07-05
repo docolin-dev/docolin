@@ -5,7 +5,12 @@ import { docos, versions } from "$lib/server/db/schema";
 import { toLtree } from "$lib/server/db/schema/types";
 import type { Forge } from "$lib/git/forge";
 import { isOptOutReadme } from "./file-scope";
-import { parseDocoFile, type ParsedDoco, type StoredAuthor } from "./parse";
+import {
+  parseDocoFile,
+  MINTLIFY_FRONTMATTER_REQUIRED,
+  type ParsedDoco,
+  type StoredAuthor,
+} from "./parse";
 import { resolveStoredAuthors } from "./resolve-authors";
 import { convertBody } from "./body-pipeline";
 import { makeImageArchiver, type SyncFileErrorRecord } from "./media-archive";
@@ -112,15 +117,15 @@ export async function validateFile(
   if (!parseResult.ok) {
     // A Mintlify page that hasn't had docolin frontmatter added yet: tell the
     // maintainer exactly what to add instead of dumping a raw schema error.
+    // The guidance text is shared with the preview's checklist (parse.ts).
     if (ctx.mintlify && !hasDocolinFrontmatter(fetched.content)) {
       return {
         ok: false,
         skipped: false,
         error: {
           status: "errored",
-          errorCode: "mintlify_frontmatter_required",
-          errorMessage:
-            "Imported from Mintlify. Add docolin frontmatter to this page: an `authors` list (at least one) and a `docolin:` block with `kind` and `type`.",
+          errorCode: MINTLIFY_FRONTMATTER_REQUIRED.code,
+          errorMessage: MINTLIFY_FRONTMATTER_REQUIRED.message,
           errorDetails: { underlying: parseResult.error.code },
         },
       };

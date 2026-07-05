@@ -18,11 +18,18 @@ export interface ParsedDoco {
   frontmatterExtra: Record<string, unknown>;
 }
 
+// The Mintlify-import gap, shared by the sync's error record (process-file.ts)
+// and the preview's checklist so the guidance can never drift between them:
+// the page converts fine but hasn't been given docolin frontmatter yet.
+export const MINTLIFY_FRONTMATTER_REQUIRED = {
+  code: "mintlify_frontmatter_required",
+  message:
+    "Imported from Mintlify. Add docolin frontmatter to this page: an `authors` list (at least one) and a `docolin:` block with `kind` and `type`.",
+} as const;
+
 export interface ParseError {
-  // The two parser codes, plus the Mintlify-import gap the local preview
-  // reports through the same shape (the sync reports it via its own error
-  // records): the page converts fine but hasn't been given docolin
-  // frontmatter yet.
+  // The two parser codes, plus the shared Mintlify-import code above, which
+  // the local preview reports through this same shape.
   code: "yaml_parse_error" | "frontmatter_invalid" | "mintlify_frontmatter_required";
   message: string;
   details: Record<string, unknown>;
@@ -97,7 +104,19 @@ export function parseDocoFile(source: string): ParseResult {
  * applies the same gate client-side). */
 export function hasDocolinKey(source: string): boolean {
   const { fence, yamlText } = splitRawFrontmatter(source);
-  if (fence === null) return false;
+  if (fence === null) {
+    // An UNCLOSED fence still signals intent: the author opened frontmatter
+    // and saved before closing it. Scan those would-be frontmatter lines so a
+    // docolin key in them opts in (and surfaces its real error) instead of the
+    // file vanishing. A file with no fence at all stays opted out.
+    const text = source.charCodeAt(0) === 0xfeff ? source.slice(1) : source;
+    const lines = text.split("\n");
+    if (lines.length === 0 || lines[0].trimEnd() !== "---") return false;
+    for (const line of lines.slice(1)) {
+      if (line.startsWith("docolin:")) return true;
+    }
+    return false;
+  }
   try {
     const data: unknown = yamlText.trim() === "" ? {} : parseYaml(yamlText);
     return typeof data === "object" && data !== null && "docolin" in data;

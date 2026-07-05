@@ -97,6 +97,18 @@ describe("isOptOutReadme", () => {
     expect(isOptOutReadme("README.md", brokenYaml)).toBe(false);
   });
 
+  it("opts in a README whose docolin fence was never CLOSED (intent still counts)", () => {
+    // The author opened frontmatter with a docolin block and saved before the
+    // closing ---; that must surface a real error, not vanish silently.
+    const unclosed = "---\ndocolin:\n  kind: os/linux/x\n\n# My project";
+    expect(isOptOutReadme("README.md", unclosed)).toBe(false);
+  });
+
+  it("still skips a README that merely MENTIONS docolin in its body", () => {
+    const body = "# My project\n\ndocolin: is a docs platform we like.";
+    expect(isOptOutReadme("README.md", body)).toBe(true);
+  });
+
   it("never gates a non-README, even without frontmatter", () => {
     expect(isOptOutReadme("docs/install.md", "# Install\n\nNo frontmatter.")).toBe(false);
   });

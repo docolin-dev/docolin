@@ -201,6 +201,12 @@ function resolveNav(
     );
   } else if (path.startsWith(`/preview/${ctx.projectId}/`)) {
     targetKey = path.slice(`/preview/${ctx.projectId}/`.length);
+  } else if (ctx.project.mintlify !== null && path.startsWith("/")) {
+    // Mintlify habit: prev/next written docs-root-absolute ("/devtools/mcp").
+    // That's already the path-from-project-root, so it resolves like the
+    // body's absolute links do. Plain docolin repos keep the raw fallback
+    // (a site-absolute link there points at docolin itself, not this project).
+    targetKey = pathFromSourcePath(path.slice(1), null);
   }
 
   if (targetKey !== null) {

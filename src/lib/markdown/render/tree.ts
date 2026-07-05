@@ -60,17 +60,28 @@ function splitComment(name: ElementContent[]): ElementContent[] | null {
   return null;
 }
 
+// The last text leaf in the name, descending into inline formatting so a name
+// like `**assets/**` (slash inside the <strong>) is still reachable.
+function lastTextLeaf(nodes: ElementContent[]): { value: string } | null {
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    const node = nodes[i];
+    if (node.type === "text") return node;
+    if (node.type === "element") {
+      const found = lastTextLeaf(node.children);
+      if (found !== null) return found;
+    }
+  }
+  return null;
+}
+
 // Drops one trailing `/` from the rendered name (the author's empty-folder
 // marker); the folder icon already carries that meaning. Only the final text
-// node is touched, so inline formatting stays intact.
+// leaf is touched, so inline formatting stays intact.
 function stripTrailingSlash(name: ElementContent[]): void {
-  for (let i = name.length - 1; i >= 0; i--) {
-    const node = name[i];
-    if (node.type !== "text") continue;
-    const trimmed = node.value.trimEnd();
-    if (trimmed.endsWith("/")) node.value = trimmed.slice(0, -1);
-    return;
-  }
+  const leaf = lastTextLeaf(name);
+  if (leaf === null) return;
+  const trimmed = leaf.value.trimEnd();
+  if (trimmed.endsWith("/")) leaf.value = trimmed.slice(0, -1);
 }
 
 function renderItem(state: State, item: ListItem): Element {
