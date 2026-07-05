@@ -422,6 +422,18 @@ function isStampOutcome(value: string): value is StampOutcome {
   return value === "worked" || value === "worked_with_caveats" || value === "didnt_work";
 }
 
+/** Whether `versionId` belongs to a doco in `projectId`. Guards the stamp and
+ *  retract actions against a client pointing them at an arbitrary version. */
+async function versionBelongsToProject(versionId: string, projectId: string): Promise<boolean> {
+  const owned = await db
+    .select({ id: versions.id })
+    .from(versions)
+    .innerJoin(docosTable, eq(docosTable.id, versions.docoId))
+    .where(and(eq(versions.id, versionId), eq(docosTable.projectId, projectId)))
+    .limit(1);
+  return owned.length > 0;
+}
+
 export const actions = {
   report: async ({ request, params, locals }) => {
     if (!locals.dbUser) return fail(401, { action: "report", error: "generic" });
@@ -494,14 +506,9 @@ export const actions = {
     // Don't trust the client to point the stamp at an arbitrary version: confirm
     // it belongs to the project in the URL.
     const proj = await resolveProjectBySlug(params.org, params.project);
-    if (proj === null) return fail(404, { action: "stamp", error: "generic" });
-    const owned = await db
-      .select({ id: versions.id })
-      .from(versions)
-      .innerJoin(docosTable, eq(docosTable.id, versions.docoId))
-      .where(and(eq(versions.id, versionId), eq(docosTable.projectId, proj.projectId)))
-      .limit(1);
-    if (owned.length === 0) return fail(404, { action: "stamp", error: "generic" });
+    if (proj === null || !(await versionBelongsToProject(versionId, proj.projectId))) {
+      return fail(404, { action: "stamp", error: "generic" });
+    }
 
     const voter = locals.dbUser ?? null;
     const recorded = await recordStamp({
@@ -535,14 +542,9 @@ export const actions = {
 
     // Same version-belongs-to-project guard as `stamp`.
     const proj = await resolveProjectBySlug(params.org, params.project);
-    if (proj === null) return fail(404, { action: "retract", error: "generic" });
-    const owned = await db
-      .select({ id: versions.id })
-      .from(versions)
-      .innerJoin(docosTable, eq(docosTable.id, versions.docoId))
-      .where(and(eq(versions.id, versionId), eq(docosTable.projectId, proj.projectId)))
-      .limit(1);
-    if (owned.length === 0) return fail(404, { action: "retract", error: "generic" });
+    if (proj === null || !(await versionBelongsToProject(versionId, proj.projectId))) {
+      return fail(404, { action: "retract", error: "generic" });
+    }
 
     const result = await retractStamp({
       versionId,

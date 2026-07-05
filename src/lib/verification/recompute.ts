@@ -18,10 +18,12 @@ async function voterCompetence(
   if (voterIds.length === 0) return new Map();
   const history = await db
     .select({
+      id: stamps.id,
       voterUserId: stamps.voterUserId,
       versionId: stamps.versionId,
       outcome: stamps.outcome,
       createdAt: stamps.createdAt,
+      retractsStampId: stamps.retractsStampId,
       versionScore: versions.verificationScore,
     })
     .from(stamps)
@@ -34,12 +36,20 @@ async function voterCompetence(
       ),
     );
 
-  // Only each voter's LATEST stamp per version counts, the same supersede
-  // rule the scorer applies. Without this a voter who changed their mind N
-  // times would have N entries in their own track record.
+  // Drop take-backs before the reduction, exactly as summarizeStamps does: a
+  // retraction (and the stamp it cancels) must not count toward the voter's
+  // track record, or a retracted "worked" would still move their competence.
+  const retractedTargets = new Set(
+    history.map((row) => row.retractsStampId).filter((id): id is string => id !== null),
+  );
+
+  // Only each voter's LATEST surviving stamp per version counts, the same
+  // supersede rule the scorer applies. Without this a voter who changed their
+  // mind N times would have N entries in their own track record.
   const latest = new Map<string, (typeof history)[number]>();
   for (const row of history) {
     if (row.voterUserId === null) continue;
+    if (row.retractsStampId !== null || retractedTargets.has(row.id)) continue;
     const key = `${row.voterUserId}:${row.versionId}`;
     const existing = latest.get(key);
     if (existing === undefined || row.createdAt > existing.createdAt) latest.set(key, row);
