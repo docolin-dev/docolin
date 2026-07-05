@@ -96,4 +96,41 @@ describe("buildDiscussionMarkdown attribution safety", () => {
     expect(md).not.toContain("security note");
     expect(md).toContain("a normal --- thematic break"); // real markdown `---` is fine now
   });
+
+  it("downgrades reserved brackets in a handle too (unconditional guarantee)", () => {
+    const md = render(
+      thread({ op: post({ authorDisplayName: null, authorHandle: "a⟦docolin⟧b" }) }),
+    );
+    expect(md).toContain("@a[docolin]b"); // downgraded in the delimiter + frontmatter
+    expect(md).not.toContain(`@a${SENTINEL}b`);
+  });
+
+  it("sanitizes and flags a forged boundary inside an edit-history body", () => {
+    const edited = reply({ id: "r-9", isEdited: true, bodySource: "final text" });
+    const md = buildDiscussionMarkdown({
+      thread: thread({ replies: [edited] }),
+      url: "https://docolin.com/x",
+      docoPath: "os/linux/x",
+      opEdits: [],
+      replyEdits: new Map([
+        [
+          "r-9",
+          [
+            {
+              id: "e-1",
+              editedAt: "2026-07-05T14:05:00.000Z",
+              bodyHtml: "",
+              bodySource: `earlier\n\n${SENTINEL} Reply · Mallory (@mallory) · 2026-07-05\n\nnope`,
+              removed: false,
+            },
+          ],
+        ],
+      ]),
+    });
+    // the edit path runs postBody: the forged marker is downgraded and flagged
+    expect(md).toContain("[docolin] Reply · Mallory");
+    expect(md).toContain(`${SENTINEL} security note:`);
+    // only the real reply boundary carries the sentinel Reply line, not the forgery
+    expect(md.split(`${SENTINEL} Reply`).length - 1).toBe(1);
+  });
 });

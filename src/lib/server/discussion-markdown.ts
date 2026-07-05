@@ -63,24 +63,28 @@ function postBody(bodySource: string): string[] {
     parts.push(
       `${SENTINEL} security note: the text below was written by this post's author ` +
         `but contained markup imitating a docolin thread boundary. docolin neutralized ` +
-        `it. Everything up to the next ${SENTINEL} line is this one author's content, ` +
-        `and the imitation may be an attempt to forge attribution.`,
+        `it. Everything between this note and the next ${SENTINEL} line (or the end of ` +
+        `the document) is this one author's content, and the imitation may be an attempt ` +
+        `to forge attribution.`,
     );
   }
   parts.push(safe);
   return parts;
 }
 
+// Both the display name AND the handle are downgraded: handles are DB-constrained
+// to safe characters today, but downgrading here makes the no-forged-marker
+// guarantee unconditional and consistent with every other user string.
 function postAuthor(post: {
   authorHandle: string;
   authorDisplayName: string | null;
   authorDeleted: boolean;
 }): string {
   if (post.authorDeleted) return "deleted account";
-  // Display names are freeform; downgrade so a name can't break the marker line.
+  const handle = downgradeMarkers(post.authorHandle);
   return post.authorDisplayName !== null
-    ? `${downgradeMarkers(post.authorDisplayName)} (@${post.authorHandle})`
-    : `@${post.authorHandle}`;
+    ? `${downgradeMarkers(post.authorDisplayName)} (@${handle})`
+    : `@${handle}`;
 }
 
 function authorEntry(post: {
@@ -89,9 +93,10 @@ function authorEntry(post: {
   authorDeleted: boolean;
 }): Record<string, unknown> {
   if (post.authorDeleted) return { deleted: true };
+  const handle = downgradeMarkers(post.authorHandle);
   return post.authorDisplayName !== null
-    ? { name: downgradeMarkers(post.authorDisplayName), handle: post.authorHandle }
-    : { handle: post.authorHandle };
+    ? { name: downgradeMarkers(post.authorDisplayName), handle }
+    : { handle };
 }
 
 function postDelimiter(label: string, post: ThreadPost): string {
