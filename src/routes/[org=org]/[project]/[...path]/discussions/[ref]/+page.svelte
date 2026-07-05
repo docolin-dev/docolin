@@ -49,10 +49,15 @@
     enhanceMarkdown = (await import("$lib/markdown/hydrate")).enhanceRenderedMarkdown;
   });
   $effect(() => {
-    // Depend on every signal that swaps rendered-markdown HTML into the page.
+    // Depend on every signal that swaps rendered-markdown HTML into the page:
+    // a reply/edit landing (thread), the edit-history panel (history*), and
+    // closing an edit form, which remounts the original bodyHtml without
+    // changing `thread` (so cancel would otherwise leave widgets un-enhanced).
     void thread;
     void historyOpenFor;
     void historyLoading;
+    void editingOp;
+    void editingReplyId;
     const run = enhanceMarkdown;
     if (run === null) return;
     void tick().then(run);
