@@ -18,10 +18,12 @@ async function voterCompetence(
   if (voterIds.length === 0) return new Map();
   const history = await db
     .select({
+      id: stamps.id,
       voterUserId: stamps.voterUserId,
       versionId: stamps.versionId,
       outcome: stamps.outcome,
       createdAt: stamps.createdAt,
+      retractsStampId: stamps.retractsStampId,
       versionScore: versions.verificationScore,
     })
     .from(stamps)
@@ -34,9 +36,17 @@ async function voterCompetence(
       ),
     );
 
-  // Only each voter's LATEST stamp per version counts, the same supersede
-  // rule the scorer applies. Without this a voter who changed their mind N
-  // times would have N entries in their own track record.
+  const retractedTargets = new Set(
+    history.map((row) => row.retractsStampId).filter((id): id is string => id !== null),
+  );
+
+  // Reduce to each voter's LATEST action per version FIRST, with retraction rows
+  // included as candidates so a take-back can be the newest action, then drop the
+  // take-backs. This order matters and mirrors summarizeStamps: filtering before
+  // the reduction would resurrect a superseded vote when the voter retracts a
+  // newer one (worked -> didnt_work -> retract must count as nothing, not
+  // "worked"). Without the reduction a voter who changed their mind N times would
+  // otherwise have N entries in their own track record.
   const latest = new Map<string, (typeof history)[number]>();
   for (const row of history) {
     if (row.voterUserId === null) continue;
@@ -48,6 +58,8 @@ async function voterCompetence(
   const byVoter = new Map<string, VoterHistoryRow[]>();
   for (const row of latest.values()) {
     if (row.voterUserId === null || row.versionScore === null) continue;
+    // A take-back (or the stamp it cancels) counts for nothing.
+    if (row.retractsStampId !== null || retractedTargets.has(row.id)) continue;
     const list = byVoter.get(row.voterUserId) ?? [];
     list.push({ outcome: row.outcome, versionScore: row.versionScore });
     byVoter.set(row.voterUserId, list);
@@ -97,6 +109,7 @@ export async function recomputeVersionScore(versionId: string): Promise<void> {
       networkBucket: stamps.networkBucket,
       createdAt: stamps.createdAt,
       voterCreatedAt: users.createdAt,
+      retractsStampId: stamps.retractsStampId,
     })
     .from(stamps)
     .leftJoin(users, eq(users.id, stamps.voterUserId))

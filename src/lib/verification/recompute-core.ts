@@ -34,6 +34,9 @@ export interface StampRow {
   networkBucket: string | null;
   createdAt: Date;
   voterCreatedAt: Date | null;
+  /** On a retraction ("take back") row, the id of the stamp it cancels; null on
+   *  a normal stamp. */
+  retractsStampId: string | null;
 }
 
 // Correlation assumed between anonymous stamps from the same network bucket.
@@ -176,7 +179,20 @@ export function summarizeStamps(
   previousRankingScore: number | null = null,
   competenceByVoter: ReadonlyMap<string, number> = new Map(),
 ): StampSummary {
-  const kept = dedupeLatestPerVoter(rows);
+  // Apply take-backs. A retraction is an append-only row, never a delete, so
+  // the ledger stays auditable. It drops out of scoring two ways at once:
+  //  - signed-in: the retraction is the voter's LATEST action, so
+  //    dedupeLatestPerVoter keeps only it, and removing retraction rows here
+  //    zeroes that voter (an earlier vote can't resurrect, dedup already
+  //    dropped it).
+  //  - anonymous: no voter to dedupe on, so the retraction names the exact
+  //    stamp it undoes; both that target and the retraction row are removed.
+  const retractedTargets = new Set(
+    rows.map((row) => row.retractsStampId).filter((id): id is string => id !== null),
+  );
+  const kept = dedupeLatestPerVoter(rows).filter(
+    (row) => row.retractsStampId === null && !retractedTargets.has(row.id),
+  );
   const scoringStamps = kept.map((row) => toScoringStamp(row, now, competenceByVoter));
   const clusterRho = buildClusterRho(kept);
 

@@ -1,0 +1,2 @@
+ALTER TABLE "stamps" ADD COLUMN "retracts_stamp_id" uuid;--> statement-breakpoint
+ALTER TABLE "stamps" ADD CONSTRAINT "stamps_retracts_stamp_id_stamps_id_fk" FOREIGN KEY ("retracts_stamp_id") REFERENCES "public"."stamps"("id") ON DELETE set null ON UPDATE no action;

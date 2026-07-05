@@ -13,7 +13,7 @@ import { resolveAuthors, type ResolvedAuthor } from "$lib/server/authors";
 import type { DocoViewData, ResolvedNavLink } from "$lib/doco/viewer-data";
 import { resolveLink, splitFragment } from "$lib/doco/resolve-link";
 import { isRelativePath, resolveRelativePath } from "$lib/sync/path-resolve";
-import { recordStamp } from "$lib/verification/ingest";
+import { recordStamp, retractStamp } from "$lib/verification/ingest";
 import { stampNetworkBucket } from "$lib/server/stamp-bucket";
 import type { StampOutcome } from "$lib/verification/score";
 import { LIMITS } from "$lib/limits";
@@ -422,6 +422,18 @@ function isStampOutcome(value: string): value is StampOutcome {
   return value === "worked" || value === "worked_with_caveats" || value === "didnt_work";
 }
 
+/** Whether `versionId` belongs to a doco in `projectId`. Guards the stamp and
+ *  retract actions against a client pointing them at an arbitrary version. */
+async function versionBelongsToProject(versionId: string, projectId: string): Promise<boolean> {
+  const owned = await db
+    .select({ id: versions.id })
+    .from(versions)
+    .innerJoin(docosTable, eq(docosTable.id, versions.docoId))
+    .where(and(eq(versions.id, versionId), eq(docosTable.projectId, projectId)))
+    .limit(1);
+  return owned.length > 0;
+}
+
 export const actions = {
   report: async ({ request, params, locals }) => {
     if (!locals.dbUser) return fail(401, { action: "report", error: "generic" });
@@ -494,17 +506,12 @@ export const actions = {
     // Don't trust the client to point the stamp at an arbitrary version: confirm
     // it belongs to the project in the URL.
     const proj = await resolveProjectBySlug(params.org, params.project);
-    if (proj === null) return fail(404, { action: "stamp", error: "generic" });
-    const owned = await db
-      .select({ id: versions.id })
-      .from(versions)
-      .innerJoin(docosTable, eq(docosTable.id, versions.docoId))
-      .where(and(eq(versions.id, versionId), eq(docosTable.projectId, proj.projectId)))
-      .limit(1);
-    if (owned.length === 0) return fail(404, { action: "stamp", error: "generic" });
+    if (proj === null || !(await versionBelongsToProject(versionId, proj.projectId))) {
+      return fail(404, { action: "stamp", error: "generic" });
+    }
 
     const voter = locals.dbUser ?? null;
-    await recordStamp({
+    const recorded = await recordStamp({
       versionId,
       outcome,
       source: voter ? "human" : "anonymous",
@@ -513,10 +520,38 @@ export const actions = {
       // anonymous bursts from one network without ever storing an address.
       networkBucket: await stampNetworkBucket(getClientAddress()),
     });
+    if (recorded === null) return fail(400, { action: "stamp", error: "generic" });
 
     // The write stays a single insert. The score recompute is debounced off the
     // write path by /api/cron/recompute-scores, which coalesces a burst of stamps
-    // on the same version into one recompute.
-    return { action: "stamp", ok: true };
+    // on the same version into one recompute. The stamp id goes back to the
+    // client so a reader can take it back later (stored locally, never in the
+    // cached HTML).
+    return { action: "stamp", ok: true, stampId: recorded.stampId };
+  },
+
+  // Take back a prior stamp (the "verify" buttons act as a toggle). Append-only:
+  // this records a retraction event, it never deletes the ledger row.
+  retract: async ({ request, params, locals }) => {
+    const form = await request.formData();
+    const versionId = fieldStr(form, "versionId");
+    const stampId = fieldStr(form, "stampId");
+    if (versionId.length === 0 || stampId.length === 0) {
+      return fail(400, { action: "retract", error: "generic" });
+    }
+
+    // Same version-belongs-to-project guard as `stamp`.
+    const proj = await resolveProjectBySlug(params.org, params.project);
+    if (proj === null || !(await versionBelongsToProject(versionId, proj.projectId))) {
+      return fail(404, { action: "retract", error: "generic" });
+    }
+
+    const result = await retractStamp({
+      versionId,
+      stampId,
+      voterUserId: locals.dbUser?.id ?? null,
+    });
+    if (!result.ok) return fail(400, { action: "retract", error: "generic" });
+    return { action: "retract", ok: true };
   },
 } satisfies Actions;
