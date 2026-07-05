@@ -2,10 +2,14 @@ import type { SitemapNode } from "../sitemap-schema";
 
 // Converts a Mintlify `navigation` config into a docolin sitemap (the sidebar).
 // Mintlify's navigation has shifted across versions, so several shapes are
-// handled: `{ tabs: [{ tab, groups }] }`, `{ groups: [...] }`, `{ pages: [...] }`,
-// and the legacy array-of-groups form. Page entries are paths relative to the
-// docs root, which is exactly docolin's path-from-project-root, so links are the
-// absolute `/{org}/{project}/{path}` form.
+// handled: the wrapper levels `languages` / `versions` (docolin has ONE sidebar
+// per project, so the first, i.e. default, entry wins), the titled containers
+// `tabs` / `anchors` / `dropdowns` (each becomes a top-level group), plain
+// `groups` / `pages`, and the legacy array-of-groups form. Wrappers recurse, so
+// `languages -> tabs -> groups` (mintlify/docs' own layout) works at any depth.
+// Page entries are paths relative to the docs root, which is exactly docolin's
+// path-from-project-root, so links are the absolute `/{org}/{project}/{path}`
+// form.
 
 interface NavContext {
   orgSlug: string;
@@ -18,22 +22,39 @@ export function navToSitemap(navigation: unknown, ctx: NavContext): SitemapNode[
   if (navigation === null || typeof navigation !== "object") return [];
 
   const nav = navigation as Record<string, unknown>;
-  if (Array.isArray(nav.tabs)) return convertTabs(nav.tabs, ctx);
+  // i18n / versioned navs: the first entry is Mintlify's default; the others
+  // describe the same docs in another language/version, not more sidebar.
+  if (Array.isArray(nav.languages)) return firstNonEmpty(nav.languages, ctx);
+  if (Array.isArray(nav.versions)) return firstNonEmpty(nav.versions, ctx);
+  if (Array.isArray(nav.tabs)) return convertWrappers(nav.tabs, "tab", ctx);
+  if (Array.isArray(nav.anchors)) return convertWrappers(nav.anchors, "anchor", ctx);
+  if (Array.isArray(nav.dropdowns)) return convertWrappers(nav.dropdowns, "dropdown", ctx);
   if (Array.isArray(nav.groups)) return convertEntries(nav.groups, ctx);
   if (Array.isArray(nav.pages)) return convertEntries(nav.pages, ctx);
   return [];
 }
 
-// A tab has no docolin equivalent (the sidebar is flat-topped), so each tab
-// becomes a top-level group holding its own groups/pages.
-function convertTabs(tabs: unknown[], ctx: NavContext): SitemapNode[] {
+// The first wrapper entry that yields sidebar content (a language/version with
+// an empty or unrecognized nav shouldn't blank the whole sidebar).
+function firstNonEmpty(items: unknown[], ctx: NavContext): SitemapNode[] {
+  for (const item of items) {
+    const out = navToSitemap(item, ctx);
+    if (out.length > 0) return out;
+  }
+  return [];
+}
+
+// A titled container level (tab / anchor / dropdown) has no docolin equivalent
+// (the sidebar is flat-topped), so each becomes a top-level group holding its
+// own converted content; recursion covers containers nested in containers.
+function convertWrappers(items: unknown[], titleKey: string, ctx: NavContext): SitemapNode[] {
   const out: SitemapNode[] = [];
-  for (const tab of tabs) {
-    if (tab === null || typeof tab !== "object") continue;
-    const t = tab as Record<string, unknown>;
-    const title = typeof t.tab === "string" ? t.tab : null;
-    const entries = Array.isArray(t.groups) ? t.groups : Array.isArray(t.pages) ? t.pages : [];
-    const children = convertEntries(entries, ctx);
+  for (const item of items) {
+    if (item === null || typeof item !== "object") continue;
+    const obj = item as Record<string, unknown>;
+    const raw = obj[titleKey];
+    const title = typeof raw === "string" ? raw : null;
+    const children = navToSitemap(obj, ctx);
     if (children.length === 0) continue;
     if (title === null) out.push(...children);
     else out.push({ title, children });
@@ -53,9 +74,15 @@ function convertEntries(entries: unknown[], ctx: NavContext): SitemapNode[] {
     if (entry === null || typeof entry !== "object") continue;
     const obj = entry as Record<string, unknown>;
     if (typeof obj.group === "string") {
+      const children = convertEntries(Array.isArray(obj.pages) ? obj.pages : [], ctx);
+      // A group's `root` is its own landing page; docolin nodes are url XOR
+      // children, so it leads the group as its first leaf.
+      if (typeof obj.root === "string") {
+        const rootNode = pageNode(obj.root, ctx);
+        if (rootNode !== null) children.unshift(rootNode);
+      }
       // Drop a group that resolves to nothing (e.g. an OpenAPI-only group whose
       // every page is a generated endpoint).
-      const children = convertEntries(Array.isArray(obj.pages) ? obj.pages : [], ctx);
       if (children.length > 0) out.push({ title: obj.group, children });
     } else if (typeof obj.page === "string") {
       const node = pageNode(obj.page, ctx);
