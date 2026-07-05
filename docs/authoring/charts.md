@@ -35,7 +35,7 @@ Pango keeps a logbook, and numbers in a [table](./tables.md) are precise but har
 
 ## How it works
 
-Put a `{ .chart ... }` line right after a table. docolin draws the chart on top and visually hides the table, but the table stays in the page. That table is the source of truth: the no-JS fallback, the SEO content, the screen-reader view, and what an AI reads. You get the picture without giving up the data.
+Put a `{ .chart ... }` line under a table, on its own line with a blank line between the two (like any Markdown block). docolin draws the chart on top and visually hides the table, but the table stays in the page. That table is the source of truth: the no-JS fallback, the SEO content, the screen-reader view, and what an AI reads. You get the picture without giving up the data.
 
 The first column is the x-axis; every other column is a series named by its header.
 
