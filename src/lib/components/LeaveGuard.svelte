@@ -25,9 +25,12 @@
   // Splits a URL so the host can be emphasized in place, so a long or obfuscated
   // link still shows WHERE it goes. The link was already validated as http(s) by
   // the renderer, so URL parsing succeeds; the fallback keeps us safe regardless.
+  // Protocol-relative links (//host/x) are normalized the same way the renderer
+  // does, so the host is emphasized rather than the whole string.
   function describe(url: string): Target {
-    if (!URL.canParse(url)) return { url, before: "", host: url, after: "" };
-    const parsed = new URL(url);
+    const normalized = url.startsWith("//") ? `https:${url}` : url;
+    if (!URL.canParse(normalized)) return { url, before: "", host: url, after: "" };
+    const parsed = new URL(normalized);
     const hostAt = url.indexOf(parsed.host);
     if (hostAt === -1) return { url, before: "", host: parsed.host, after: "" };
     return {
