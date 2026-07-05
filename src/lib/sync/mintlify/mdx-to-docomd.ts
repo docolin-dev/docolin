@@ -211,11 +211,22 @@ function convertComponent(node: JsxElement): RootContent[] {
       return convertField(node);
     case "img":
       return convertImg(node);
+    case "icon":
+      return convertIcon(node);
+    case "video":
+    case "iframe":
+      return convertEmbed(node);
+    case "frame":
+      // A media wrapper: unwrap it (the img/video/iframe inside converts on its
+      // own) and keep its caption as a trailing italic line.
+      return convertFrame(node);
+    case "tree":
+      return convertTree(node);
     default:
-      // Everything else (Frame, Tooltip, Icon, Badge, Color, Panel, Prompt,
-      // Tree, View, Visibility, ResponseExample, ...) has no docomd equivalent;
-      // unwrap so its inner prose survives and the wrapper is dropped. A
-      // self-closing component (e.g. <Icon />) simply disappears.
+      // Everything else (Tooltip, Badge, Panel, Prompt, View, Visibility,
+      // ResponseExample, ...) has no docomd equivalent; unwrap so its inner
+      // prose survives and the wrapper is dropped. A self-closing component
+      // simply disappears.
       return convertChildren(node.children);
   }
 }
@@ -300,6 +311,89 @@ function convertImg(node: JsxElement): RootContent[] {
     head.push(text("{ .dark-only }"));
   }
   return [paragraph(head)];
+}
+
+// A name the inline `:icon:` shortcode will accept: lowercase letters, digits,
+// and hyphens only (mirrors the renderer's candidate check in
+// src/lib/markdown/render/icon-shortcode.ts). String ops, no regex.
+function isShortcodeName(name: string): boolean {
+  if (name.length === 0) return false;
+  for (const char of name) {
+    const ok = (char >= "a" && char <= "z") || (char >= "0" && char <= "9") || char === "-";
+    if (!ok) return false;
+  }
+  return true;
+}
+
+// <Icon icon="download" /> -> the inline `:fa-download:` shortcode, carrying the
+// project's icon set exactly like card icons do (prefixedIcon). A name the
+// shortcode would not accept is dropped rather than left as literal `:x:` text.
+function convertIcon(node: JsxElement): RootContent[] {
+  const name = (attr(node, "icon") ?? "").trim().toLowerCase();
+  if (!isShortcodeName(name)) return [];
+  const shortcode = text(`:${prefixedIcon(name)}:`);
+  // In flow position the bare text needs a paragraph to stay valid block content.
+  return node.type === "mdxJsxFlowElement" ? [paragraph([shortcode])] : [shortcode];
+}
+
+// <video src> and YouTube <iframe src> map to docomd's image-as-video syntax
+// (`![alt](url)`): the renderer plays a video file natively and turns a YouTube
+// URL into the privacy facade, and its id parser already reads /embed/ URLs.
+// A non-YouTube iframe has no docomd equivalent and is dropped.
+function convertEmbed(node: JsxElement): RootContent[] {
+  const src = attr(node, "src");
+  if (src === null || src.length === 0) return [];
+  if (nameOf(node) === "iframe" && !src.includes("youtube.com/") && !src.includes("youtu.be/")) {
+    return [];
+  }
+  const alt = firstAttr(node, ["title", "alt"]) ?? "";
+  return [paragraph([{ type: "image", url: src, alt }])];
+}
+
+function convertFrame(node: JsxElement): RootContent[] {
+  const inner = convertChildren(node.children);
+  const caption = attr(node, "caption");
+  if (caption !== null && caption.length > 0) {
+    inner.push(paragraph([{ type: "emphasis", children: [text(caption)] }]));
+  }
+  return inner;
+}
+
+const TREE_ENTRY_NAMES: ReadonlySet<string> = new Set([
+  "tree.folder",
+  "tree.file",
+  "folder",
+  "file",
+]);
+
+// One <Tree> level to a docomd list level. Folders recurse; an empty folder
+// keeps its meaning through the trailing-slash marker docomd's tree uses.
+function treeLevelToList(node: JsxElement): List {
+  const items: ListItem[] = collect(node, TREE_ENTRY_NAMES).map((entry) => {
+    const name = attr(entry, "name") ?? "";
+    const children: Block[] = [];
+    if (nameOf(entry).endsWith("folder")) {
+      const sub = treeLevelToList(entry);
+      if (sub.children.length > 0) {
+        children.push(paragraph([text(name)]), sub);
+      } else {
+        children.push(paragraph([text(`${name}/`)]));
+      }
+    } else {
+      children.push(paragraph([text(name)]));
+    }
+    return { type: "listItem", spread: false, checked: null, children };
+  });
+  return { type: "list", ordered: false, spread: false, children: items };
+}
+
+// <Tree> -> a nested unordered list followed by the `{ .tree }` marker, docomd's
+// file-tree syntax. A Tree with no recognizable entries unwraps like any other
+// unknown wrapper so nothing is lost.
+function convertTree(node: JsxElement): RootContent[] {
+  const list = treeLevelToList(node);
+  if (list.children.length === 0) return convertChildren(node.children);
+  return [list, paragraph([text("{ .tree }")])];
 }
 
 function convertTab(node: JsxElement): DocoTab {
