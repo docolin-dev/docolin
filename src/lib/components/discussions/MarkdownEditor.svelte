@@ -56,7 +56,9 @@
     }
     if (text === lastPreviewedText) return;
     previewLoading = true;
-    void renderMarkdownPreview(text).then((html) => {
+    // The editor drives discussion bodies, so the preview downgrades headings
+    // exactly as the published discussion render does.
+    void renderMarkdownPreview(text, { downgradeHeadings: true }).then((html) => {
       // Drop the result if the writer switched tabs or edited in the meantime.
       if (tab === "preview" && value === text) {
         previewHtml = html;

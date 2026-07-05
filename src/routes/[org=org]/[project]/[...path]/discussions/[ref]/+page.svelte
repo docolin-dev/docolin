@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import { onMount, tick } from "svelte";
   import { m } from "$paraglide/messages";
   import { getLocale, localizeHref } from "$paraglide/runtime";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
@@ -35,6 +36,32 @@
 
   let { data, form }: PageProps = $props();
   const thread = $derived(data.thread);
+
+  // The root layout only re-runs client markdown widgets (charts, mermaid, diff
+  // viewers, variables) on navigation. A discussion mutates its own DOM without
+  // navigating, posting a reply, editing a body, opening the edit history, so
+  // those widgets must be re-wired after each such change or they render as raw
+  // tables / code. The enhancer is idempotent (guards against re-processing), so
+  // re-running over the whole page is safe. Lazy-imported to keep its browser-only
+  // deps (Mermaid, LayerChart) out of the SSR bundle.
+  let enhanceMarkdown = $state<(() => void) | null>(null);
+  onMount(async () => {
+    enhanceMarkdown = (await import("$lib/markdown/hydrate")).enhanceRenderedMarkdown;
+  });
+  $effect(() => {
+    // Depend on every signal that swaps rendered-markdown HTML into the page:
+    // a reply/edit landing (thread), the edit-history panel (history*), and
+    // closing an edit form, which remounts the original bodyHtml without
+    // changing `thread` (so cancel would otherwise leave widgets un-enhanced).
+    void thread;
+    void historyOpenFor;
+    void historyLoading;
+    void editingOp;
+    void editingReplyId;
+    const run = enhanceMarkdown;
+    if (run === null) return;
+    void tick().then(run);
+  });
 
   const discussionsBase = $derived(
     `/${data.org.slug}/${data.project.slug}/${data.docoPath}/discussions`,

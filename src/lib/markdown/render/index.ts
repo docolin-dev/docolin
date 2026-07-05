@@ -10,6 +10,18 @@ import { h, s } from "hastscript";
 import { toString as mdastToString } from "mdast-util-to-string";
 import type { Root as HastRoot, Element, ElementContent } from "hast";
 import type { Root as MdastRoot } from "mdast";
+import type { VFile } from "vfile";
+
+// Per-render flags handed to the pipeline through the vfile's data (set in the
+// render function, read by the plugins). Declared here so the reads are typed.
+declare module "vfile" {
+  interface DataMap {
+    /** The doco's language, for localizing prerendered chrome (inputs card). */
+    docoLanguage?: string;
+    /** Rewrite h1-h6 into styled non-heading paragraphs (discussion bodies). */
+    downgradeHeadings?: boolean;
+  }
+}
 import {
   remarkDocomd,
   remarkAttrList,
@@ -129,6 +141,43 @@ function rehypeHeadingAnchors() {
         h("a", { class: "heading-anchor", href: `#${id}`, "aria-label": "Link to this section" }, [
           iconHast("link", "heading-anchor-icon"),
         ]),
+      );
+    });
+  };
+}
+
+// Discussion bodies live inside a page that already owns the document outline
+// (the discussion's own headings, the site chrome). Letting each comment emit
+// real h1-h6 would inject junk into that outline and the accessibility tree, so
+// when file.data.downgradeHeadings is set we rewrite h1-h6 into styled
+// paragraphs: they still LOOK like headings (size class) but carry no outline
+// weight, no id, and no section anchor (a comment heading is not linkable).
+// Runs after rehypeHeadingAnchors so the anchor it added is stripped back off.
+const HEADING_LEVELS: Record<string, string | undefined> = {
+  h1: "1",
+  h2: "2",
+  h3: "3",
+  h4: "4",
+  h5: "5",
+  h6: "6",
+};
+function rehypeDowngradeHeadings() {
+  return (tree: HastRoot, file: VFile): undefined => {
+    if (!file.data.downgradeHeadings) return;
+    visit(tree, "element", (node) => {
+      const level = HEADING_LEVELS[node.tagName];
+      if (level === undefined) return;
+      node.tagName = "p";
+      delete node.properties.id;
+      node.properties.className = ["doco-heading", `doco-heading-${level}`];
+      node.children = node.children.filter(
+        (child) =>
+          !(
+            child.type === "element" &&
+            child.tagName === "a" &&
+            Array.isArray(child.properties.className) &&
+            child.properties.className.includes("heading-anchor")
+          ),
       );
     });
   };
@@ -259,14 +308,23 @@ function footnoteBackContent(_referenceIndex: number, rereferenceIndex: number):
   return iconHast("undo-2", "footnote-backref-icon");
 }
 
-/** Builds a render function bound to a shiki highlighter. The optional
- *  `language` is the DOCO's language (frontmatter), not the reader's locale:
- *  rendered HTML is edge-cached identically for every reader, so any prerendered
- *  chrome string (e.g. the inputs-card fallback) localizes to the content's
- *  language and falls back to English. */
+/** Options for one render pass. */
+export interface RenderOptions {
+  /** The DOCO's language (frontmatter), not the reader's locale: rendered HTML
+   *  is edge-cached identically for every reader, so any prerendered chrome
+   *  string (e.g. the inputs-card fallback) localizes to the content's language
+   *  and falls back to English. */
+  language?: string;
+  /** Rewrite h1-h6 into styled non-heading paragraphs. For user content nested
+   *  in a page that owns the outline (discussion bodies), so comments don't
+   *  inject headings into the document outline. */
+  downgradeHeadings?: boolean;
+}
+
+/** Builds a render function bound to a shiki highlighter. */
 export function createMarkdownRenderer(
   highlight: Highlight,
-): (source: string, language?: string) => Promise<string> {
+): (source: string, options?: RenderOptions) => Promise<string> {
   const processor = unified()
     .use(remarkParse)
     .use(remarkGfm)
@@ -294,17 +352,22 @@ export function createMarkdownRenderer(
     .use(rehypeButtons)
     .use(rehypeExternalLinks)
     .use(rehypeHeadingAnchors)
+    .use(rehypeDowngradeHeadings)
     .use(rehypeTaskLists)
     .use(rehypeIconShortcodes)
     .use(rehypeAnnotations)
     .use(rehypeSanitizeUrls)
     .use(rehypeStringify);
 
-  return async (source: string, language?: string): Promise<string> => {
+  return async (source: string, options?: RenderOptions): Promise<string> => {
+    const language = options?.language;
     const file = await processor.process({
       value: source,
-      // Empty string falls back to English too, matching the documented contract.
-      data: { docoLanguage: language !== undefined && language.length > 0 ? language : "en" },
+      data: {
+        // Empty string falls back to English too, matching the documented contract.
+        docoLanguage: language !== undefined && language.length > 0 ? language : "en",
+        downgradeHeadings: options?.downgradeHeadings === true,
+      },
     });
     return String(file);
   };

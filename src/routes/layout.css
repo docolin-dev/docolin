@@ -852,6 +852,43 @@ html:not(.dark) .dark-only {
   height: 0.8em;
 }
 
+/* Discussion "headings": a comment body's ## etc. render as styled paragraphs
+   (see rehypeDowngradeHeadings), not real h1-h6, so user content never pollutes
+   the page's heading outline. Sizes are em-based, so they track the prose scale
+   (full prose for the OP, prose-sm for comments). Specificity beats the
+   typography plugin's :where(p) paragraph rules. */
+.prose .doco-heading {
+  margin-top: 1.4em;
+  margin-bottom: 0.6em;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--foreground);
+}
+.prose .doco-heading:first-child {
+  margin-top: 0;
+}
+.prose .doco-heading-1 {
+  font-size: 1.75em;
+}
+.prose .doco-heading-2 {
+  font-size: 1.4em;
+}
+.prose .doco-heading-3 {
+  font-size: 1.2em;
+}
+.prose .doco-heading-4 {
+  font-size: 1.05em;
+}
+.prose .doco-heading-5 {
+  font-size: 1em;
+}
+.prose .doco-heading-6 {
+  font-size: 0.9em;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
 /* Appended to <body>, positioned by Floating UI (position: fixed). */
 .doco-hovercard {
   position: fixed;
