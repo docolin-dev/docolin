@@ -795,3 +795,27 @@ describe("leave-docolin marker (external link interstitial)", () => {
     expect(linkOf(html, "mailto:a@example.com")).not.toContain("data-leave");
   });
 });
+
+describe("downgradeHeadings (discussion bodies)", () => {
+  const discRender = (src: string): Promise<string> => render(src, { downgradeHeadings: true });
+
+  it("rewrites h1-h6 into styled non-heading paragraphs", async () => {
+    const html = await discRender("# One\n\n## Two\n\n###### Six\n");
+    expect(html).not.toMatch(/<h[1-6]\b/);
+    expect(html).toContain('class="doco-heading doco-heading-1"');
+    expect(html).toContain('class="doco-heading doco-heading-2"');
+    expect(html).toContain('class="doco-heading doco-heading-6"');
+  });
+
+  it("drops the id and the section anchor a comment heading would carry", async () => {
+    const html = await discRender("## A heading\n");
+    expect(html).not.toContain("heading-anchor");
+    expect(html).not.toMatch(/<p[^>]*\bid=/);
+  });
+
+  it("leaves headings intact without the flag (docos keep their outline)", async () => {
+    const html = await render("## Keep me\n");
+    expect(html).toMatch(/<h2\b/);
+    expect(html).toContain("heading-anchor");
+  });
+});

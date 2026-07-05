@@ -5,9 +5,14 @@
 // hits authors, once, when they open Preview. The shared pipeline guarantees the
 // preview matches the published doco.
 
-let preview: ((source: string, language?: string) => Promise<string>) | null = null;
+import type { RenderOptions } from "$lib/markdown/render";
 
-export async function renderMarkdownPreview(source: string, language?: string): Promise<string> {
+let preview: ((source: string, options?: RenderOptions) => Promise<string>) | null = null;
+
+export async function renderMarkdownPreview(
+  source: string,
+  options?: RenderOptions,
+): Promise<string> {
   if (preview === null) {
     const [{ createMarkdownRenderer }, { highlightCode }] = await Promise.all([
       import("$lib/markdown/render"),
@@ -15,5 +20,5 @@ export async function renderMarkdownPreview(source: string, language?: string): 
     ]);
     preview = createMarkdownRenderer(highlightCode);
   }
-  return preview(source, language);
+  return preview(source, options);
 }

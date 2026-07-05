@@ -9,7 +9,7 @@ import {
   inboxMessages,
   users,
 } from "$lib/server/db/schema";
-import { renderMarkdown } from "$lib/server/markdown";
+import { renderDiscussionMarkdown } from "$lib/server/markdown";
 import { extractMentionHandles } from "$lib/mentions";
 
 // Data + mutation layer for doco discussions. Discussions are GitHub-issues
@@ -287,7 +287,7 @@ export async function getThread(docoId: string, number: number): Promise<ThreadD
         authorHandle: authorDeleted ? "" : r.authorHandle,
         authorDisplayName: authorDeleted ? null : r.authorDisplayName,
         authorDeleted,
-        bodyHtml: await renderMarkdown(r.bodyText),
+        bodyHtml: await renderDiscussionMarkdown(r.bodyText),
         bodySource: r.bodyText,
         createdAt: r.createdAt.toISOString(),
         isEdited: editedReplyIds.has(r.id),
@@ -314,7 +314,7 @@ export async function getThread(docoId: string, number: number): Promise<ThreadD
       authorHandle: opDeleted ? "" : d.authorHandle,
       authorDisplayName: opDeleted ? null : d.authorDisplayName,
       authorDeleted: opDeleted,
-      bodyHtml: await renderMarkdown(d.bodyText),
+      bodyHtml: await renderDiscussionMarkdown(d.bodyText),
       bodySource: d.bodyText,
       createdAt: d.createdAt.toISOString(),
       isEdited: opEditedRows.length > 0,
@@ -411,7 +411,7 @@ async function renderEditVersion(r: {
   return {
     id: r.id,
     editedAt: r.editedAt.toISOString(),
-    bodyHtml: await renderMarkdown(r.priorBodyText),
+    bodyHtml: await renderDiscussionMarkdown(r.priorBodyText),
     bodySource: r.priorBodyText,
     removed: false,
   };

@@ -27,7 +27,15 @@ export type { TocEntry };
 const render = createMarkdownRenderer(highlightCode);
 
 export function renderMarkdown(source: string, language?: string): Promise<string> {
-  return render(source, language);
+  return render(source, { language });
+}
+
+/** Renders a discussion body (comment / OP). Same pipeline as docos, but
+ *  headings are downgraded to styled paragraphs: a discussion is nested in a
+ *  page that already owns the heading outline, so its user content must not
+ *  inject h1-h6 into that outline. */
+export function renderDiscussionMarkdown(source: string): Promise<string> {
+  return render(source, { downgradeHeadings: true });
 }
 
 /** Top-level h2/h3 headings for the doco viewer's table of contents. */
