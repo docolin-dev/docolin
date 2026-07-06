@@ -43,11 +43,7 @@
              site; the outbound link lives there with its context. -->
         <p class="text-muted-foreground/80 mt-3 flex items-center gap-2 text-xs">
           {m.home_footer_sponsored_by()}
-          <a
-            href={localizeHref("/sponsor")}
-            class="transition-opacity hover:opacity-80"
-            aria-label="Neon"
-          >
+          <a href={localizeHref("/sponsor")} class="transition-opacity hover:opacity-80">
             <img
               src="/sponsors/neon-logo-light.svg"
               alt="Neon"
