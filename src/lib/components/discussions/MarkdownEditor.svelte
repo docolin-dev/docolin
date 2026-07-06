@@ -118,7 +118,13 @@
   function onKeydown(e: KeyboardEvent): void {
     if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
     const k = e.key.toLowerCase();
-    if (k === "b") {
+    if (k === "enter") {
+      // Ctrl/Cmd+Enter submits the enclosing form (the muscle memory from
+      // GitHub and chat apps). requestSubmit, not submit(), so use:enhance
+      // and native validation (e.g. the required title) still run.
+      e.preventDefault();
+      textarea?.form?.requestSubmit();
+    } else if (k === "b") {
       e.preventDefault();
       void surround("**", "**", "bold");
     } else if (k === "i") {
