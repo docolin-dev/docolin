@@ -972,36 +972,44 @@
               <ChevronDown class="size-3" />
             </button>
             {#if versionMenuOpen}
-              <ul
-                class="border-foreground/15 bg-background absolute top-full left-0 z-10 mt-1 flex max-h-64 w-72 flex-col overflow-y-auto border text-xs shadow-md"
-                role="listbox"
+              <!-- The panel div owns the overlay positioning; ScrollArea can't
+                   (bits-ui pins position: relative inline on its root for the
+                   scrollbar, which would beat an absolute class). -->
+              <div
+                class="border-foreground/15 bg-background absolute top-full left-0 z-10 mt-1 w-72 border text-xs shadow-md"
               >
-                {#each doco.versions as v (v.versionNumber)}
-                  {@const href = localizeHref(
-                    `/${data.org.slug}/${data.project.slug}/${doco.pathFromProjectRoot}@${v.commitSha ?? String(v.versionNumber)}`,
-                  )}
-                  <li>
-                    <a
-                      {href}
-                      onclick={() => (versionMenuOpen = false)}
-                      class="hover:bg-muted/50 grid grid-cols-[auto_1fr_auto] items-center gap-3 px-3 py-2 transition-colors"
-                      class:bg-muted={v.versionNumber === doco.versionNumber}
-                    >
-                      <span class="text-foreground font-mono">
-                        {v.versionTag ??
-                          (v.commitSha === null
-                            ? `v${String(v.versionNumber)}`
-                            : v.commitSha.slice(0, 7))}
-                      </span>
-                      <span class="text-muted-foreground">{relativeTime(v.publishedAt)}</span>
-                      <span class="text-muted-foreground inline-flex items-center gap-1 font-mono">
-                        <PawPrint class="size-3" />
-                        {v.pangoScore ?? "-"}
-                      </span>
-                    </a>
-                  </li>
-                {/each}
-              </ul>
+                <ScrollArea class="max-h-64">
+                  <ul class="flex flex-col" role="listbox">
+                    {#each doco.versions as v (v.versionNumber)}
+                      {@const href = localizeHref(
+                        `/${data.org.slug}/${data.project.slug}/${doco.pathFromProjectRoot}@${v.commitSha ?? String(v.versionNumber)}`,
+                      )}
+                      <li>
+                        <a
+                          {href}
+                          onclick={() => (versionMenuOpen = false)}
+                          class="hover:bg-muted/50 grid grid-cols-[auto_1fr_auto] items-center gap-3 px-3 py-2 transition-colors"
+                          class:bg-muted={v.versionNumber === doco.versionNumber}
+                        >
+                          <span class="text-foreground font-mono">
+                            {v.versionTag ??
+                              (v.commitSha === null
+                                ? `v${String(v.versionNumber)}`
+                                : v.commitSha.slice(0, 7))}
+                          </span>
+                          <span class="text-muted-foreground">{relativeTime(v.publishedAt)}</span>
+                          <span
+                            class="text-muted-foreground inline-flex items-center gap-1 font-mono"
+                          >
+                            <PawPrint class="size-3" />
+                            {v.pangoScore ?? "-"}
+                          </span>
+                        </a>
+                      </li>
+                    {/each}
+                  </ul>
+                </ScrollArea>
+              </div>
             {/if}
           </span>
 

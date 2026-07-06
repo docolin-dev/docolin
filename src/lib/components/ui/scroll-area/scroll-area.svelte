@@ -26,10 +26,13 @@
   class={cn("relative", className)}
   {...restProps}
 >
+  <!-- max-h-[inherit] lets a max-height-capped root (e.g. a dropdown panel)
+       actually constrain the viewport; a percentage height alone doesn't
+       resolve against max-height. No effect when the root has a fixed height. -->
   <ScrollAreaPrimitive.Viewport
     bind:ref={viewportRef}
     data-slot="scroll-area-viewport"
-    class="cn-scroll-area-viewport focus-visible:ring-ring/50 size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:outline-1"
+    class="cn-scroll-area-viewport focus-visible:ring-ring/50 size-full max-h-[inherit] rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:outline-1"
   >
     {@render children?.()}
   </ScrollAreaPrimitive.Viewport>
