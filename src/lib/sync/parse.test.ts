@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test";
-import { parseDocoFile } from "./parse";
+import { checkDocoSourceSize, parseDocoFile } from "./parse";
+import { LIMITS } from "$lib/limits";
 
 // The frontmatter split is hand-rolled (no gray-matter, which pulls in Node's
 // Buffer and crashes in the browser preview). These pin the split's edge cases
@@ -98,5 +99,24 @@ describe("parseDocoFile", () => {
     expect((extra.docolin as Record<string, unknown>).kind).toBe(
       "hardware/gpu/nvidia/driver-install",
     );
+  });
+
+  it("rejects an oversized source as file_too_large before parsing", () => {
+    const result = parseDocoFile(doc("x".repeat(LIMITS.docoSourceBytes + 1)));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("file_too_large");
+    expect(result.error.details.limitBytes).toBe(LIMITS.docoSourceBytes);
+  });
+});
+
+describe("checkDocoSourceSize", () => {
+  it("passes at exactly the limit and measures bytes, not code units", () => {
+    expect(checkDocoSourceSize("x".repeat(LIMITS.docoSourceBytes))).toBeNull();
+    // "ä" is 1 UTF-16 code unit but 2 UTF-8 bytes: a string whose length sits
+    // under the limit must still be rejected when its bytes exceed it.
+    const overByBytes = "ä".repeat(Math.ceil(LIMITS.docoSourceBytes / 2) + 1);
+    expect(overByBytes.length).toBeLessThanOrEqual(LIMITS.docoSourceBytes);
+    expect(checkDocoSourceSize(overByBytes)?.code).toBe("file_too_large");
   });
 });

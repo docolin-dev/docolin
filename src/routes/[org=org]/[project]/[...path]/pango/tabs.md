@@ -187,3 +187,107 @@ A grouping boundary: a callout between two runs splits them into separate sets.
 
 === "Run 2"
     A separate set, not part of run 1.
+
+## Tall panels (scroll-jump regression)
+
+Each panel here is intentionally huge. The historical bug: picking any tab but
+the first scrolled the page far away, because the click focused a hidden radio
+whose box sat after the previous tab's tall panel, and the browser dutifully
+scrolled to it. Click every label below; the page must not move at all.
+
+=== "Bamboo route"
+    Pango starts every session on the bamboo route, and he warms up properly.
+
+    - Stretch the tail, twice
+    - Count the scales (all of them)
+    - One practice curl
+
+    ```text
+    bamboo segment 01: grip check
+    bamboo segment 02: grip check
+    bamboo segment 03: grip check
+    bamboo segment 04: grip check
+    bamboo segment 05: grip check
+    bamboo segment 06: grip check
+    bamboo segment 07: grip check
+    bamboo segment 08: grip check
+    bamboo segment 09: grip check
+    bamboo segment 10: grip check
+    bamboo segment 11: grip check
+    bamboo segment 12: grip check
+    bamboo segment 13: grip check
+    bamboo segment 14: grip check
+    bamboo segment 15: grip check
+    bamboo segment 16: grip check
+    bamboo segment 17: grip check
+    bamboo segment 18: grip check
+    bamboo segment 19: grip check
+    bamboo segment 20: grip check
+    ```
+
+    !!! note "Route log"
+        The bamboo route has never once defeated Pango. The reverse has
+        occurred on several documented occasions.
+
+    And a closing paragraph so the panel ends in prose, not a block, because
+    real pages do that and the panel height should account for it.
+
+=== "Rope bridge"
+    The rope bridge is the long one. It has a beginning, a middle that goes on
+    for quite a while, and an end that Pango has reportedly seen twice.
+
+    1. Approach the bridge with confidence
+    2. Lose the confidence around the middle
+    3. Recover it by thinking about termites
+    4. Finish the crossing anyway
+    5. Celebrate with exactly one ant
+
+    | Section  | Length | Wobble factor |
+    | -------- | ------ | ------------- |
+    | Entry    | 3 m    | mild          |
+    | Middle   | 11 m   | considerable  |
+    | Far side | 3 m    | mild again    |
+
+    !!! tip "Crossing tip"
+        Do not look down. There is nothing down there but more documentation.
+
+    Some more prose to keep this panel tall. The rope bridge was donated by a
+    generous colony of weaver ants who were later eaten, which everyone agrees
+    was in poor taste. A memorial plaque hangs at the midpoint. Pango nods at
+    it respectfully on every crossing, which does not help the wobble.
+
+=== "High bar"
+    The high bar panel is mostly a very long checklist, because checklists make
+    everything feel achievable, even a four-meter drop.
+
+    - [ ] Chalk the claws
+    - [ ] Chalk the tail (controversial)
+    - [ ] Address the bar by name
+    - [ ] Jump
+    - [ ] Regret
+    - [ ] Grip
+    - [ ] Swing once
+    - [ ] Swing twice
+    - [ ] Dismount with style
+    - [ ] Land on the crash mat
+    - [ ] Claim that was the plan all along
+
+    ```text
+    attempt 001: bar 1, pango 0
+    attempt 002: bar 2, pango 0
+    attempt 003: bar 3, pango 0
+    attempt 004: bar 4, pango 0
+    attempt 005: bar 4, pango 1 (!)
+    attempt 006: bar 5, pango 1
+    attempt 007: bar 6, pango 1
+    attempt 008: bar 6, pango 2
+    attempt 009: bar 6, pango 3
+    attempt 010: pango declared moral victor
+    ```
+
+    The scoreboard is maintained by an impartial committee of one pangolin.
+
+=== "Rest ledge"
+    The shortest panel, on purpose: switching from a tall panel to this one
+    shrinks the set dramatically, which is exactly when a scroll bug would
+    show itself. The page still must not move.

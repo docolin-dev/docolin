@@ -1,6 +1,7 @@
 import { parse as parseYaml } from "yaml";
 import { docoFrontmatterSchema, type DocoFrontmatter } from "./frontmatter-schema";
 import { parseTimeEstimate, type TimeEstimateRange } from "./time-estimate";
+import { LIMITS } from "$lib/limits";
 
 // Storage-shape author entry. Handles are resolved to userIds at sync time (see
 // resolve-authors.ts); external entries are stored exactly as written.
@@ -28,20 +29,47 @@ export const MINTLIFY_FRONTMATTER_REQUIRED = {
 } as const;
 
 export interface ParseError {
-  // The two parser codes, plus the shared Mintlify-import code above, which
+  // The parser codes, plus the shared Mintlify-import code above, which
   // the local preview reports through this same shape.
-  code: "yaml_parse_error" | "frontmatter_invalid" | "mintlify_frontmatter_required";
+  code:
+    | "yaml_parse_error"
+    | "frontmatter_invalid"
+    | "mintlify_frontmatter_required"
+    | "file_too_large";
   message: string;
   details: Record<string, unknown>;
 }
 
 export type ParseResult = { ok: true; parsed: ParsedDoco } | { ok: false; error: ParseError };
 
+/** The size-limit violation for a doco source, or null if it fits. Shared by
+ *  parseDocoFile (which covers the preview) and the sync's validateFile, which
+ *  checks BEFORE the Mintlify conversion so an oversized file can't burn CPU
+ *  converting first. Bytes, not string length: storage and transfer see bytes,
+ *  and UTF-8 can be up to 3x the UTF-16 code-unit count. */
+export function checkDocoSourceSize(source: string): ParseError | null {
+  const sourceBytes = new TextEncoder().encode(source).length;
+  if (sourceBytes <= LIMITS.docoSourceBytes) return null;
+  // Ceil the reported size so a file just barely over the limit can never
+  // display the same KB figure as the limit itself ("512 KB; up to 512 KB").
+  const sourceKb = Math.ceil(sourceBytes / 1024);
+  const limitKb = Math.round(LIMITS.docoSourceBytes / 1024);
+  return {
+    code: "file_too_large",
+    message: `File is ${String(sourceKb)} KB; docolin accepts doco sources up to ${String(limitKb)} KB. Split the page into smaller docos.`,
+    details: { sourceBytes, limitBytes: LIMITS.docoSourceBytes },
+  };
+}
+
 // Pure frontmatter + body parse: no DB access, so it runs in the browser (the
 // local-folder preview) exactly as at sync time. Resolving author `{handle}`
 // entries to userIds is a separate server step (resolve-authors.ts); the local
 // preview uses the frontmatter authors directly.
 export function parseDocoFile(source: string): ParseResult {
+  // 0. Bound the accepted size before any parsing work.
+  const sizeError = checkDocoSourceSize(source);
+  if (sizeError !== null) return { ok: false, error: sizeError };
+
   // 1. Split the `---` fenced frontmatter from the body. Browser-safe (no
   // gray-matter, which pulls in Node's Buffer and crashes in the local preview).
   let fm: { data: unknown; body: string };

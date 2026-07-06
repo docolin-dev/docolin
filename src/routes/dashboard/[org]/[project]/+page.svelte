@@ -187,6 +187,8 @@
         return m.dashboard_project_sync_error_code_handle_not_found();
       case "fetch_failed":
         return m.dashboard_project_sync_error_code_fetch_failed();
+      case "file_too_large":
+        return m.dashboard_project_sync_error_code_file_too_large();
       case "asset_too_large":
         return m.dashboard_project_sync_error_code_asset_too_large();
       case "asset_fetch_failed":

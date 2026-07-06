@@ -1,6 +1,7 @@
 import type { RequestHandler } from "./$types";
 import { authService, OAuthStateMismatchError, PKCECookieMissingError } from "$lib/server/auth";
 import { findUserByWorkosId } from "$lib/server/users";
+import { safeReturnPathname } from "$lib/return-to";
 
 export const GET: RequestHandler = async ({ request, url }) => {
   const code = url.searchParams.get("code");
@@ -18,10 +19,13 @@ export const GET: RequestHandler = async ({ request, url }) => {
 
     // First-time visitors land on /onboarding so they pick a handle before
     // anything else. Returning users go straight to wherever they came from.
+    // Re-guard the pathname at the exit too: it round-tripped through the
+    // OAuth state, and this Location header is the actual open-redirect sink.
+    const returnPathname = safeReturnPathname(result.returnPathname);
     const dbUser = await findUserByWorkosId(result.authResponse.user.id);
     const location = dbUser
-      ? result.returnPathname
-      : `/onboarding?returnTo=${encodeURIComponent(result.returnPathname)}`;
+      ? returnPathname
+      : `/onboarding?returnTo=${encodeURIComponent(returnPathname)}`;
 
     // OAuth code is single-use and the session cookie is per-user. Never cache.
     const response = new Response(null, {

@@ -73,7 +73,13 @@
     <form
       method="POST"
       {action}
-      use:enhance={() => {
+      use:enhance={({ cancel }) => {
+        // Ctrl+Enter in the editor submits via requestSubmit, which ignores
+        // the disabled submit button; drop re-entrant submissions here.
+        if (submitting) {
+          cancel();
+          return;
+        }
         submitting = true;
         return async ({ update, result }) => {
           // Don't auto-reset (it would wipe the controlled editor); keep the

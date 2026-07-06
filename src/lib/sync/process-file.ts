@@ -7,6 +7,7 @@ import type { Forge } from "$lib/git/forge";
 import { isOptOutReadme } from "./file-scope";
 import {
   parseDocoFile,
+  checkDocoSourceSize,
   MINTLIFY_FRONTMATTER_REQUIRED,
   type ParsedDoco,
   type StoredAuthor,
@@ -105,6 +106,22 @@ export async function validateFile(
   // instead of surfacing as a broken doco. Checked on the raw content (a
   // Mintlify file's frontmatter is kept as authored, so the key sits there too).
   if (isOptOutReadme(filePath, fetched.content)) return { ok: false, skipped: true };
+
+  // 1.7 Bound the file size before the Mintlify conversion below; parseDocoFile
+  // re-checks for its other callers, but by then the conversion CPU is spent.
+  const sizeError = checkDocoSourceSize(fetched.content);
+  if (sizeError !== null) {
+    return {
+      ok: false,
+      skipped: false,
+      error: {
+        status: "errored",
+        errorCode: sizeError.code,
+        errorMessage: sizeError.message,
+        errorDetails: sizeError.details,
+      },
+    };
+  }
 
   // 2. For a Mintlify import, convert the MDX body to docomd and keep the
   // maintainer's frontmatter; everything downstream treats it as a docolin file.

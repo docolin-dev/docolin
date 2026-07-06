@@ -1,8 +1,9 @@
 import type { RequestHandler } from "./$types";
 import { authService } from "$lib/server/auth";
+import { safeReturnPathname } from "$lib/return-to";
 
 export const GET: RequestHandler = async ({ url }) => {
-  const returnPathname = url.searchParams.get("returnTo") ?? "/";
+  const returnPathname = safeReturnPathname(url.searchParams.get("returnTo"));
   const { url: authorizationUrl, headers } = await authService.createSignIn(undefined, {
     returnPathname,
   });

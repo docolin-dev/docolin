@@ -17,6 +17,10 @@ export const LIMITS = {
    *  silently, not rejected: it bounds the Workers AI embedding cost, and no
    *  meaningful query loses results at this length. */
   searchQuery: 256,
+  /** A doco source file (frontmatter + markdown), in bytes. Far above any real
+   *  guide (the largest pages in the docs corpus are under 100 KB) but bounds
+   *  the parse, conversion, and render CPU a single synced file can cost. */
+  docoSourceBytes: 512 * 1024,
 } as const;
 
 // Largest accepted body on a write request. Generous (the biggest legitimate

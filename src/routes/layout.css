@@ -391,8 +391,20 @@ html {
    * stay focusable (so keyboard arrow-key switching works); their focus ring is
    * shown on the matching label. Color/border are owned here, not via utilities, so
    * the active rules win (utilities beat @layer base regardless of specificity). */
+  /* The set anchors its radios (below); relative carries no other effect here. */
+  .tabbed-set {
+    position: relative;
+  }
+  /* Pinned to the set's top-left, NOT left at their static position: clicking a
+   * label focuses its radio and the browser scrolls the focused element into
+   * view. A radio's static position sits after the previous tab's panel, which
+   * in a tall set is far outside the viewport, so picking any tab but the first
+   * yanked the page. Pinned under the labels the reader just clicked, the focus
+   * target is always in view and the browser never scrolls. */
   .tabbed-radio {
     position: absolute;
+    top: 0;
+    left: 0;
     width: 1px;
     height: 1px;
     margin: -1px;

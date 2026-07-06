@@ -7,6 +7,7 @@ import { checkHandleAvailability } from "$lib/reserved-handles";
 import { provisionUser } from "$lib/server/onboarding";
 import { localizeHref } from "$paraglide/runtime";
 import { LIMITS } from "$lib/limits";
+import { safeReturnPathname } from "$lib/return-to";
 
 // Derive a sensible default handle from the user's email's local part. Strip
 // disallowed characters, fall back to "user" if nothing usable is left.
@@ -46,7 +47,7 @@ export const load: PageServerLoad = ({ locals, url, setHeaders }) => {
     redirect(302, localizeHref(`/signin?returnTo=/onboarding${url.search}`));
   }
   if (locals.dbUser) {
-    redirect(302, url.searchParams.get("returnTo") ?? localizeHref("/"));
+    redirect(302, safeReturnPathname(url.searchParams.get("returnTo"), localizeHref("/")));
   }
   // Suggested handle / displayName come from the WorkOS user record; per-user
   // and one-time. Never cache.
@@ -77,7 +78,7 @@ export const actions = {
     }
     if (locals.dbUser) {
       // Already onboarded; just bounce them to where they wanted to go.
-      redirect(303, url.searchParams.get("returnTo") ?? localizeHref("/"));
+      redirect(303, safeReturnPathname(url.searchParams.get("returnTo"), localizeHref("/")));
     }
 
     const shapeCheck = checkHandleAvailability(handle);
@@ -112,6 +113,6 @@ export const actions = {
       return fail(500, { error: "provision_failed", handle, displayName: displayNameRaw });
     }
 
-    redirect(303, url.searchParams.get("returnTo") ?? localizeHref("/dashboard"));
+    redirect(303, safeReturnPathname(url.searchParams.get("returnTo"), localizeHref("/dashboard")));
   },
 } satisfies Actions;
