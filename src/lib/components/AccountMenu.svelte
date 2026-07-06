@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { page } from "$app/state";
   import { m } from "$paraglide/messages";
   import { localizeHref } from "$paraglide/runtime";
   import { Button } from "$lib/components/ui/button";
@@ -16,6 +17,12 @@
   // identical for every reader and can be edge-cached. Until the store
   // resolves (`loaded === false`) we render nothing rather than flashing an
   // anonymous CTA at signed-in users.
+
+  // Sign-in and finish-setup return the user to the page they were on. The
+  // path is derived client-side after hydration (this component only renders
+  // then), so the cached HTML stays reader-agnostic; the signin endpoint
+  // guards the value server-side (see $lib/return-to).
+  const returnTo = $derived(encodeURIComponent(page.url.pathname + page.url.search));
 </script>
 
 {#if !session.loaded}
@@ -87,11 +94,21 @@
     </DropdownMenu.Content>
   </DropdownMenu.Root>
 {:else if session.value.auth}
-  <Button href={localizeHref("/onboarding")} size="sm" variant="outline" class="h-9">
+  <Button
+    href={localizeHref(`/onboarding?returnTo=${returnTo}`)}
+    size="sm"
+    variant="outline"
+    class="h-9"
+  >
     {m.nav_finish_setup()}
   </Button>
 {:else}
-  <Button href={localizeHref("/signin")} size="sm" variant="outline" class="h-9">
+  <Button
+    href={localizeHref(`/signin?returnTo=${returnTo}`)}
+    size="sm"
+    variant="outline"
+    class="h-9"
+  >
     {m.nav_sign_in()}
   </Button>
 {/if}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import { page } from "$app/state";
   import type { SubmitFunction } from "@sveltejs/kit";
   import { m } from "$paraglide/messages";
   import { localizeHref } from "$paraglide/runtime";
@@ -216,7 +217,7 @@
       <span class="text-destructive">{m.doco_stamp_error()}</span>
     {:else if !signedIn}
       <a
-        href={localizeHref("/signin")}
+        href={localizeHref(`/signin?returnTo=${encodeURIComponent(page.url.pathname)}`)}
         class="text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
       >
         {m.doco_stamp_signin_nudge()}
