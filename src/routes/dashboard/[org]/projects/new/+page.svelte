@@ -12,12 +12,32 @@
   import Check from "@lucide/svelte/icons/check";
   import X from "@lucide/svelte/icons/x";
   import LoaderCircle from "@lucide/svelte/icons/loader-circle";
+  import ShieldAlert from "@lucide/svelte/icons/shield-alert";
+  import { session } from "$lib/client/session.svelte";
   import type { PageProps } from "./$types";
 
   let { form }: PageProps = $props();
   // Org slug is in the URL; pull it straight from page params instead of a
   // server load so the page itself can be edge-cached as a static shell.
   const orgSlug = $derived(page.params.org ?? "");
+
+  // Membership gate. The cached shell renders for ANY org slug and the create
+  // action already 403s non-members (the real gate); this check swaps the form
+  // for an honest state instead of letting a non-member fill everything in and
+  // only learn on submit. Fetched post-hydration so the shell stays cacheable.
+  let notMember = $state(false);
+  $effect(() => {
+    const slug = orgSlug;
+    if (!session.loaded || session.value.dbUser === null || slug === "") return;
+    void (async () => {
+      const res = await fetch("/api/dashboard/me", { credentials: "same-origin" });
+      // A 401 here means a stale session; the dashboard layout handles that.
+      if (!res.ok) return;
+      const me = (await res.json()) as { orgs: { slug: string }[] };
+      // Guard against a navigation changing the org while the fetch was out.
+      if (orgSlug === slug) notMember = !me.orgs.some((org) => org.slug === slug);
+    })();
+  });
 
   // Form action's union type confuses eslint inference; this read-through-
   // unknown helper preserves the prior value of a field across failed
@@ -137,172 +157,191 @@
   <meta name="robots" content="noindex" />
 </svelte:head>
 
-<div class="mx-auto max-w-2xl">
-  <p class="text-muted-foreground mb-3 font-mono text-xs tracking-[0.22em] uppercase">
-    {m.dashboard_new_project_eyebrow()}
-  </p>
-  <h1 class="text-foreground text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-    {m.dashboard_new_project_title_git()}
-  </h1>
-  <p class="text-foreground/80 mt-4 max-w-xl text-base leading-relaxed">
-    {m.dashboard_new_project_subtitle()}
-  </p>
+{#if notMember}
+  <!-- The whole page swaps, not just the form: a header inviting you to create
+       a project in an org you can't touch would be a lie with a nice font. -->
+  <div class="mx-auto max-w-2xl">
+    <div class="border-foreground/10 flex flex-col items-center border p-12 text-center">
+      <ShieldAlert class="text-muted-foreground size-6" aria-hidden="true" />
+      <h1 class="text-foreground mt-4 text-xl font-semibold tracking-tight">
+        {m.dashboard_new_project_not_member_title()}
+      </h1>
+      <p class="text-muted-foreground mt-2 max-w-md text-sm leading-relaxed">
+        {m.dashboard_new_project_not_member_body({ org: orgSlug })}
+      </p>
+      <Button href={localizeHref("/dashboard")} class="mt-6 h-10 px-5">
+        {m.dashboard_new_project_not_member_cta()}
+      </Button>
+    </div>
+  </div>
+{:else}
+  <div class="mx-auto max-w-2xl">
+    <p class="text-muted-foreground mb-3 font-mono text-xs tracking-[0.22em] uppercase">
+      {m.dashboard_new_project_eyebrow()}
+    </p>
+    <h1 class="text-foreground text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+      {m.dashboard_new_project_title_git()}
+    </h1>
+    <p class="text-foreground/80 mt-4 max-w-xl text-base leading-relaxed">
+      {m.dashboard_new_project_subtitle()}
+    </p>
 
-  <form
-    method="POST"
-    class="mt-10"
-    use:enhance={() => {
-      submitting = true;
-      return ({ update }) => {
-        void update().finally(() => {
-          submitting = false;
-        });
-      };
-    }}
-  >
-    <input type="hidden" name="sourceMode" value="git" />
+    <form
+      method="POST"
+      class="mt-10"
+      use:enhance={() => {
+        submitting = true;
+        return ({ update }) => {
+          void update().finally(() => {
+            submitting = false;
+          });
+        };
+      }}
+    >
+      <input type="hidden" name="sourceMode" value="git" />
 
-    <!-- URL-first layout: the most information-dense field comes first.
+      <!-- URL-first layout: the most information-dense field comes first.
          Pasting a valid URL autofills slug + display name below so the
          common path is "paste URL, submit." -->
-    <div>
-      <label
-        for="repoUrl"
-        class="text-foreground/55 mb-3 block font-mono text-[10px] tracking-[0.22em] uppercase"
-      >
-        {m.dashboard_new_project_repo_label()}
-      </label>
-      <Input
-        id="repoUrl"
-        name="repoUrl"
-        type="url"
-        bind:value={repoUrl}
-        onblur={checkRepoUrl}
-        placeholder={m.dashboard_new_project_repo_placeholder()}
-        class="h-12 font-mono text-base"
-        autofocus
-      />
-      <p
-        class="mt-3 flex min-h-[1.25rem] items-center gap-1.5 text-xs"
-        class:text-muted-foreground={repoCheckState.kind === "idle" ||
-          repoCheckState.kind === "checking"}
-        class:text-primary={repoCheckState.kind === "ok"}
-        class:text-destructive={repoCheckState.kind === "fail"}
-      >
-        {#if repoCheckState.kind === "checking"}
-          <LoaderCircle class="size-3.5 animate-spin" />
-          {m.dashboard_new_project_repo_checking()}
-        {:else if repoCheckState.kind === "ok"}
-          <Check class="size-3.5" />
-          {m.dashboard_new_project_repo_ok({
-            owner: repoCheckState.owner,
-            repo: repoCheckState.repo,
-          })}
-        {:else if repoCheckState.kind === "fail"}
-          <X class="size-3.5" />
-          {repoCheckMessage(repoCheckState.reason)}
-        {:else}
-          {m.dashboard_new_project_repo_hint()}
-        {/if}
-      </p>
-    </div>
-
-    <!-- Slug + display name + subpath. Autofill from the verified repo
-         name when the user hasn't touched the field. -->
-    <div class="mt-10">
-      <label
-        for="projectSlug"
-        class="text-foreground/55 mb-3 block font-mono text-[10px] tracking-[0.22em] uppercase"
-      >
-        {m.dashboard_new_project_slug_label()}
-      </label>
-      <HandlePicker
-        bind:value={slug}
-        bind:isAvailable={slugAvailable}
-        bind:isChecking={slugChecking}
-        id="projectSlug"
-        name="slug"
-        checkUrl="/api/project-slug-check?org={encodeURIComponent(orgSlug)}"
-        reasonToMessage={projectSlugMessage}
-        idleHint={m.dashboard_new_project_slug_hint_idle()}
-        checkingHint={m.dashboard_new_project_slug_hint_checking()}
-        availableHint={m.dashboard_new_project_slug_hint_available()}
-        prefix="docolin.com/{orgSlug}/"
-        placeholder="my-docs"
-        ariaLabel={m.dashboard_new_project_slug_label()}
-      />
-    </div>
-
-    <div class="mt-8 space-y-5">
       <div>
-        <label for="displayName" class="text-foreground/80 mb-2 block text-sm font-medium">
-          {m.dashboard_new_project_displayname_label()}
-        </label>
-        <Input
-          id="displayName"
-          name="displayName"
-          type="text"
-          bind:value={displayName}
-          oninput={() => (displayNameTouched = true)}
-          maxlength={LIMITS.displayName}
-          class="h-11"
-        />
-        <p class="text-muted-foreground mt-2 text-xs">
-          {m.dashboard_new_project_displayname_hint()}
-        </p>
-      </div>
-
-      <div>
-        <label for="subpath" class="text-foreground/80 mb-2 block text-sm font-medium">
-          {m.dashboard_new_project_subpath_label()}
-        </label>
-        <Input
-          id="subpath"
-          name="subpath"
-          type="text"
-          bind:value={subpath}
-          placeholder="docs/"
-          class="h-11 font-mono"
-        />
-        <p class="text-muted-foreground mt-2 text-xs">
-          {m.dashboard_new_project_subpath_hint()}
-        </p>
-      </div>
-    </div>
-
-    {#if form?.error}
-      {@const message = formErrorMessage(form.error)}
-      {#if message}
-        <p
-          class="text-destructive border-destructive/30 bg-destructive/5 mt-8 border px-3 py-2 text-sm"
+        <label
+          for="repoUrl"
+          class="text-foreground/55 mb-3 block font-mono text-[10px] tracking-[0.22em] uppercase"
         >
-          {message}
+          {m.dashboard_new_project_repo_label()}
+        </label>
+        <Input
+          id="repoUrl"
+          name="repoUrl"
+          type="url"
+          bind:value={repoUrl}
+          onblur={checkRepoUrl}
+          placeholder={m.dashboard_new_project_repo_placeholder()}
+          class="h-12 font-mono text-base"
+          autofocus
+        />
+        <p
+          class="mt-3 flex min-h-[1.25rem] items-center gap-1.5 text-xs"
+          class:text-muted-foreground={repoCheckState.kind === "idle" ||
+            repoCheckState.kind === "checking"}
+          class:text-primary={repoCheckState.kind === "ok"}
+          class:text-destructive={repoCheckState.kind === "fail"}
+        >
+          {#if repoCheckState.kind === "checking"}
+            <LoaderCircle class="size-3.5 animate-spin" />
+            {m.dashboard_new_project_repo_checking()}
+          {:else if repoCheckState.kind === "ok"}
+            <Check class="size-3.5" />
+            {m.dashboard_new_project_repo_ok({
+              owner: repoCheckState.owner,
+              repo: repoCheckState.repo,
+            })}
+          {:else if repoCheckState.kind === "fail"}
+            <X class="size-3.5" />
+            {repoCheckMessage(repoCheckState.reason)}
+          {:else}
+            {m.dashboard_new_project_repo_hint()}
+          {/if}
         </p>
-      {/if}
-    {/if}
+      </div>
 
-    <div class="mt-8 flex items-center gap-3">
-      <Button
-        type="submit"
-        size="lg"
-        disabled={!canSubmit}
-        class="group h-11 flex-1 cursor-pointer gap-2 px-5 text-base"
-      >
-        {#if submitting}
-          {m.dashboard_new_project_submitting()}
-        {:else}
-          {m.dashboard_new_project_submit()}
-          <ArrowRight class="size-4 transition-transform group-hover:translate-x-0.5" />
+      <!-- Slug + display name + subpath. Autofill from the verified repo
+         name when the user hasn't touched the field. -->
+      <div class="mt-10">
+        <label
+          for="projectSlug"
+          class="text-foreground/55 mb-3 block font-mono text-[10px] tracking-[0.22em] uppercase"
+        >
+          {m.dashboard_new_project_slug_label()}
+        </label>
+        <HandlePicker
+          bind:value={slug}
+          bind:isAvailable={slugAvailable}
+          bind:isChecking={slugChecking}
+          id="projectSlug"
+          name="slug"
+          checkUrl="/api/project-slug-check?org={encodeURIComponent(orgSlug)}"
+          reasonToMessage={projectSlugMessage}
+          idleHint={m.dashboard_new_project_slug_hint_idle()}
+          checkingHint={m.dashboard_new_project_slug_hint_checking()}
+          availableHint={m.dashboard_new_project_slug_hint_available()}
+          prefix="docolin.com/{orgSlug}/"
+          placeholder="my-docs"
+          ariaLabel={m.dashboard_new_project_slug_label()}
+        />
+      </div>
+
+      <div class="mt-8 space-y-5">
+        <div>
+          <label for="displayName" class="text-foreground/80 mb-2 block text-sm font-medium">
+            {m.dashboard_new_project_displayname_label()}
+          </label>
+          <Input
+            id="displayName"
+            name="displayName"
+            type="text"
+            bind:value={displayName}
+            oninput={() => (displayNameTouched = true)}
+            maxlength={LIMITS.displayName}
+            class="h-11"
+          />
+          <p class="text-muted-foreground mt-2 text-xs">
+            {m.dashboard_new_project_displayname_hint()}
+          </p>
+        </div>
+
+        <div>
+          <label for="subpath" class="text-foreground/80 mb-2 block text-sm font-medium">
+            {m.dashboard_new_project_subpath_label()}
+          </label>
+          <Input
+            id="subpath"
+            name="subpath"
+            type="text"
+            bind:value={subpath}
+            placeholder="docs/"
+            class="h-11 font-mono"
+          />
+          <p class="text-muted-foreground mt-2 text-xs">
+            {m.dashboard_new_project_subpath_hint()}
+          </p>
+        </div>
+      </div>
+
+      {#if form?.error}
+        {@const message = formErrorMessage(form.error)}
+        {#if message}
+          <p
+            class="text-destructive border-destructive/30 bg-destructive/5 mt-8 border px-3 py-2 text-sm"
+          >
+            {message}
+          </p>
         {/if}
-      </Button>
-      <Button
-        href={localizeHref(`/dashboard/${orgSlug}`)}
-        variant="ghost"
-        size="lg"
-        class="h-11 cursor-pointer px-5 text-base"
-      >
-        {m.dashboard_new_project_cancel()}
-      </Button>
-    </div>
-  </form>
-</div>
+      {/if}
+
+      <div class="mt-8 flex items-center gap-3">
+        <Button
+          type="submit"
+          size="lg"
+          disabled={!canSubmit}
+          class="group h-11 flex-1 cursor-pointer gap-2 px-5 text-base"
+        >
+          {#if submitting}
+            {m.dashboard_new_project_submitting()}
+          {:else}
+            {m.dashboard_new_project_submit()}
+            <ArrowRight class="size-4 transition-transform group-hover:translate-x-0.5" />
+          {/if}
+        </Button>
+        <Button
+          href={localizeHref(`/dashboard/${orgSlug}`)}
+          variant="ghost"
+          size="lg"
+          class="h-11 cursor-pointer px-5 text-base"
+        >
+          {m.dashboard_new_project_cancel()}
+        </Button>
+      </div>
+    </form>
+  </div>
+{/if}
