@@ -144,6 +144,9 @@
   "sponsor_who_eyebrow": "who we're looking for",
   "sponsor_who_title": "Infrastructure that wins when the commons does.",
   "sponsor_who_body": "If your tooling benefits from being part of the substrate AI agents ground against, databases, hosting, search, developer tools, then sponsoring docolin keeps that substrate open and growing. If that sounds like you, we'd love to talk.",
+  "sponsor_sponsors_eyebrow": "sponsors",
+  "sponsor_sponsors_title": "The infrastructure this runs on.",
+  "sponsor_sponsors_neon_body": "Neon sponsors the serverless Postgres that every doco, discussion, and verification record lives in.",
   "sponsor_cta_title": "Want to keep the commons open?",
   "sponsor_cta_body": "Reach out and we'll find a fit that works. No pitch decks required.",
   "sponsor_cta_primary": "Email us",
@@ -290,6 +293,7 @@
 
   "home_footer_tagline": "Structured knowledge for everything.",
   "home_footer_built_by": "Built by",
+  "home_footer_sponsored_by": "Sponsored by",
   "home_footer_license": "AGPL 3.0",
   "home_footer_about": "About",
   "home_footer_browse": "Browse",

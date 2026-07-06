@@ -48,6 +48,14 @@ bun run lint:fix       # auto-fix lint issues
 
 See [`CLAUDE.md`](./CLAUDE.md) for code style, design system, and conventions.
 
+## Sponsors
+
+Sponsorship buys visible thanks, never influence over content, ranking, or verification. Read more about [how docolin is funded](https://docolin.com/sponsor).
+
+<a href="https://neon.com"><picture><source media="(prefers-color-scheme: dark)" srcset="./static/sponsors/neon-logo-dark.svg"><img src="./static/sponsors/neon-logo-light.svg" alt="Neon" height="40"></picture></a>
+
+Sponsored by [Neon](https://neon.com), the serverless Postgres that every doco, discussion, and verification record lives in.
+
 ## Contact
 
 - **General**: <hello@docolin.com>

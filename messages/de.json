@@ -144,6 +144,9 @@
   "sponsor_who_eyebrow": "wen wir suchen",
   "sponsor_who_title": "Infrastruktur, die gewinnt, wenn das Gemeingut gewinnt.",
   "sponsor_who_body": "Wenn deine Werkzeuge davon profitieren, Teil des Substrats zu sein, gegen das KI-Agenten erden, Datenbanken, Hosting, Suche, Entwicklerwerkzeuge, dann hält Sponsoring von docolin dieses Substrat offen und wachsend. Wenn das nach dir klingt, würden wir gern reden.",
+  "sponsor_sponsors_eyebrow": "sponsoren",
+  "sponsor_sponsors_title": "Die Infrastruktur, auf der das hier läuft.",
+  "sponsor_sponsors_neon_body": "Neon sponsert das serverlose Postgres, in dem jedes doco, jede Diskussion und jede Verifizierung lebt.",
   "sponsor_cta_title": "Willst du das Gemeingut offen halten?",
   "sponsor_cta_body": "Melde dich, und wir finden eine passende Lösung. Keine Pitch-Decks nötig.",
   "sponsor_cta_primary": "Schreib uns",
@@ -290,6 +293,7 @@
 
   "home_footer_tagline": "Strukturiertes Wissen für alles.",
   "home_footer_built_by": "Gebaut von",
+  "home_footer_sponsored_by": "Gesponsert von",
   "home_footer_license": "AGPL 3.0",
   "home_footer_about": "Über",
   "home_footer_browse": "Entdecken",
