@@ -936,6 +936,7 @@
   "dashboard_project_sync_error_code_frontmatter_invalid": "Il manque des champs requis au frontmatter ou il contient des valeurs invalides.",
   "dashboard_project_sync_error_code_handle_not_found": "Un ou plusieurs identifiants d'auteur n'existent pas sur docolin.",
   "dashboard_project_sync_error_code_fetch_failed": "Impossible de récupérer le contenu du fichier.",
+  "dashboard_project_sync_error_code_file_too_large": "Le fichier dépasse la taille que docolin accepte pour un seul doco. Divisez-le en pages plus petites.",
   "dashboard_project_sync_error_code_asset_too_large": "Une image est trop volumineuse pour être archivée.",
   "dashboard_project_sync_error_code_asset_fetch_failed": "Impossible de récupérer une image référencée.",
   "dashboard_project_sync_error_code_asset_upload_failed": "Impossible de téléverser une image vers le stockage docolin.",

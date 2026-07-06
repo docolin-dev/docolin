@@ -957,6 +957,7 @@
   "dashboard_project_sync_error_code_frontmatter_invalid": "Frontmatter is missing required fields or has invalid values.",
   "dashboard_project_sync_error_code_handle_not_found": "One or more author handles don't exist on docolin.",
   "dashboard_project_sync_error_code_fetch_failed": "Couldn't fetch the file content.",
+  "dashboard_project_sync_error_code_file_too_large": "The file is larger than docolin accepts for a single doco. Split it into smaller pages.",
   "dashboard_project_sync_error_code_asset_too_large": "An image is too large to archive.",
   "dashboard_project_sync_error_code_asset_fetch_failed": "Couldn't fetch a referenced image.",
   "dashboard_project_sync_error_code_asset_upload_failed": "Couldn't upload an image to docolin storage.",

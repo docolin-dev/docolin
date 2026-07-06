@@ -957,6 +957,7 @@
   "dashboard_project_sync_error_code_frontmatter_invalid": "Im Frontmatter fehlen erforderliche Felder oder Werte sind ungültig.",
   "dashboard_project_sync_error_code_handle_not_found": "Ein oder mehrere Autor-Handles existieren nicht auf docolin.",
   "dashboard_project_sync_error_code_fetch_failed": "Datei-Inhalt konnte nicht geladen werden.",
+  "dashboard_project_sync_error_code_file_too_large": "Die Datei ist größer, als docolin für ein einzelnes doco akzeptiert. Teile sie in kleinere Seiten auf.",
   "dashboard_project_sync_error_code_asset_too_large": "Ein Bild ist zu groß zum Archivieren.",
   "dashboard_project_sync_error_code_asset_fetch_failed": "Ein referenziertes Bild konnte nicht geladen werden.",
   "dashboard_project_sync_error_code_asset_upload_failed": "Ein Bild konnte nicht in den docolin-Speicher hochgeladen werden.",
