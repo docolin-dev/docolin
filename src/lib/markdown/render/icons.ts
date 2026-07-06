@@ -9,6 +9,8 @@ import {
   Check,
   ChevronDown,
   Copy,
+  File,
+  Folder,
   Info,
   Lightbulb,
   Link,
@@ -35,6 +37,8 @@ type LucideIcon = typeof Info;
 
 const ICONS = {
   pencil: Pencil,
+  file: File,
+  folder: Folder,
   info: Info,
   lightbulb: Lightbulb,
   link: Link,

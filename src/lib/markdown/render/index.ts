@@ -28,6 +28,7 @@ import {
   remarkBlockAttrList,
   remarkTabGroup,
   remarkChart,
+  remarkTree,
 } from "$lib/markdown/docomd";
 import { slugify } from "$lib/slug";
 import { admonitionHandler } from "./admonition.ts";
@@ -36,6 +37,7 @@ import { rehypeIconShortcodes } from "./icon-shortcode.ts";
 import { remarkCode, codeHandler, type Highlight } from "./code.ts";
 import { remarkVars } from "./vars.ts";
 import { chartHandler } from "./chart.ts";
+import { treeHandler } from "./tree.ts";
 import { rehypeAnnotations } from "./annotations.ts";
 import { remarkInlineEnhance } from "./inline-enhance.ts";
 import { remarkMedia } from "./media.ts";
@@ -64,7 +66,8 @@ import { rehypeSanitizeUrls } from "./sanitize.ts";
 //    renderer output got cached under version 5. The tick-tock rule (renderer
 //    deploy first, docs after it is verifiably live) applies even with webhooks
 //    off; wait for the new build to actually serve before resyncing.
-export const RENDERER_VERSION = "6";
+// 7: file trees ({ .tree } lists, incl. the .annotate combination).
+export const RENDERER_VERSION = "7";
 
 /** Shiki dual theme: light + dark emitted together as CSS variables
  *  (`defaultColor: false`), so rendered code switches with the `.dark` class with
@@ -333,6 +336,7 @@ export function createMarkdownRenderer(
     .use(remarkTabGroup)
     .use(remarkAttrList)
     .use(remarkChart)
+    .use(remarkTree)
     .use(remarkBlockAttrList)
     .use(remarkVars)
     .use(remarkInlineEnhance)
@@ -346,6 +350,7 @@ export function createMarkdownRenderer(
         code: codeHandler,
         docoTabbedSet: tabbedSetHandler,
         docoChart: chartHandler,
+        docoTree: treeHandler,
       },
     })
     .use(rehypeKatex)

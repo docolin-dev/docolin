@@ -1,6 +1,6 @@
 ---
 title: Text, lists, and links
-description: The everyday Markdown, headings, emphasis, lists, quotes, links, images, video, color swatches, and inline icons, that the rest of a doco hangs from.
+description: The everyday Markdown, headings, emphasis, lists, file trees, quotes, links, images, video, color swatches, and inline icons, that the rest of a doco hangs from.
 authors:
   - handle: imgajeed
   - name: Claude
@@ -33,6 +33,8 @@ docolin:
       click to copy,
       video,
       youtube,
+      file tree,
+      directory structure,
     ]
 
   prev: ./frontmatter.md
@@ -42,7 +44,7 @@ docolin:
 # Text, lists, and links
 
 !!! info "In one line"
-    The everyday Markdown, headings, emphasis, lists, quotes, links, images, video, color swatches, and inline icons, that the rest of a doco hangs from.
+    The everyday Markdown, headings, emphasis, lists, file trees, quotes, links, images, video, color swatches, and inline icons, that the rest of a doco hangs from.
 
 Most of any doco is just words. Pango can climb all the fancy apparatus he likes, but the guide still rests on plain paragraphs, a few lists, and the odd link. docolin speaks standard [CommonMark](https://commonmark.org) with [GitHub-Flavored Markdown](https://github.github.com/gfm/) on top, so if you have written a README, you already know most of this.
 
@@ -163,6 +165,41 @@ Prefix items with `[ ]` or `[x]` for a checklist. They render as styled checkbox
     - [x] Find the gym
     - [x] Eat 1,000 ants (pre-workout)
     - [ ] Reach the top without rolling off
+
+### File trees
+
+Add `{ .tree }` on its own line after a nested unordered list (blank line before it, same as charts) and it renders as a file tree: a bordered card with folder and file icons, guide lines, and monospace names. Underneath it stays a real list, so screen readers and AIs read plain structure.
+
+The rules are the ones your fingers already know:
+
+- An item with nested children is a **folder**; a name ending in `/` marks an empty one (the slash is dropped, the icon says it).
+- A `#` starts a muted, shell-style **comment** on any entry.
+- **Bold** highlights the entry your guide is talking about. Backticks around names are fine but unnecessary, the tree is already monospace.
+
+```md
+- src
+  - lib
+    - utils.ts # shared helpers
+  - **main.ts** # start here
+- assets/
+- package.json
+
+{ .tree }
+```
+
+!!! output "Rendered"
+    - src
+      - lib
+        - utils.ts # shared helpers
+      - **main.ts** # start here
+    - assets/
+    - package.json
+
+    { .tree }
+
+For a longer note than a comment fits, annotations compose: write `{ .tree .annotate }`, put `(1)` after an entry, and follow the tree with a numbered list, the same badge-and-popover idiom as [code annotations](./code-blocks.md).
+
+Ordered lists are left alone: a numbered file tree is a contradiction, and the visible `{ .tree }` marker is your cue that something is off.
 
 ## Blockquotes
 

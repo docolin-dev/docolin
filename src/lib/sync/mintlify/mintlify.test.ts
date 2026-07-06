@@ -99,6 +99,72 @@ describe("parseMintlifyConfig + navToSitemap", () => {
       { title: "Intro", children: [{ title: "Start", url: "/o/p/start" }] },
     ]);
   });
+
+  it("unwraps a languages nav to the default language (mintlify/docs' own layout)", () => {
+    // The real mintlify/docs shape: languages -> tabs -> groups -> pages.
+    const nav = {
+      languages: [
+        {
+          language: "en",
+          tabs: [{ tab: "Documentation", groups: [{ group: "Get started", pages: ["index"] }] }],
+        },
+        {
+          language: "zh",
+          tabs: [{ tab: "文档", groups: [{ group: "开始", pages: ["zh/index"] }] }],
+        },
+      ],
+    };
+    const sitemap = navToSitemap(nav, { orgSlug: "o", projectSlug: "p" });
+    expect(sitemap).toEqual([
+      {
+        title: "Documentation",
+        children: [{ title: "Get started", children: [{ title: "Index", url: "/o/p/index" }] }],
+      },
+    ]);
+  });
+
+  it("unwraps a versions nav to the first version with content", () => {
+    const nav = {
+      versions: [
+        { version: "v3", pages: [] }, // empty default must not blank the sidebar
+        { version: "v2", groups: [{ group: "Guides", pages: ["guide"] }] },
+      ],
+    };
+    const sitemap = navToSitemap(nav, { orgSlug: "o", projectSlug: "p" });
+    expect(sitemap).toEqual([
+      { title: "Guides", children: [{ title: "Guide", url: "/o/p/guide" }] },
+    ]);
+  });
+
+  it("converts anchors and dropdowns like tabs", () => {
+    const nav = {
+      anchors: [
+        { anchor: "Docs", pages: ["start"] },
+        { anchor: "Community", href: "https://discord.example" }, // external: no pages, dropped
+      ],
+    };
+    expect(navToSitemap(nav, { orgSlug: "o", projectSlug: "p" })).toEqual([
+      { title: "Docs", children: [{ title: "Start", url: "/o/p/start" }] },
+    ]);
+
+    const dropdowns = { dropdowns: [{ dropdown: "SDKs", pages: ["sdk/js"] }] };
+    expect(navToSitemap(dropdowns, { orgSlug: "o", projectSlug: "p" })).toEqual([
+      { title: "SDKs", children: [{ title: "Js", url: "/o/p/sdk/js" }] },
+    ]);
+  });
+
+  it("leads a group with its root page (url XOR children, so root becomes a leaf)", () => {
+    const nav = { groups: [{ group: "CLI", root: "cli/index", pages: ["cli/install"] }] };
+    expect(navToSitemap(nav, { orgSlug: "o", projectSlug: "p" })).toEqual([
+      {
+        title: "CLI",
+        children: [
+          { title: "Index", url: "/o/p/cli/index" },
+          { title: "Install", url: "/o/p/cli/install" },
+        ],
+      },
+    ]);
+  });
 });
 
 describe("convert", () => {
@@ -122,10 +188,14 @@ describe("convert", () => {
   });
 
   it("converts the body but keeps the frontmatter verbatim", () => {
-    const src = '---\ntitle: "Quickstart"\nicon: "rocket"\n---\n<Note>Hi.</Note>';
+    const src =
+      '---\n# a comment survives too\ntitle: "Quickstart"\nicon: "rocket"\n---\n<Note>Hi.</Note>';
     const out = mintlifyMdxToDocoSource(src, "fontawesome");
-    expect(out).toContain("title: Quickstart");
-    expect(out).toContain("icon: rocket"); // unknown keys kept; docolin's parser ignores them
+    // Verbatim means VERBATIM: quoting, key order, even comments are untouched
+    // (gray-matter used to re-emit normalized YAML; the raw splitter does not).
+    expect(out).toContain('title: "Quickstart"');
+    expect(out).toContain('icon: "rocket"'); // unknown keys kept; docolin's parser ignores them
+    expect(out).toContain("# a comment survives too");
     expect(out).toContain("!!! note");
     expect(out).not.toContain("<Note>");
   });

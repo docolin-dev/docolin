@@ -44,6 +44,10 @@ On a Chromium browser (Chrome, Edge, Brave, Arc), open [the preview](/preview) a
 
 Firefox and Safari can't open a live folder, so they take a one-time upload: choose your folder and the preview renders that snapshot. To see later edits, upload again. (Either way, the preview is desktop-only.)
 
+## Mintlify folders work too
+
+Point the preview at a [Mintlify project](../hosting/import-mintlify.md) (a folder with a `docs.json` or `mint.json`) and the whole import runs client-side: `.mdx` pages convert and render as docos, the sidebar comes from your Mintlify `navigation`, and pages still missing their docolin frontmatter are listed with exactly what to add. It's the migration checklist, before you push anything.
+
 ## It stays on your machine
 
 Your files are read and rendered locally, in your browser. Nothing is uploaded to docolin, and the doco doesn't need to be published, or even pushed, for the preview to render it. It's your working copy, shown exactly the way docolin would show it.

@@ -108,10 +108,69 @@ describe("mdxBodyToDocomd", () => {
     expect(out).not.toContain("a comment");
   });
 
-  it("drops a decorative inline <Icon> but keeps the sentence", () => {
-    const out = mdxBodyToDocomd('See the flag <Icon icon="flag" /> here.');
-    expect(out).toContain("See the flag");
-    expect(out).toContain("here.");
-    expect(out).not.toContain("Icon");
+  it("maps an inline <Icon> to the :icon: shortcode, carrying the set prefix", () => {
+    // Bare name for lucide / no library (docolin's default resolution).
+    expect(mdxBodyToDocomd('Click the <Icon icon="plus" /> button.')).toContain(
+      "Click the :plus: button.",
+    );
+    // The project's icon library rides along exactly like card icons.
+    expect(
+      mdxBodyToDocomd('Click <Icon icon="download" />.', { iconLibrary: "fontawesome" }),
+    ).toContain(":fa-download:");
+    expect(mdxBodyToDocomd('Click <Icon icon="download" />.', { iconLibrary: "tabler" })).toContain(
+      ":tb-download:",
+    );
+  });
+
+  it("drops an <Icon> whose name the shortcode would reject", () => {
+    const out = mdxBodyToDocomd('Press <Icon icon="Weird Name!" /> now.');
+    expect(out).toContain("Press");
+    expect(out).toContain("now.");
+    expect(out).not.toContain(":");
+  });
+
+  it("maps <video> and a YouTube <iframe> to image-as-video syntax", () => {
+    expect(mdxBodyToDocomd('<video src="/videos/demo.mp4" title="Demo" />')).toContain(
+      "![Demo](/videos/demo.mp4)",
+    );
+    expect(
+      mdxBodyToDocomd('<iframe src="https://www.youtube.com/embed/4KzFe50RQkQ" title="Tour" />'),
+    ).toContain("![Tour](https://www.youtube.com/embed/4KzFe50RQkQ)");
+  });
+
+  it("drops a non-YouTube iframe (no docomd equivalent)", () => {
+    const out = mdxBodyToDocomd('<iframe src="https://example.com/widget" />');
+    expect(out.trim()).toBe("");
+  });
+
+  it("unwraps <Frame>, converting its media child and keeping the caption", () => {
+    const out = mdxBodyToDocomd(
+      '<Frame caption="The dashboard">\n  <img src="/images/dash.png" alt="Dashboard" />\n</Frame>',
+    );
+    expect(out).toContain("![Dashboard](/images/dash.png)");
+    expect(out).toContain("_The dashboard_");
+    expect(out).not.toContain("Frame");
+  });
+
+  it("maps <Tree> to a nested list with the { .tree } marker", () => {
+    const out = mdxBodyToDocomd(
+      '<Tree>\n  <Tree.Folder name="app" defaultOpen>\n    <Tree.File name="layout.tsx" />\n    <Tree.File name="page.tsx" />\n  </Tree.Folder>\n  <Tree.Folder name="lib"></Tree.Folder>\n  <Tree.File name="package.json" />\n</Tree>',
+    );
+    expect(out).toContain("- app");
+    expect(out).toContain("  - layout.tsx");
+    expect(out).toContain("  - page.tsx");
+    expect(out).toContain("- lib/"); // empty folder keeps its meaning via the slash
+    expect(out).toContain("- package.json");
+    expect(out).toContain("{ .tree }");
+    expect(out).not.toContain("Tree");
+  });
+
+  it("maps bare <Folder>/<File> tree entries too", () => {
+    const out = mdxBodyToDocomd(
+      '<Tree>\n  <Folder name="src">\n    <File name="main.ts" />\n  </Folder>\n</Tree>',
+    );
+    expect(out).toContain("- src");
+    expect(out).toContain("  - main.ts");
+    expect(out).toContain("{ .tree }");
   });
 });

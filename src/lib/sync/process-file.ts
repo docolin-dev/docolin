@@ -4,7 +4,13 @@ import { db } from "$lib/server/db";
 import { docos, versions } from "$lib/server/db/schema";
 import { toLtree } from "$lib/server/db/schema/types";
 import type { Forge } from "$lib/git/forge";
-import { parseDocoFile, type ParsedDoco, type StoredAuthor } from "./parse";
+import { isOptOutReadme } from "./file-scope";
+import {
+  parseDocoFile,
+  MINTLIFY_FRONTMATTER_REQUIRED,
+  type ParsedDoco,
+  type StoredAuthor,
+} from "./parse";
 import { resolveStoredAuthors } from "./resolve-authors";
 import { convertBody } from "./body-pipeline";
 import { makeImageArchiver, type SyncFileErrorRecord } from "./media-archive";
@@ -53,6 +59,10 @@ export interface ProcessFileContext {
 
 export type ProcessFileResult =
   | { status: "created" | "updated"; docoId: string; versionId: string }
+  // An opted-out README (no docolin frontmatter): not a doco, not an error.
+  // `tombstoned` is true when a previously-synced doco at this path was marked
+  // deleted because the file opted back out.
+  | { status: "skipped"; tombstoned: boolean }
   | {
       status: "errored";
       errorCode: string;
@@ -64,7 +74,8 @@ type ProcessFileError = Extract<ProcessFileResult, { status: "errored" }>;
 
 export type ValidateFileResult =
   | { ok: true; parsed: ParsedDoco; storedAuthors: StoredAuthor[] }
-  | { ok: false; error: ProcessFileError };
+  | { ok: false; skipped: true }
+  | { ok: false; skipped: false; error: ProcessFileError };
 
 // The error-able prefix of processFile: fetch, Mintlify-convert, parse + validate
 // frontmatter, and resolve author handles. No rendering or DB write, so the sync
@@ -79,6 +90,7 @@ export async function validateFile(
   if (!fetched.ok) {
     return {
       ok: false,
+      skipped: false,
       error: {
         status: "errored",
         errorCode: "fetch_failed",
@@ -87,6 +99,12 @@ export async function validateFile(
       },
     };
   }
+
+  // 1.5 READMEs are opt-in: without a `docolin:` frontmatter key the file is
+  // written for the repo's forge page, not docolin, so it is skipped silently
+  // instead of surfacing as a broken doco. Checked on the raw content (a
+  // Mintlify file's frontmatter is kept as authored, so the key sits there too).
+  if (isOptOutReadme(filePath, fetched.content)) return { ok: false, skipped: true };
 
   // 2. For a Mintlify import, convert the MDX body to docomd and keep the
   // maintainer's frontmatter; everything downstream treats it as a docolin file.
@@ -99,20 +117,22 @@ export async function validateFile(
   if (!parseResult.ok) {
     // A Mintlify page that hasn't had docolin frontmatter added yet: tell the
     // maintainer exactly what to add instead of dumping a raw schema error.
+    // The guidance text is shared with the preview's checklist (parse.ts).
     if (ctx.mintlify && !hasDocolinFrontmatter(fetched.content)) {
       return {
         ok: false,
+        skipped: false,
         error: {
           status: "errored",
-          errorCode: "mintlify_frontmatter_required",
-          errorMessage:
-            "Imported from Mintlify. Add docolin frontmatter to this page: an `authors` list (at least one) and a `docolin:` block with `kind` and `type`.",
+          errorCode: MINTLIFY_FRONTMATTER_REQUIRED.code,
+          errorMessage: MINTLIFY_FRONTMATTER_REQUIRED.message,
           errorDetails: { underlying: parseResult.error.code },
         },
       };
     }
     return {
       ok: false,
+      skipped: false,
       error: {
         status: "errored",
         errorCode: parseResult.error.code,
@@ -128,6 +148,7 @@ export async function validateFile(
   if (!authorsResult.ok) {
     return {
       ok: false,
+      skipped: false,
       error: {
         status: "errored",
         errorCode: "handle_not_found",
@@ -145,7 +166,16 @@ export async function processFile(
 ): Promise<ProcessFileResult> {
   // Validate first (fetch + parse + authors); reuse the parsed result to render.
   const validated = await validateFile(filePath, ctx);
-  if (!validated.ok) return validated.error;
+  if (!validated.ok) {
+    if (validated.skipped) {
+      // Opt-out after opt-in: if this README synced as a doco before its
+      // docolin block was removed, tombstone it like an upstream deletion (the
+      // URL keeps serving the last version with a banner, never a 404).
+      const deletion = await processFileDelete(filePath, ctx.gitSourceId);
+      return { status: "skipped", tombstoned: deletion.status === "deleted" };
+    }
+    return validated.error;
+  }
   const { parsed, storedAuthors } = validated;
 
   // 4. Convert the body. Image archival errors get collected here; they don't

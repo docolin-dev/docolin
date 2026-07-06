@@ -18,8 +18,19 @@ export interface ParsedDoco {
   frontmatterExtra: Record<string, unknown>;
 }
 
+// The Mintlify-import gap, shared by the sync's error record (process-file.ts)
+// and the preview's checklist so the guidance can never drift between them:
+// the page converts fine but hasn't been given docolin frontmatter yet.
+export const MINTLIFY_FRONTMATTER_REQUIRED = {
+  code: "mintlify_frontmatter_required",
+  message:
+    "Imported from Mintlify. Add docolin frontmatter to this page: an `authors` list (at least one) and a `docolin:` block with `kind` and `type`.",
+} as const;
+
 export interface ParseError {
-  code: "yaml_parse_error" | "frontmatter_invalid";
+  // The two parser codes, plus the shared Mintlify-import code above, which
+  // the local preview reports through this same shape.
+  code: "yaml_parse_error" | "frontmatter_invalid" | "mintlify_frontmatter_required";
   message: string;
   details: Record<string, unknown>;
 }
@@ -86,24 +97,74 @@ export function parseDocoFile(source: string): ParseResult {
   };
 }
 
+/** Whether the source's frontmatter carries a `docolin` key at all, regardless
+ * of validity. The opt-in gate for READMEs: presence of the key (even in a
+ * half-written block) opts the file in, so its real validation error surfaces
+ * instead of the file silently vanishing. Browser-safe (the local preview
+ * applies the same gate client-side). */
+export function hasDocolinKey(source: string): boolean {
+  const { fence, yamlText } = splitRawFrontmatter(source);
+  if (fence === null) {
+    // An UNCLOSED fence still signals intent: the author opened frontmatter
+    // and saved before closing it. Scan those would-be frontmatter lines so a
+    // docolin key in them opts in (and surfaces its real error) instead of the
+    // file vanishing. A file with no fence at all stays opted out.
+    const text = source.charCodeAt(0) === 0xfeff ? source.slice(1) : source;
+    const lines = text.split("\n");
+    if (lines.length === 0 || lines[0].trimEnd() !== "---") return false;
+    for (const line of lines.slice(1)) {
+      if (line.startsWith("docolin:")) return true;
+    }
+    return false;
+  }
+  try {
+    const data: unknown = yamlText.trim() === "" ? {} : parseYaml(yamlText);
+    return typeof data === "object" && data !== null && "docolin" in data;
+  } catch {
+    // parseYaml throws on malformed YAML, which can't be prevented without
+    // parsing it twice. Fall through to a raw line scan of the fence so a
+    // broken-but-intended docolin block still opts in.
+  }
+  for (const line of yamlText.split("\n")) {
+    if (line.startsWith("docolin:")) return true;
+  }
+  return false;
+}
+
+/** String-level split of a leading `---` fenced frontmatter block: the verbatim
+ * fence (both delimiter lines included, null when there is none), its inner
+ * YAML text, and the body. No YAML parsing, so callers that must keep the raw
+ * text (the Mintlify converter) and callers that parse (below) share the ONE
+ * delimiter scan; a fence-handling fix lands in both. Browser-safe. */
+export function splitRawFrontmatter(source: string): {
+  fence: string | null;
+  yamlText: string;
+  body: string;
+} {
+  const text = source.charCodeAt(0) === 0xfeff ? source.slice(1) : source; // strip BOM
+  const lines = text.split("\n");
+  if (lines.length === 0 || lines[0].trimEnd() !== "---") {
+    return { fence: null, yamlText: "", body: text };
+  }
+  for (let i = 1; i < lines.length; i++) {
+    const t = lines[i].trimEnd();
+    if (t === "---" || t === "...") {
+      return {
+        fence: lines.slice(0, i + 1).join("\n"),
+        yamlText: lines.slice(1, i).join("\n"),
+        body: lines.slice(i + 1).join("\n"),
+      };
+    }
+  }
+  return { fence: null, yamlText: "", body: text };
+}
+
 // Splits a leading `---` fenced YAML frontmatter block from the body. docolin
 // only uses the `---` fence form, so a plain line scan covers it without
 // gray-matter. Throws (via parseYaml) on malformed YAML.
 function splitFrontmatter(source: string): { data: unknown; body: string } {
-  const text = source.charCodeAt(0) === 0xfeff ? source.slice(1) : source; // strip BOM
-  const lines = text.split("\n");
-  if (lines.length === 0 || lines[0].trimEnd() !== "---") return { data: {}, body: text };
-  let end = -1;
-  for (let i = 1; i < lines.length; i++) {
-    const t = lines[i].trimEnd();
-    if (t === "---" || t === "...") {
-      end = i;
-      break;
-    }
-  }
-  if (end === -1) return { data: {}, body: text };
-  const yamlText = lines.slice(1, end).join("\n");
-  const body = lines.slice(end + 1).join("\n");
+  const { fence, yamlText, body } = splitRawFrontmatter(source);
+  if (fence === null) return { data: {}, body };
   const data: unknown = yamlText.trim() === "" ? {} : parseYaml(yamlText);
   return { data, body };
 }

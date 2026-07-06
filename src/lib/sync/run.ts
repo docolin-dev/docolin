@@ -678,6 +678,10 @@ export async function validatePlanBatch(
     const result = await validateFile(path, fileCtx);
     if (result.ok) {
       await clearFileError(ctx2.projectId, path);
+    } else if (result.skipped) {
+      // An opted-out README: not a doco, so nothing to hold against the atomic
+      // gate; any stale error clears.
+      await clearFileError(ctx2.projectId, path);
     } else {
       await recordFileError(
         ctx2.projectId,
@@ -877,6 +881,14 @@ async function applyFileResult(
       result.errorDetails,
     );
     return false;
+  }
+  if (result.status === "skipped") {
+    // An opted-out README: not an error, so any stale one clears. When the skip
+    // tombstoned a previously-synced doco, the rendered page changed (deletion
+    // banner), so count it and let the caller purge its URL.
+    if (result.tombstoned) counts.deleted += 1;
+    await clearFileError(projectId, filePath);
+    return result.tombstoned;
   }
   if (result.status === "created") counts.created += 1;
   if (result.status === "updated") counts.updated += 1;

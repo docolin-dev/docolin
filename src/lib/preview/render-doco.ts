@@ -42,7 +42,6 @@ export interface PreviewRenderContext {
   // URLs become `/preview/{id}/…`, matching the resolved links and sitemap.
   projectId: string;
   projectName: string;
-  subpath: string | null;
   source: LocalFileSource;
   project: ImportedProject;
   // Resolves frontmatter authors to display-ready form. Injected so the route
@@ -59,11 +58,15 @@ export async function renderPreviewDoco(
   const websiteBase = `/preview/${ctx.projectId}`;
   const blobBase = `/preview/blob/${ctx.projectId}`;
   const docoPrefix = `${websiteBase}/`;
+  // The import's effective docs root (Mintlify auto-detection can differ from
+  // the user-typed subpath), and whether the Mintlify link model applies.
+  const subpath = ctx.project.effectiveSubpath;
+  const mintlify = ctx.project.mintlify !== null;
 
   const linkCtxFor = (docoPath: string): LinkResolveContext => ({
     docoPath,
-    subpath: ctx.subpath,
-    allowMdx: false,
+    subpath,
+    allowMdx: mintlify,
     websiteBase,
     forge: { kind: "preview", blobBase },
   });
@@ -82,7 +85,12 @@ export async function renderPreviewDoco(
       ) {
         return url;
       }
-      const repoPath = t.startsWith("/") ? t.slice(1) : resolveRelativePath(doco.pathInSource, t);
+      // Mintlify authors `/images/x` relative to the docs root, not the repo
+      // root (the sync's absoluteBase does the same join).
+      const absoluteBase = mintlify && subpath !== null ? `${subpath}/` : "";
+      const repoPath = t.startsWith("/")
+        ? `${absoluteBase}${t.slice(1)}`
+        : resolveRelativePath(doco.pathInSource, t);
       const blob = await ctx.source.readBlob(repoPath);
       if (blob === null) {
         warnings.push({ kind: "missing-image", detail: url });
@@ -100,6 +108,13 @@ export async function renderPreviewDoco(
       }
       return resolved;
     },
+    // Mintlify links are root-absolute to the docs root (`/devtools/mcp`); map
+    // them into the preview's URL space, like the sync maps them into the
+    // project's. docolin repos leave `/` links alone.
+    rewriteAbsoluteLink: mintlify
+      ? (url) =>
+          `${websiteBase}/${pathFromSourcePath(url.startsWith("/") ? url.slice(1) : url, null)}`
+      : undefined,
   });
   const bodyHtml = await renderMarkdownPreview(converted, {
     language: doco.frontmatter.docolin.language,
@@ -180,9 +195,18 @@ function resolveNav(
   const { path } = splitFragment(raw);
   let targetKey: string | null = null;
   if (isRelativePath(path)) {
-    targetKey = pathFromSourcePath(resolveRelativePath(doco.pathInSource, path), ctx.subpath);
+    targetKey = pathFromSourcePath(
+      resolveRelativePath(doco.pathInSource, path),
+      ctx.project.effectiveSubpath,
+    );
   } else if (path.startsWith(`/preview/${ctx.projectId}/`)) {
     targetKey = path.slice(`/preview/${ctx.projectId}/`.length);
+  } else if (ctx.project.mintlify !== null && path.startsWith("/")) {
+    // Mintlify habit: prev/next written docs-root-absolute ("/devtools/mcp").
+    // That's already the path-from-project-root, so it resolves like the
+    // body's absolute links do. Plain docolin repos keep the raw fallback
+    // (a site-absolute link there points at docolin itself, not this project).
+    targetKey = pathFromSourcePath(path.slice(1), null);
   }
 
   if (targetKey !== null) {

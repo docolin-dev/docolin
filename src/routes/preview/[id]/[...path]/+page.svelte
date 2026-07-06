@@ -144,7 +144,6 @@
     const result = await renderPreviewDoco(doco, {
       projectId: s.meta.id,
       projectName: s.meta.name,
-      subpath: s.meta.subpath,
       source: s.source,
       project: s.project,
       resolveAuthors,
