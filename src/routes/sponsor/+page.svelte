@@ -90,6 +90,49 @@
 
     <div class="px-6"><hr class="border-foreground/10 mx-auto max-w-3xl" /></div>
 
+    <!-- Sponsors: named, with what they actually provide. One real sponsor is the
+         proof that the model above isn't hypothetical. -->
+    <section class="px-6 py-20 sm:py-24">
+      <div class="mx-auto max-w-3xl">
+        <p class="text-muted-foreground mb-4 font-mono text-xs tracking-[0.18em] uppercase">
+          {m.sponsor_sponsors_eyebrow()}
+        </p>
+        <h2 class="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+          {m.sponsor_sponsors_title()}
+        </h2>
+        <div class="border-foreground/10 mt-10 border p-6 sm:p-8">
+          <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:gap-10">
+            <a
+              href="https://neon.com"
+              target="_blank"
+              rel="noopener noreferrer sponsored"
+              class="shrink-0 transition-opacity hover:opacity-80"
+            >
+              <img
+                src="/sponsors/neon-logo-light.svg"
+                alt="Neon"
+                width="157"
+                height="45"
+                class="h-9 w-auto dark:hidden"
+              />
+              <img
+                src="/sponsors/neon-logo-dark.svg"
+                alt="Neon"
+                width="157"
+                height="45"
+                class="hidden h-9 w-auto dark:block"
+              />
+            </a>
+            <p class="text-muted-foreground text-base leading-relaxed">
+              {m.sponsor_sponsors_neon_body()}
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="px-6"><hr class="border-foreground/10 mx-auto max-w-3xl" /></div>
+
     <!-- Close -->
     <section class="px-6 py-20 sm:py-24">
       <div class="mx-auto max-w-3xl">

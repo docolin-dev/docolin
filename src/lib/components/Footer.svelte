@@ -39,6 +39,31 @@
             class="hover:text-foreground underline-offset-4 hover:underline">{SITE_AUTHOR}</a
           >
         </p>
+        <!-- Sponsor credit links to /sponsor (the full story), not to the sponsor's
+             site; the outbound link lives there with its context. -->
+        <p class="text-muted-foreground/80 mt-3 flex items-center gap-2 text-xs">
+          {m.home_footer_sponsored_by()}
+          <a
+            href={localizeHref("/sponsor")}
+            class="transition-opacity hover:opacity-80"
+            aria-label="Neon"
+          >
+            <img
+              src="/sponsors/neon-logo-light.svg"
+              alt="Neon"
+              width="157"
+              height="45"
+              class="h-4 w-auto dark:hidden"
+            />
+            <img
+              src="/sponsors/neon-logo-dark.svg"
+              alt="Neon"
+              width="157"
+              height="45"
+              class="hidden h-4 w-auto dark:block"
+            />
+          </a>
+        </p>
       </div>
 
       <nav
