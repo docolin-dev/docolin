@@ -45,7 +45,17 @@ function onChange(event: Event): void {
   if (!event.target.classList.contains("tabbed-radio")) return;
   const label = event.target.dataset.tabLabel;
   if (label === undefined) return;
+  // Cross-set sync can resize tab sets ABOVE the one the reader clicked; the
+  // document then shifts and the clicked tab jumps away from the cursor.
+  // Anchor the clicked set's viewport position across the sync and scroll by
+  // whatever it moved (the set's own panel switch never moves its top).
+  const set = event.target.closest(".tabbed-set");
+  const topBefore = set?.getBoundingClientRect().top;
   syncTo(label);
+  if (set !== null && topBefore !== undefined) {
+    const delta = set.getBoundingClientRect().top - topBefore;
+    if (delta !== 0) window.scrollBy(0, delta);
+  }
   writePreferred([label, ...readPreferred().filter((other) => other !== label)]);
 }
 
