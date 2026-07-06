@@ -217,7 +217,9 @@
       <span class="text-destructive">{m.doco_stamp_error()}</span>
     {:else if !signedIn}
       <a
-        href={localizeHref(`/signin?returnTo=${encodeURIComponent(page.url.pathname)}`)}
+        href={localizeHref(
+          `/signin?returnTo=${encodeURIComponent(page.url.pathname + page.url.search)}`,
+        )}
         class="text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
       >
         {m.doco_stamp_signin_nudge()}

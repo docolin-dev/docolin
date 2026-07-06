@@ -50,10 +50,13 @@ export type ParseResult = { ok: true; parsed: ParsedDoco } | { ok: false; error:
 export function checkDocoSourceSize(source: string): ParseError | null {
   const sourceBytes = new TextEncoder().encode(source).length;
   if (sourceBytes <= LIMITS.docoSourceBytes) return null;
-  const toKb = (n: number): number => Math.round(n / 1024);
+  // Ceil the reported size so a file just barely over the limit can never
+  // display the same KB figure as the limit itself ("512 KB; up to 512 KB").
+  const sourceKb = Math.ceil(sourceBytes / 1024);
+  const limitKb = Math.round(LIMITS.docoSourceBytes / 1024);
   return {
     code: "file_too_large",
-    message: `File is ${String(toKb(sourceBytes))} KB; docolin accepts doco sources up to ${String(toKb(LIMITS.docoSourceBytes))} KB. Split the page into smaller docos.`,
+    message: `File is ${String(sourceKb)} KB; docolin accepts doco sources up to ${String(limitKb)} KB. Split the page into smaller docos.`,
     details: { sourceBytes, limitBytes: LIMITS.docoSourceBytes },
   };
 }

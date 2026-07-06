@@ -8,9 +8,18 @@
  *  a relative path: starts with "/" but not "//" or "/\" (browsers treat both
  *  as protocol-relative URLs, i.e. an absolute hop to another host). */
 export function safeReturnPathname(raw: string | null | undefined, fallback = "/"): string {
-  if (raw === undefined || raw === null || raw === "") return fallback;
-  if (!raw.startsWith("/")) return fallback;
-  const second = raw.charAt(1);
+  if (raw === undefined || raw === null) return fallback;
+  // The URL parser strips ASCII tab, LF, and CR BEFORE interpreting a URL, so
+  // "/\t/evil.example" reaches the browser as "//evil.example". Strip the same
+  // characters first so the check below sees what the browser will see, and
+  // return the cleaned value, never the raw one.
+  let path = "";
+  for (const c of raw) {
+    if (c !== "\t" && c !== "\n" && c !== "\r") path += c;
+  }
+  if (path === "") return fallback;
+  if (!path.startsWith("/")) return fallback;
+  const second = path.charAt(1);
   if (second === "/" || second === "\\") return fallback;
-  return raw;
+  return path;
 }
