@@ -1,7 +1,7 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
 import type { AuthResult } from "@workos/authkit-session";
-import type { Ai, Queue, R2Bucket } from "@cloudflare/workers-types";
+import type { Ai, Fetcher, Queue, R2Bucket } from "@cloudflare/workers-types";
 import type { DbOrg, DbUser } from "$lib/server/users";
 import type { SyncQueueMessage } from "$lib/sync/queue";
 
@@ -35,6 +35,11 @@ declare global {
     interface Platform {
       env: {
         MEDIA_BUCKET: R2Bucket;
+        // Static-assets binding (adapter-cloudflare, see wrangler.toml). The
+        // only way a Worker can read its own static/ files: they're served by
+        // the assets layer in FRONT of the Worker, so a plain fetch to their
+        // path never reaches them. Optional because `vite dev` has no binding.
+        ASSETS?: Fetcher;
         // Workers AI binding: runs the bge-m3 embedding model (and future
         // rerankers) on Cloudflare's infra so search text never leaves our boundary.
         AI: Ai;

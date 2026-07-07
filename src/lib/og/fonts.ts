@@ -5,9 +5,15 @@ import type { CustomFont } from "@cf-wasm/og/workerd";
 // natively; it cannot read the woff2 variable font the app uses at runtime,
 // which is why the card carries its own static weights.
 //
-// We fetch through SvelteKit's `event.fetch`: for a same-origin static asset it
-// resolves against the assets layer without a real network round-trip, and it
-// works identically in `vite dev` and on the deployed Worker.
+// Loading them is subtle: static assets are served by the assets layer in
+// FRONT of the Worker, so `event.fetch('/fonts/..')` from inside the Worker
+// never reaches them (it falls through to the app router and returns 404 HTML,
+// which Satori then rejects). The caller passes an `AssetFetch` that reads the
+// asset correctly for the current runtime: the `ASSETS` binding in production,
+// a plain origin fetch in `vite dev`. See endpoint.ts.
+
+/** Reads a static asset by root-relative path (e.g. "/fonts/geist-400.ttf"). */
+export type AssetFetch = (path: string) => Promise<Response>;
 
 /** The weights the card template draws with. */
 const WEIGHTS = [400, 500, 600] as const;
@@ -20,10 +26,10 @@ type Weight = (typeof WEIGHTS)[number];
 // which is fine since the static asset is identical across every request.
 const buffers = new Map<Weight, Promise<ArrayBuffer>>();
 
-function loadWeight(fetchFn: typeof fetch, weight: Weight): Promise<ArrayBuffer> {
+function loadWeight(assetFetch: AssetFetch, weight: Weight): Promise<ArrayBuffer> {
   const existing = buffers.get(weight);
   if (existing !== undefined) return existing;
-  const promise = fetchFn(`/fonts/geist-${String(weight)}.ttf`)
+  const promise = assetFetch(`/fonts/geist-${String(weight)}.ttf`)
     .then((res) => {
       if (!res.ok) throw new Error(`OG font geist-${String(weight)} failed: ${String(res.status)}`);
       return res.arrayBuffer();
@@ -45,8 +51,8 @@ function loadWeight(fetchFn: typeof fetch, weight: Weight): Promise<ArrayBuffer>
  *  passed in because it comes from whichever @cf-wasm/og entry the current
  *  runtime loaded (Node in dev, workerd in prod). Loaders are lazy: Satori
  *  calls them during render, and they hit the per-isolate cache above. */
-export function ogFonts(CustomFontClass: typeof CustomFont, fetchFn: typeof fetch): CustomFont[] {
+export function ogFonts(CustomFontClass: typeof CustomFont, assetFetch: AssetFetch): CustomFont[] {
   return WEIGHTS.map(
-    (weight) => new CustomFontClass("Geist", () => loadWeight(fetchFn, weight), { weight }),
+    (weight) => new CustomFontClass("Geist", () => loadWeight(assetFetch, weight), { weight }),
   );
 }
