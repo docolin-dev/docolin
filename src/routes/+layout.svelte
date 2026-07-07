@@ -72,6 +72,37 @@
 
   const canonical = $derived(`${SITE_URL}${page.url.pathname}`);
   const xDefault = $derived(altLinks.find((l) => l.loc === baseLocale)?.href ?? SITE_URL);
+
+  // The social-card image, resolved centrally from the route so every page gets
+  // one and there is a single og:image tag (a per-page tag plus a layout default
+  // would emit two, and crawlers pick unpredictably). Data-driven routes point
+  // at their generated card endpoint (which re-derives the card server-side and
+  // is edge-cached); everything else gets the branded static default. To give a
+  // specific page its own art, drop a PNG in `static/og/` and add a case here.
+  // Encode each path segment while preserving `/` as the separator, so an
+  // unusual route param can't break out of or malform the og URL.
+  const encodeOgPath = (raw: string): string =>
+    raw
+      .split("/")
+      .map((segment) => encodeURIComponent(segment))
+      .join("/");
+  const ogImagePath = $derived.by(() => {
+    const id = page.route.id;
+    const p = page.params;
+    if (id === "/[org=org]/[project]/[...path]") {
+      return `/og/doco/${encodeOgPath(`${p.org ?? ""}/${p.project ?? ""}/${p.path ?? ""}`)}`;
+    }
+    if (id === "/[root=kind]/[...rest]") {
+      const root = p.root ?? "";
+      const rest = p.rest ?? "";
+      return `/og/kind/${encodeOgPath(rest !== "" ? `${root}/${rest}` : root)}`;
+    }
+    if (id === "/[org=org]") {
+      return `/og/profile/${encodeURIComponent(p.org ?? "")}`;
+    }
+    return "/og/default.png";
+  });
+  const ogImage = $derived(`${SITE_URL}${ogImagePath}`);
 </script>
 
 <svelte:head>
@@ -86,6 +117,15 @@
     <link rel="alternate" hreflang={link.loc} href={link.href} />
   {/each}
   <link rel="alternate" hreflang="x-default" href={xDefault} />
+
+  <!-- Social card, site-wide. Individual pages still set their own og:title /
+       og:description; the image is centralized here so there's exactly one. -->
+  <meta property="og:image" content={ogImage} />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content={ogImage} />
 </svelte:head>
 
 <!-- Manages the light/dark/system preference: toggles `.dark` on <html>

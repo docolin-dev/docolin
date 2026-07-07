@@ -71,7 +71,6 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content={pageUrl} />
   <meta property="og:locale" content={getLocale()} />
-  <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content={m.home_meta_title()} />
   <meta name="twitter:description" content={m.home_meta_description()} />
   <!-- eslint-disable-next-line svelte/no-at-html-tags -->
