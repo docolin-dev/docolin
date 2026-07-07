@@ -15,16 +15,27 @@ type Weight = (typeof WEIGHTS)[number];
 
 // One fetch per weight per isolate: the first render of any card warms this,
 // later renders in the same isolate reuse the bytes. (Each rendered PNG is also
-// edge-cached, so a given card only renders once anyway.)
+// edge-cached, so a given card only renders once anyway.) Only the FIRST call's
+// `fetchFn` does the work; once a weight is cached the argument is ignored,
+// which is fine since the static asset is identical across every request.
 const buffers = new Map<Weight, Promise<ArrayBuffer>>();
 
 function loadWeight(fetchFn: typeof fetch, weight: Weight): Promise<ArrayBuffer> {
   const existing = buffers.get(weight);
   if (existing !== undefined) return existing;
-  const promise = fetchFn(`/fonts/geist-${String(weight)}.ttf`).then((res) => {
-    if (!res.ok) throw new Error(`OG font geist-${String(weight)} failed: ${String(res.status)}`);
-    return res.arrayBuffer();
-  });
+  const promise = fetchFn(`/fonts/geist-${String(weight)}.ttf`)
+    .then((res) => {
+      if (!res.ok) throw new Error(`OG font geist-${String(weight)} failed: ${String(res.status)}`);
+      return res.arrayBuffer();
+    })
+    .catch((err: unknown) => {
+      // Evict the rejected promise so a transient failure doesn't poison the
+      // cache for the isolate's whole life (every later render would reuse the
+      // rejection and silently fall back to the default card). The next request
+      // retries the fetch.
+      buffers.delete(weight);
+      throw err;
+    });
   buffers.set(weight, promise);
   return promise;
 }

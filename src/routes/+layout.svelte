@@ -79,19 +79,26 @@
   // at their generated card endpoint (which re-derives the card server-side and
   // is edge-cached); everything else gets the branded static default. To give a
   // specific page its own art, drop a PNG in `static/og/` and add a case here.
+  // Encode each path segment while preserving `/` as the separator, so an
+  // unusual route param can't break out of or malform the og URL.
+  const encodeOgPath = (raw: string): string =>
+    raw
+      .split("/")
+      .map((segment) => encodeURIComponent(segment))
+      .join("/");
   const ogImagePath = $derived.by(() => {
     const id = page.route.id;
     const p = page.params;
     if (id === "/[org=org]/[project]/[...path]") {
-      return `/og/doco/${p.org ?? ""}/${p.project ?? ""}/${p.path ?? ""}`;
+      return `/og/doco/${encodeOgPath(`${p.org ?? ""}/${p.project ?? ""}/${p.path ?? ""}`)}`;
     }
     if (id === "/[root=kind]/[...rest]") {
       const root = p.root ?? "";
       const rest = p.rest ?? "";
-      return `/og/kind/${rest !== "" ? `${root}/${rest}` : root}`;
+      return `/og/kind/${encodeOgPath(rest !== "" ? `${root}/${rest}` : root)}`;
     }
     if (id === "/[org=org]") {
-      return `/og/profile/${p.org ?? ""}`;
+      return `/og/profile/${encodeURIComponent(p.org ?? "")}`;
     }
     return "/og/default.png";
   });

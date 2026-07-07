@@ -47,10 +47,12 @@ function titleFontSize(title: string): number {
 function clampTitle(title: string): string {
   const MAX = 120;
   if (title.length <= MAX) return title;
-  // Cut at the last word boundary before the cap so we never split a word.
+  // Cut at the last word boundary within the cap so we don't split a word. Only
+  // a title with a 120-char run of no spaces (not a real title) falls back to a
+  // hard cut.
   const slice = title.slice(0, MAX);
   const lastSpace = slice.lastIndexOf(" ");
-  const base = lastSpace > 60 ? slice.slice(0, lastSpace) : slice;
+  const base = lastSpace > 0 ? slice.slice(0, lastSpace) : slice;
   return `${base.trimEnd()}…`;
 }
 

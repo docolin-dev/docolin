@@ -76,7 +76,7 @@
     "wrangler": "^4.92.0"
   },
   "dependencies": {
-    "@cf-wasm/og": "^0.4.0",
+    "@cf-wasm/og": "0.4.0",
     "@fortawesome/free-brands-svg-icons": "^7.2.0",
     "@fortawesome/free-regular-svg-icons": "^7.2.0",
     "@fortawesome/free-solid-svg-icons": "^7.2.0",
