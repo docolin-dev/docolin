@@ -1,6 +1,6 @@
 import { dev } from "$app/environment";
 import { buildCard, OG_WIDTH, OG_HEIGHT } from "./card";
-import { ogFonts } from "./fonts";
+import { ogFonts, type AssetFetch } from "./fonts";
 import type { CardSpec } from "./types";
 
 /** Long edge cache for cards that can change (a topic's doco count, a profile's
@@ -21,8 +21,8 @@ function loadOgRuntime(): Promise<OgRuntime> {
 }
 
 interface RenderOptions {
-  /** SvelteKit's `event.fetch`, used to load the fonts from static assets. */
-  fetch: typeof fetch;
+  /** Reads a static asset (the fonts) the way the current runtime requires. */
+  assetFetch: AssetFetch;
   /** The Worker execution context (`event.platform.context`), which @cf-wasm/og
    *  uses to cache compiled WASM across requests. Optional so `vite dev` (no
    *  platform) still renders. */
@@ -45,7 +45,7 @@ export async function renderOgCard(spec: CardSpec, options: RenderOptions): Prom
     {
       width: OG_WIDTH,
       height: OG_HEIGHT,
-      fonts: ogFonts(CustomFont, options.fetch),
+      fonts: ogFonts(CustomFont, options.assetFetch),
     },
   );
 

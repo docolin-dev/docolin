@@ -1,10 +1,30 @@
+import { dev } from "$app/environment";
 import type { RequestEvent } from "@sveltejs/kit";
 import { renderOgCard } from "./render";
+import type { AssetFetch } from "./fonts";
 import type { CardSpec } from "./types";
 
 /** The branded static card served when a resource has no data-driven card (a
  *  missing resource, or a render failure). It lives in `static/og/`. */
 export const DEFAULT_OG_CARD = "/og/default.png";
+
+/** An asset reader for the current runtime. Static assets sit in front of the
+ *  Worker, so the deployed app must read them through the `ASSETS` binding; a
+ *  plain fetch to their path would fall through to the app router and 404.
+ *  `vite dev` has no binding, so there we fetch the dev server's own origin. */
+function assetFetcher(event: RequestEvent): AssetFetch {
+  const assets = event.platform?.env.ASSETS;
+  const origin = event.url.origin;
+  // In production (and `wrangler dev`) read through the binding. In `vite dev`
+  // there's no real binding (getPlatformProxy may expose a non-serving stub),
+  // so fetch the dev server's own origin, which serves static/ directly.
+  if (!dev && assets !== undefined) {
+    // The ASSETS binding returns @cloudflare/workers-types' Response; we only
+    // read `.ok` and `.arrayBuffer()`, which the global Response also has.
+    return (path) => assets.fetch(new URL(path, origin)) as unknown as Promise<Response>;
+  }
+  return (path) => fetch(new URL(path, origin));
+}
 
 /** Turn a resolved spec into a PNG response, or redirect to the default card
  *  when there's nothing to draw. Rendering is wrapped so a Satori/WASM failure
@@ -20,7 +40,7 @@ export async function ogImageResponse(
   }
   try {
     return await renderOgCard(spec, {
-      fetch: event.fetch,
+      assetFetch: assetFetcher(event),
       ctx: event.platform?.context,
       cacheControl,
     });
