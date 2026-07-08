@@ -38,6 +38,10 @@
       : doco.publishedAt,
   );
 
+  // Kind taxonomy segments, shared by the article's section label and the
+  // breadcrumb trail below.
+  const kindSegments = $derived(doco.kind.split("/").filter((segment) => segment.length > 0));
+
   const articleJsonLd = $derived({
     "@context": "https://schema.org",
     "@type": "TechArticle",
@@ -46,9 +50,13 @@
     inLanguage: doco.language,
     datePublished: originalPublishedAt,
     dateModified: doco.publishedAt,
-    // The taxonomy path this doco lives under, and the systems it is confirmed
-    // for, give crawlers topical context beyond the free-text body.
-    articleSection: doco.kind,
+    // The systems this doco is confirmed for, plus its section (the human-
+    // readable label of the deepest kind segment), give crawlers topical
+    // context beyond the free-text body. schema.org wants a section name here,
+    // not the raw slash path.
+    ...(kindSegments.length > 0
+      ? { articleSection: labelForSegment(kindSegments[kindSegments.length - 1]) }
+      : {}),
     ...(doco.appliesTo.length > 0 ? { keywords: doco.appliesTo.join(", ") } : {}),
     mainEntityOfPage: canonicalUrl,
     url: canonicalUrl,
@@ -66,7 +74,6 @@
   // Breadcrumb trail following the kind taxonomy (docolin > os > linux > ...),
   // each segment a real, indexable kind browse page, ending at this doco. Gives
   // search engines the hierarchy the URL alone (org/project) doesn't express.
-  const kindSegments = $derived(doco.kind.split("/").filter((segment) => segment.length > 0));
   const breadcrumbJsonLd = $derived({
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",

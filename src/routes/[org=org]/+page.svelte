@@ -43,7 +43,7 @@
   <meta name="description" content={metaDescription} />
   <meta property="og:title" content={`${name} · docolin`} />
   <meta property="og:description" content={metaDescription} />
-  <meta property="og:type" content="profile" />
+  <meta property="og:type" content={profile.variant === "user" ? "profile" : "website"} />
   <meta property="og:url" content={pageUrl} />
   <!-- eslint-disable-next-line svelte/no-at-html-tags -- JSON.stringify of our own data, `<` escaped in ldJsonScript -->
   {@html jsonLdHtml}
