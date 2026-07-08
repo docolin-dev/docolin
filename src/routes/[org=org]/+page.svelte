@@ -5,6 +5,7 @@
   import UserProfile from "$lib/components/profile/UserProfile.svelte";
   import OrgProfile from "$lib/components/profile/OrgProfile.svelte";
   import { SITE_URL } from "$lib/site";
+  import { ldJsonScript } from "$lib/ld-json";
   import type { PageProps } from "./$types";
 
   // Public profile shell: head metadata + variant dispatch. The two variants
@@ -34,19 +35,17 @@
         ? { "@type": "Person", name, alternateName: profile.handle, url: pageUrl }
         : { "@type": "Organization", name, url: pageUrl },
   });
-  // User-controlled names land in this JSON; escape `<` so a crafted display
-  // name can never close the script tag.
-  /* eslint-disable no-useless-escape */
-  const jsonLdHtml = $derived(
-    `<script type="application/ld+json">${JSON.stringify(jsonLd).split("<").join("\\u003c")}<\/script>`,
-  );
-  /* eslint-enable no-useless-escape */
+  const jsonLdHtml = $derived(ldJsonScript(jsonLd));
 </script>
 
 <svelte:head>
   <title>{name} · docolin</title>
   <meta name="description" content={metaDescription} />
-  <!-- eslint-disable-next-line svelte/no-at-html-tags -- JSON.stringify of our own data, `<` escaped above -->
+  <meta property="og:title" content={`${name} · docolin`} />
+  <meta property="og:description" content={metaDescription} />
+  <meta property="og:type" content="profile" />
+  <meta property="og:url" content={pageUrl} />
+  <!-- eslint-disable-next-line svelte/no-at-html-tags -- JSON.stringify of our own data, `<` escaped in ldJsonScript -->
   {@html jsonLdHtml}
 </svelte:head>
 

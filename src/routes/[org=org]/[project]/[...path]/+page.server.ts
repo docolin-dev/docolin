@@ -5,7 +5,12 @@ import type { Actions, PageServerLoad } from "./$types";
 import { db } from "$lib/server/db";
 import { docos as docosTable, versions } from "$lib/server/db/schema";
 import { fromLtree } from "$lib/server/db/schema/types";
-import { renderMarkdown, extractDocoToc, extractReadingMinutes } from "$lib/server/markdown";
+import {
+  renderMarkdown,
+  extractDocoToc,
+  extractReadingMinutes,
+  extractExcerpt,
+} from "$lib/server/markdown";
 import { resolveDocoIdentity, resolveProjectBySlug } from "$lib/server/doco-resolve";
 import { fileDeletionRequest, submitReport } from "$lib/server/moderation";
 import { pathFromSourcePath, rebuildPathInSource, parseVersionRef } from "$lib/doco-urls";
@@ -87,6 +92,9 @@ export const load: PageServerLoad = async ({ params, setHeaders, isDataRequest }
       // ids aren't valid UUIDs and would 500 the query, but more to the point the
       // gym should never touch the database at all.
       playground: true,
+      // Keep metaDescription present on both load branches so the route's
+      // PageData is a uniform shape (the playground just mirrors its description).
+      metaDescription: page.description,
       org: { slug: "pangos", displayName: "Pango" },
       project: { slug: "jungle-gym", displayName: "Pango's jungle gym" },
       gitSource: { repoUrl: "", defaultBranch: "main" },
@@ -241,6 +249,15 @@ export const load: PageServerLoad = async ({ params, setHeaders, isDataRequest }
   const toc = extractDocoToc(doco.bodyText);
   const readingMinutes = extractReadingMinutes(doco.bodyText);
 
+  // Meta-description fallback: when the author gave no frontmatter description
+  // (missing, or blank/whitespace, which the schema allows), derive a plain-text
+  // excerpt from the body so the doco still ships a real description to crawlers
+  // and social cards. Empty on both sides -> null so the head omits the tag
+  // rather than emitting an empty one.
+  const trimmedDescription = doco.description?.trim() ?? "";
+  const metaDescription =
+    trimmedDescription.length > 0 ? trimmedDescription : extractExcerpt(doco.bodyText) || null;
+
   // Resolve prev/next link strings into rich nav targets where possible:
   // relative paths and same-project hard URLs become {title, href, kindPath}.
   // Anything else (cross-project, soft kind URLs, external) falls back to
@@ -262,6 +279,7 @@ export const load: PageServerLoad = async ({ params, setHeaders, isDataRequest }
 
   return {
     playground: false,
+    metaDescription,
     org: { slug: proj.orgSlug, displayName: proj.orgDisplayName },
     project: {
       slug: proj.projectSlug,

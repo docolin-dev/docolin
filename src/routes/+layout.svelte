@@ -73,6 +73,13 @@
   const canonical = $derived(`${SITE_URL}${page.url.pathname}`);
   const xDefault = $derived(altLinks.find((l) => l.loc === baseLocale)?.href ?? SITE_URL);
 
+  // The doco route sets its own <link rel="canonical"> pointing at the
+  // unversioned URL (so a pinned @version view consolidates onto the living
+  // doco). Suppress the layout's pathname-based canonical there so the page
+  // never ships two conflicting canonical tags. Other routes are canonical at
+  // their own pathname and rely on the layout tag.
+  const routeSetsOwnCanonical = $derived(page.route.id === "/[org=org]/[project]/[...path]");
+
   // The social-card image, resolved centrally from the route so every page gets
   // one and there is a single og:image tag (a per-page tag plus a layout default
   // would emit two, and crawlers pick unpredictably). Data-driven routes point
@@ -112,7 +119,9 @@
        `font-display: block` in layout.css the result is no FOUT. -->
   <link rel="preload" href={geistLatinUrl} as="font" type="font/woff2" crossorigin="anonymous" />
 
-  <link rel="canonical" href={canonical} />
+  {#if !routeSetsOwnCanonical}
+    <link rel="canonical" href={canonical} />
+  {/if}
   {#each altLinks as link (link.loc)}
     <link rel="alternate" hreflang={link.loc} href={link.href} />
   {/each}

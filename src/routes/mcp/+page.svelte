@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { m } from "$paraglide/messages";
+  import { ldJsonScript } from "$lib/ld-json";
   import { getLocale } from "$paraglide/runtime";
   import Navbar from "$lib/components/Navbar.svelte";
   import Footer from "$lib/components/Footer.svelte";
@@ -44,11 +45,7 @@
     ],
   });
 
-  /* eslint-disable no-useless-escape */
-  const howToJsonLdHtml = $derived(
-    `<script type="application/ld+json">${JSON.stringify(howToJsonLd)}<\/script>`,
-  );
-  /* eslint-enable no-useless-escape */
+  const howToJsonLdHtml = $derived(ldJsonScript(howToJsonLd));
 </script>
 
 <svelte:head>

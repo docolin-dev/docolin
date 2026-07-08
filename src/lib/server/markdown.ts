@@ -2,6 +2,7 @@ import { highlightCode } from "$lib/markdown/highlight";
 import {
   createMarkdownRenderer,
   extractToc,
+  extractExcerpt,
   extractReadingMinutes,
   RENDERER_VERSION,
   type TocEntry,
@@ -21,7 +22,7 @@ import {
 // versions, discussions). Keep this the only server path that produces HTML so
 // upgrades stay one-line and consistent everywhere.
 
-export { RENDERER_VERSION, extractReadingMinutes };
+export { RENDERER_VERSION, extractReadingMinutes, extractExcerpt };
 export type { TocEntry };
 
 const render = createMarkdownRenderer(highlightCode);

@@ -9,6 +9,8 @@
   import SearchResultCard from "$lib/components/search/SearchResultCard.svelte";
   import SetupBanner from "$lib/components/search/SetupBanner.svelte";
   import { buildKindTree, findKindNode, labelForSegment } from "$lib/components/search/kind-tree";
+  import { ldJsonScript } from "$lib/ld-json";
+  import { SITE_URL } from "$lib/site";
   import type { SearchResult, SearchResponse } from "$lib/components/search/types";
   import { getInferredSetup, getTuned, setTuned, clearSetup } from "$lib/client/setup-profile";
   import type { PageProps } from "./$types";
@@ -152,11 +154,29 @@
       })),
     },
   });
-  /* eslint-disable no-useless-escape */
-  const jsonLdHtml = $derived(
-    `<script type="application/ld+json">${JSON.stringify(jsonLd)}<\/script>`,
-  );
-  /* eslint-enable no-useless-escape */
+  const jsonLdHtml = $derived(ldJsonScript(jsonLd));
+
+  // Breadcrumb trail down the kind taxonomy (docolin > os > linux > ...), each
+  // crumb an indexable browse page, ending at the current level.
+  const breadcrumbJsonLd = $derived({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "docolin",
+        item: `${SITE_URL}${localizeHref("/")}`,
+      },
+      ...segments.map((segment, i) => ({
+        "@type": "ListItem",
+        position: i + 2,
+        name: labelForSegment(segment),
+        item: `${SITE_URL}${localizeHref(`/${segments.slice(0, i + 1).join("/")}`)}`,
+      })),
+    ],
+  });
+  const breadcrumbJsonLdHtml = $derived(ldJsonScript(breadcrumbJsonLd));
 </script>
 
 <svelte:head>
@@ -169,6 +189,8 @@
   <meta property="og:locale" content={locale} />
   <!-- eslint-disable-next-line svelte/no-at-html-tags -->
   {@html jsonLdHtml}
+  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+  {@html breadcrumbJsonLdHtml}
 </svelte:head>
 
 <DocoViewerNavbar kindSegments={segments} />
