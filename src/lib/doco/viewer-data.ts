@@ -74,4 +74,9 @@ export interface DocoViewData {
   gitSource: { repoUrl: string; defaultBranch: string };
   pathInSource: string | null;
   doco: DocoViewDoco;
+  // Meta description for the page head: the frontmatter `description` when set,
+  // otherwise a plain-text excerpt derived from the body (see the route load).
+  // Optional so the dev playground and local preview, which set their own head,
+  // can omit it; the route falls back to `doco.description` when absent.
+  metaDescription?: string | null;
 }

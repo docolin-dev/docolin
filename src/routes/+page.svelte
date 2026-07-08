@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { m } from "$paraglide/messages";
+  import { ldJsonScript } from "$lib/ld-json";
   import { getLocale } from "$paraglide/runtime";
   import Hero from "$lib/components/home/Hero.svelte";
   import { HOME_SEARCH_INPUT_ID } from "$lib/constants/home";
@@ -56,11 +57,7 @@
     license: SITE_LICENSE,
   });
 
-  /* eslint-disable no-useless-escape */
-  const websiteJsonLdHtml = $derived(
-    `<script type="application/ld+json">${JSON.stringify(websiteJsonLd)}<\/script>`,
-  );
-  /* eslint-enable no-useless-escape */
+  const websiteJsonLdHtml = $derived(ldJsonScript(websiteJsonLd));
 </script>
 
 <svelte:head>

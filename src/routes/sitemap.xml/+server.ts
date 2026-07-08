@@ -25,17 +25,9 @@ import { baseLocale, locales } from "$paraglide/runtime";
 const CACHE = "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400";
 
 // Marketing + top-level surfaces worth crawling. Auth/dashboard are noindex.
-const STATIC_PATHS = [
-  "/",
-  "/browse",
-  "/search",
-  "/about",
-  "/mcp",
-  "/for-projects",
-  "/compare",
-  "/sponsor",
-  "/terms",
-];
+// `/search` is noindex, and `/terms` / `/privacy` are 307 redirects to their
+// docos (already enumerated below), so none of those belong here.
+const STATIC_PATHS = ["/", "/browse", "/about", "/mcp", "/for-projects", "/compare", "/sponsor"];
 
 function xmlEscape(value: string): string {
   return value
@@ -114,6 +106,13 @@ export const GET: RequestHandler = async ({ setHeaders }) => {
       path: `/${row.orgSlug}/${row.projectSlug}/${path}`,
       lastmod: row.publishedAt.toISOString().slice(0, 10),
     });
+  }
+  // Profile pages, only for orgs that own at least one listable doco (a user's
+  // personal org carries their handle as its slug). Deriving from docoRows keeps
+  // empty/thin profiles out of the sitemap without a second query, and reuses
+  // the same non-deprecated / non-deleted predicate.
+  for (const slug of new Set(docoRows.map((row) => row.orgSlug))) {
+    entries.push({ path: `/${slug}` });
   }
   for (const row of discussionRows) {
     const path = pathFromSourcePath(row.pathInSource ?? "", row.subpath);

@@ -402,6 +402,54 @@ export function extractToc(source: string): TocEntry[] {
   return out;
 }
 
+// ---------- Meta-description excerpt ----------
+
+// Character budget for the derived excerpt. ~160 keeps the whole snippet visible
+// in a typical search result and social card without the engine truncating it.
+const EXCERPT_MAX = 160;
+
+// Collapse every run of whitespace (including the soft line breaks mdast keeps
+// inside a paragraph) into a single space, so a multi-line paragraph reads as
+// one line in the snippet. Character-walk rather than a regex, per house style.
+function collapseWhitespace(input: string): string {
+  const words: string[] = [];
+  let current = "";
+  for (const c of input) {
+    if (c === " " || c === "\t" || c === "\n" || c === "\r") {
+      if (current.length > 0) {
+        words.push(current);
+        current = "";
+      }
+    } else {
+      current += c;
+    }
+  }
+  if (current.length > 0) words.push(current);
+  return words.join(" ");
+}
+
+/** A plain-text excerpt of the body's first prose paragraph, used as the meta
+ *  description / og:description / JSON-LD description when a doco has no
+ *  frontmatter `description`. Flattened to text and trimmed to ~160 chars on a
+ *  word boundary. Returns "" when the body opens with no paragraph (e.g. a
+ *  card- or list-only page) so the caller can omit the tag rather than emit an
+ *  empty one. Uses the same lightweight parse as extractToc (no full render). */
+export function extractExcerpt(source: string): string {
+  const tree = tocProcessor.parse(source);
+  let text = "";
+  for (const node of tree.children) {
+    if (node.type !== "paragraph") continue;
+    const flat = collapseWhitespace(mdastToString(node));
+    if (flat.length === 0) continue;
+    text = flat;
+    break;
+  }
+  if (text.length <= EXCERPT_MAX) return text;
+  const clipped = text.slice(0, EXCERPT_MAX);
+  const lastSpace = clipped.lastIndexOf(" ");
+  return `${lastSpace > 0 ? clipped.slice(0, lastSpace) : clipped}…`;
+}
+
 // Average adult silent reading speed for technical prose, the same number every
 // other "min read" estimator uses. Lower bound, so a 1-word page rounds up to 1
 // minute (a "0 min read" badge reads as broken).

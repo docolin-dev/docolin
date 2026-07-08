@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { page } from "$app/state";
   import { m } from "$paraglide/messages";
+  import { ldJsonScript } from "$lib/ld-json";
   import { localizeHref, getLocale } from "$paraglide/runtime";
   import ArrowDown from "@lucide/svelte/icons/arrow-down";
   import Check from "@lucide/svelte/icons/check";
@@ -121,11 +122,7 @@
       })),
     },
   });
-  /* eslint-disable no-useless-escape */
-  const jsonLdHtml = $derived(
-    `<script type="application/ld+json">${JSON.stringify(jsonLd)}<\/script>`,
-  );
-  /* eslint-enable no-useless-escape */
+  const jsonLdHtml = $derived(ldJsonScript(jsonLd));
 </script>
 
 <svelte:head>

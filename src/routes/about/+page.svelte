@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { m } from "$paraglide/messages";
+  import { ldJsonScript } from "$lib/ld-json";
   import { getLocale, localizeHref } from "$paraglide/runtime";
   import Navbar from "$lib/components/Navbar.svelte";
   import Footer from "$lib/components/Footer.svelte";
@@ -29,11 +30,7 @@
     description: m.about_meta_description(),
     sameAs: [SITE_REPO],
   });
-  /* eslint-disable no-useless-escape */
-  const orgJsonLdHtml = $derived(
-    `<script type="application/ld+json">${JSON.stringify(orgJsonLd)}<\/script>`,
-  );
-  /* eslint-enable no-useless-escape */
+  const orgJsonLdHtml = $derived(ldJsonScript(orgJsonLd));
 </script>
 
 <svelte:head>
