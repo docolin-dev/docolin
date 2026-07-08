@@ -223,11 +223,17 @@ html {
 
   /* Animate collapsible admonitions (<details>) open and close. The
    * ::details-content pseudo-element wraps everything after <summary>;
-   * interpolate-size lets its height transition to and from auto, and
-   * transition-behavior: allow-discrete keeps the content visible through the
-   * close. Browsers without these features just toggle instantly (graceful).
-   * Gated on prefers-reduced-motion so motion-sensitive readers get an instant
-   * toggle with no animation. */
+   * interpolate-size lets its height transition to and from auto, and the
+   * `allow-discrete` on content-visibility keeps the content visible through
+   * the close. Browsers without these features just toggle instantly
+   * (graceful). Gated on prefers-reduced-motion so motion-sensitive readers get
+   * an instant toggle with no animation.
+   *
+   * `allow-discrete` MUST live inside the `transition` shorthand, not as a
+   * separate `transition-behavior` declaration: the minifier reorders
+   * declarations and would put `transition-behavior` BEFORE `transition`, whose
+   * shorthand then resets it back to `normal`, silently killing the close
+   * animation in production only (dev isn't minified). */
   @media (prefers-reduced-motion: no-preference) {
     .markdown-collapsible {
       interpolate-size: allow-keywords;
@@ -237,8 +243,7 @@ html {
       overflow: clip;
       transition:
         height 300ms ease,
-        content-visibility 300ms;
-      transition-behavior: allow-discrete;
+        content-visibility 300ms allow-discrete;
     }
     .markdown-collapsible[open]::details-content {
       height: auto;
