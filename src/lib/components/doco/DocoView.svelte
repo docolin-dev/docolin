@@ -995,7 +995,11 @@
               class="border-foreground/15 bg-background w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-none border p-0 text-xs shadow-md ring-0"
             >
               <ScrollArea class="max-h-64">
-                <ul class="flex flex-col" role="listbox">
+                <!-- A plain list of links, not selectable options, so no explicit
+                     role (the <ul> is implicitly role="list"). A listbox would
+                     promise arrow-key navigation and role="option" children that
+                     do not exist here. -->
+                <ul class="flex flex-col">
                   {#each doco.versions as v (v.versionNumber)}
                     {@const href = localizeHref(
                       `/${data.org.slug}/${data.project.slug}/${doco.pathFromProjectRoot}@${v.commitSha ?? String(v.versionNumber)}`,

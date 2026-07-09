@@ -318,7 +318,7 @@
             onclick={() => {
               sheetOpen = true;
             }}
-            class="border-input text-foreground hover:bg-accent inline-flex h-9 items-center gap-2 border px-3 text-sm transition-colors lg:hidden"
+            class="border-input text-foreground hover:bg-accent inline-flex h-11 items-center gap-2 border px-3 text-sm transition-colors sm:h-9 lg:hidden"
           >
             <SlidersHorizontal class="size-4" />
             {m.search_filters_heading()}
@@ -336,7 +336,9 @@
           <div class="flex items-center gap-2 text-sm">
             <span class="text-muted-foreground hidden sm:inline">{m.search_sort_label()}</span>
             <Select.Root type="single" value={filters.sort} onValueChange={onSortChange}>
-              <Select.Trigger class="h-9! w-auto" aria-label={m.search_sort_label()}>
+              <!-- 44px on phones (CLAUDE.md 9.2), 36px from sm up so it keeps the
+                   same height as the Filters button beside it at every width. -->
+              <Select.Trigger class="h-11! w-auto sm:h-9!" aria-label={m.search_sort_label()}>
                 {sortLabel(filters.sort)}
               </Select.Trigger>
               <Select.Content align="end" preventScroll={false}>

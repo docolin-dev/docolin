@@ -67,16 +67,22 @@
   const hasUnread = $derived(session.value.inboxUnreadCount > 0);
 
   type ThemeMode = "light" | "dark" | "system";
-  // A single-select ToggleGroup deselects when the active item is tapped again,
-  // writing "" into its own bound value. The theme always has a value, so the
-  // group's value is held here and re-asserted from the real mode after every
-  // change; otherwise re-tapping the active theme would leave the group with
-  // nothing highlighted.
+  // The group's value has to be two-way (`bind:value`): a single-select
+  // ToggleGroup deselects when its active item is tapped again and writes "" into
+  // the bound value, and passing `value` one-way would let the primitive's copy
+  // drift from the real mode with nothing to push it back.
+  //
+  // This is a WRITABLE $derived (Svelte 5.25+, and this repo is on 5.55): reading
+  // it tracks `userPrefersMode` so an external theme change still updates the
+  // group, and assigning to it overrides that value until a dependency changes,
+  // which is exactly what the deselect needs. Assignment is NOT a no-op. The
+  // $state + $effect spelling of the same thing is rejected by our own lint rule
+  // `svelte/prefer-writable-derived`.
   let themeMode = $derived<ThemeMode>(userPrefersMode.current);
   function onThemeChange(value: string): void {
     if (value === "system") resetMode();
     else if (value === "light" || value === "dark") setMode(value);
-    // Re-assert (writable $derived) so a deselect can never leave the group blank.
+    // The theme always has a value: restore it so a deselect can't blank the group.
     themeMode = userPrefersMode.current;
   }
 
