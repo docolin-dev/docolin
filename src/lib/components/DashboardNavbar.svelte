@@ -4,6 +4,7 @@
   import { localizeHref } from "$paraglide/runtime";
   import Search from "@lucide/svelte/icons/search";
   import AccountMenu from "$lib/components/AccountMenu.svelte";
+  import MobileNavMenu from "$lib/components/MobileNavMenu.svelte";
   import InboxBell from "$lib/components/InboxBell.svelte";
   import LanguageSwitcher from "$lib/components/LanguageSwitcher.svelte";
   import ThemeToggle from "$lib/components/ThemeToggle.svelte";
@@ -126,11 +127,27 @@
          worst-case [bell + handle] width; anon's narrower "Sign in" right-
          aligns inside it so the right edge stays even. -->
     <div class="flex shrink-0 items-center gap-1.5">
-      <div class="flex min-h-9 min-w-48 items-center justify-end gap-1.5">
-        <InboxBell />
-        <AccountMenu />
+      <!-- Mobile counterpart to the center search box (hidden below md). -->
+      <button
+        type="button"
+        class="text-muted-foreground hover:text-foreground inline-flex size-9 items-center justify-center transition-colors md:hidden"
+        aria-label={m.nav_search()}
+        onclick={() => (commandPalette.open = true)}
+      >
+        <Search class="size-4" />
+      </button>
+      <div class="flex min-h-9 min-w-11 items-center justify-end gap-1.5 md:min-w-48">
+        <div class="hidden md:block">
+          <InboxBell />
+        </div>
+        <div class="hidden md:block">
+          <AccountMenu />
+        </div>
+        <MobileNavMenu />
       </div>
-      <ThemeToggle />
+      <div class="hidden md:block">
+        <ThemeToggle />
+      </div>
     </div>
   </nav>
 </header>

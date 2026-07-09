@@ -155,9 +155,10 @@
 {/snippet}
 
 <div class="border-foreground/15 focus-within:border-ring border transition-colors">
-  <!-- Tab + toolbar header -->
-  <div class="border-foreground/15 flex flex-wrap items-center justify-between gap-y-1 border-b">
-    <div class="flex items-center">
+  <!-- Tab + toolbar header. The formatting toolbar scrolls horizontally on
+       narrow screens rather than wrapping under the tabs. -->
+  <div class="border-foreground/15 flex items-center justify-between border-b">
+    <div class="flex shrink-0 items-center">
       <button
         type="button"
         onclick={() => (tab = "write")}
@@ -181,7 +182,7 @@
     </div>
 
     {#if tab === "write"}
-      <div class="flex flex-wrap items-center px-1">
+      <div class="flex min-w-0 items-center overflow-x-auto px-1">
         <!-- eslint-disable @typescript-eslint/no-confusing-void-expression -->
         {@render toolButton(Heading, m.discussion_editor_heading(), () => void linePrefix("### "))}
         {@render toolButton(

@@ -17,6 +17,9 @@
   // identical for every reader and can be edge-cached. Until the store
   // resolves (`loaded === false`) we render nothing rather than flashing an
   // anonymous CTA at signed-in users.
+  //
+  // Desktop only: the navbars render this behind `hidden md:block` and hand the
+  // whole mobile job to MobileNavMenu, so there is exactly one mobile control.
 
   // Sign-in and finish-setup return the user to the page they were on. The
   // path is derived client-side after hydration (this component only renders
@@ -65,9 +68,7 @@
           </a>
         {/snippet}
       </DropdownMenu.Item>
-      <!-- Local-folder preview is desktop-only (File System Access / folder
-           upload), so it's hidden on mobile. -->
-      <DropdownMenu.Item class="hidden md:block">
+      <DropdownMenu.Item>
         {#snippet child({ props })}
           <a href={localizeHref("/preview")} {...props}>
             {m.nav_preview()}

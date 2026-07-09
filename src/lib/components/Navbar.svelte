@@ -3,11 +3,24 @@
   import { localizeHref } from "$paraglide/runtime";
   import { Button } from "$lib/components/ui/button";
   import AccountMenu from "$lib/components/AccountMenu.svelte";
+  import MobileNavMenu from "$lib/components/MobileNavMenu.svelte";
+  import Compass from "@lucide/svelte/icons/compass";
+  import FolderGit2 from "@lucide/svelte/icons/folder-git-2";
+  import Bot from "@lucide/svelte/icons/bot";
   import Github from "$lib/components/icons/Github.svelte";
   import InboxBell from "$lib/components/InboxBell.svelte";
   import LanguageSwitcher from "$lib/components/LanguageSwitcher.svelte";
   import ThemeToggle from "$lib/components/ThemeToggle.svelte";
   import { SITE_REPO } from "$lib/site";
+
+  // Below md every standalone widget (GitHub, theme, language, inbox) and the
+  // center nav links collapse into the shared MobileNavMenu, so this bar carries
+  // exactly one mobile control: the same one the app navbars carry.
+  const navLinks = $derived([
+    { href: "/browse", label: m.nav_browse(), icon: Compass },
+    { href: "/for-projects", label: m.nav_for_projects(), icon: FolderGit2 },
+    { href: "/mcp", label: m.nav_for_ai(), icon: Bot },
+  ]);
 
   let scrollY = $state(0);
   let viewportHeight = $state(0);
@@ -115,24 +128,35 @@
         </a>
       </div>
 
+      <!-- md+ keeps the standalone widgets; below md they all live in the one
+           MobileNavMenu sheet, so the bar shows a single trigger. -->
       <div class="flex items-center gap-1.5 justify-self-end">
-        <Button
-          href={SITE_REPO}
-          variant="ghost"
-          size="sm"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="h-9 gap-2"
-          aria-label={m.nav_github_aria()}
-        >
-          <Github class="size-4" />
-        </Button>
-        <ThemeToggle />
-        <div class="hidden sm:block">
+        <div class="hidden md:block">
+          <Button
+            href={SITE_REPO}
+            variant="ghost"
+            size="sm"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="h-9 gap-2"
+            aria-label={m.nav_github_aria()}
+          >
+            <Github class="size-4" />
+          </Button>
+        </div>
+        <div class="hidden md:block">
+          <ThemeToggle />
+        </div>
+        <div class="hidden md:block">
           <LanguageSwitcher />
         </div>
-        <InboxBell />
-        <AccountMenu />
+        <div class="hidden md:block">
+          <InboxBell />
+        </div>
+        <div class="hidden md:block">
+          <AccountMenu />
+        </div>
+        <MobileNavMenu {navLinks} githubHref={SITE_REPO} />
       </div>
     </nav>
 

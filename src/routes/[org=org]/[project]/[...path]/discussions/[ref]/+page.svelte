@@ -349,7 +349,7 @@
             {#snippet child({ props })}
               <button
                 {...props}
-                class="text-muted-foreground hover:text-foreground inline-flex size-7 shrink-0 items-center justify-center transition-colors"
+                class="text-muted-foreground hover:text-foreground inline-flex size-7 shrink-0 items-center justify-center transition-colors max-sm:size-9"
                 aria-label={m.discussion_post_more()}
                 title={m.discussion_post_more()}
               >
@@ -541,7 +541,7 @@
           {m.discussion_pinned_badge()}
         </span>
       {/if}
-      <div class="ml-auto flex items-center gap-1.5">
+      <div class="flex items-center gap-1.5 max-sm:mt-1 max-sm:w-full sm:ml-auto">
         {#if canModerate}
           <form method="POST" action="?/setPinned" use:enhance>
             <input type="hidden" name="pinned" value={thread.isPinned ? "false" : "true"} />

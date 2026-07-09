@@ -133,8 +133,10 @@
 
   // Hover lives in its own class so it never overrides the filled/selected state
   // (the bug where hovering an already-chosen button washed out its primary fill).
+  // Mobile: a 3-up grid, icon stacked over centered text that wraps (so the
+  // three outcomes stay on one row). Desktop (sm+): the original inline pills.
   const BASE =
-    "text-foreground inline-flex h-10 cursor-pointer items-center gap-2 border px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+    "text-foreground flex cursor-pointer flex-col items-center justify-center gap-1 border px-1 py-2 text-center text-xs leading-tight font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:flex-row sm:gap-2 sm:px-4 sm:py-0 sm:text-sm sm:leading-normal";
   const IDLE = "border-foreground/15 hover:border-foreground/40 hover:bg-background";
   const SELECTED = "border-primary bg-primary text-primary-foreground hover:bg-primary/90";
 
@@ -162,7 +164,12 @@
   <!-- In preview the wrapping div carries the tooltip: a disabled <button>
        doesn't fire hover events, so a title on it wouldn't show. -->
   <div title={preview ? m.preview_action_disabled() : undefined}>
-    <form method="POST" action="?/stamp" use:enhance={submit} class="mt-3 flex flex-wrap gap-2">
+    <form
+      method="POST"
+      action="?/stamp"
+      use:enhance={submit}
+      class="mt-3 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap"
+    >
       <input type="hidden" name="versionId" value={versionId} />
       <!-- Carries the id for a take-back; ignored by the stamp action. -->
       <input type="hidden" name="stampId" value={chosenStampId ?? ""} />

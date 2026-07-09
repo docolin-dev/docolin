@@ -28,7 +28,7 @@
 
 <div class="flex flex-col">
   {#each visible as item (item.value)}
-    <div class="flex items-center gap-2 py-1">
+    <div class="flex items-center gap-2 py-1.5">
       <Checkbox
         id={`facet-${group}-${item.value}`}
         checked={selectedSet.has(item.value)}

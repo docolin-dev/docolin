@@ -55,7 +55,7 @@
           value={emoji}
           aria-pressed={mine.has(emoji)}
           aria-label={m.discussion_reaction_chip({ emoji, count: counts[emoji] ?? 0 })}
-          class="inline-flex h-7 items-center gap-1 border px-2 text-xs transition-colors {mine.has(
+          class="inline-flex h-7 items-center gap-1 border px-2 text-xs transition-colors max-sm:h-9 {mine.has(
             emoji,
           )
             ? 'border-primary/40 bg-primary/10 text-foreground'
@@ -77,7 +77,7 @@
       <DropdownMenu.Trigger
         aria-label={m.discussion_reaction_add()}
         title={m.discussion_reaction_add()}
-        class="text-muted-foreground hover:border-foreground/30 hover:text-foreground border-foreground/15 inline-flex size-7 items-center justify-center border transition-colors"
+        class="text-muted-foreground hover:border-foreground/30 hover:text-foreground border-foreground/15 inline-flex size-7 items-center justify-center border transition-colors max-sm:size-9"
       >
         <SmilePlus class="size-3.5" aria-hidden="true" />
       </DropdownMenu.Trigger>
@@ -91,7 +91,9 @@
                 pick(emoji);
               }}
               aria-label={emoji}
-              class="size-8 cursor-pointer justify-center p-0 text-base {mine.has(emoji)
+              class="size-8 cursor-pointer justify-center p-0 text-base max-sm:size-9 {mine.has(
+                emoji,
+              )
                 ? 'bg-primary/10'
                 : ''}"
             >
