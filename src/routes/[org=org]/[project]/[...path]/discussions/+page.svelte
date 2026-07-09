@@ -113,8 +113,10 @@
     {m.discussion_list_back_to_doco()}
   </a>
 
-  <!-- Heading + context (which doc) on the left, primary action on the right. -->
-  <div class="mb-6 flex items-start justify-between gap-4">
+  <!-- Heading + context (which doc) on the left, primary action on the right.
+       Stacks on mobile: side by side, the min-w-0 column shrinks below the
+       heading's single-word min-content, which then overflows under the CTA. -->
+  <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
     <div class="min-w-0">
       <h1 class="text-foreground text-3xl font-semibold tracking-tight">
         {m.discussion_list_heading()}

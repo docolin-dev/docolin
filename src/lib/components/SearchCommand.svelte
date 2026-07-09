@@ -116,7 +116,14 @@
   });
 </script>
 
-<Command.Dialog bind:open={commandPalette.open} shouldFilter={false} class="sm:max-w-2xl">
+<!-- On a phone the palette sits near the top (top-4 matches the dialog's 1rem
+     side inset) so the on-screen keyboard doesn't shove a vertically-centered
+     modal off-screen; it recentres to top-1/4 from sm up. -->
+<Command.Dialog
+  bind:open={commandPalette.open}
+  shouldFilter={false}
+  class="top-4 sm:top-1/4 sm:max-w-2xl"
+>
   <Command.Input bind:value={query} placeholder={m.search_palette_placeholder()} />
 
   <Command.List class="h-80 max-h-80">
@@ -187,9 +194,10 @@
     {/if}
   </Command.List>
 
-  <!-- Keyboard-hint footer: makes the keyboard-first nature visible (Raycast/Linear style). -->
+  <!-- Keyboard-hint footer: makes the keyboard-first nature visible (Raycast/Linear
+       style). Hidden on touch-first small screens, where the hints are meaningless. -->
   <div
-    class="border-input text-muted-foreground flex items-center gap-4 border-t px-3 py-2 text-[11px]"
+    class="border-input text-muted-foreground hidden items-center gap-4 border-t px-3 py-2 text-[11px] sm:flex"
   >
     <span class="inline-flex items-center gap-1">
       <Kbd.Root>↑</Kbd.Root><Kbd.Root>↓</Kbd.Root>

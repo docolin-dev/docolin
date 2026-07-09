@@ -54,7 +54,8 @@
             <span class="bg-foreground/30 inline-block size-2 -translate-y-0.5"></span>
             <span>{m.home_personas_ai_mock_label()}</span>
           </div>
-          <pre class="text-foreground/85 font-mono text-[11px] leading-relaxed">{"{"}
+          <pre
+            class="text-foreground/85 overflow-x-auto font-mono text-[11px] leading-relaxed">{"{"}
   <span class="text-primary">"tool"</span>: <span class="text-foreground/70">"docolin.search"</span
             >,
   <span class="text-primary">"query"</span>: <span class="text-foreground/70">"nvidia drivers"</span

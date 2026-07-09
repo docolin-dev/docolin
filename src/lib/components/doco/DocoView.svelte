@@ -21,10 +21,13 @@
   import DocoViewerNavbar from "$lib/components/DocoViewerNavbar.svelte";
   import { ScrollArea } from "$lib/components/ui/scroll-area";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
+  import * as Popover from "$lib/components/ui/popover";
   import ReportDialog from "$lib/components/moderation/ReportDialog.svelte";
   import RequestDeletionDialog from "$lib/components/moderation/RequestDeletionDialog.svelte";
   import PangoScoreRail from "$lib/components/doco/PangoScoreRail.svelte";
+  import MobileDocoBar from "$lib/components/doco/MobileDocoBar.svelte";
   import StampPrompt from "$lib/components/doco/StampPrompt.svelte";
+  import { commandPalette } from "$lib/client/command-palette.svelte";
   import { forgeEditUrl, forgeName, forgeSourceUrl } from "$lib/git/edit-url";
   import { trackDwell } from "$lib/client/track-dwell";
   import { recordSetup } from "$lib/client/setup-profile";
@@ -443,6 +446,14 @@
   // switch it to a solid background. 8px tolerance covers sub-pixel rounding.
   const atBottom = $derived(scrollY + viewportHeight >= docHeight - 8);
 
+  // Reading progress 0..1, drives the mobile bottom bar's hairline. Reuses the
+  // scroll metrics already tracked for atBottom, so no extra listeners.
+  const readingProgress = $derived.by(() => {
+    const scrollable = docHeight - viewportHeight;
+    if (scrollable <= 0) return 0;
+    return Math.max(0, Math.min(1, scrollY / scrollable));
+  });
+
   // Re-measure when TOC layout shifts (sections expand/collapse).
   $effect(() => {
     const el = tocBarEl;
@@ -650,29 +661,11 @@
     }
   }
 
+  // The version picker is a Popover: bits-ui portals and collision-positions the
+  // panel (it shifts to stay on-screen instead of overflowing the viewport on
+  // mobile, the bug the old hand-rolled absolute panel had) and closes on
+  // outside-click and Escape natively.
   let versionMenuOpen = $state(false);
-  let versionMenuEl = $state<HTMLSpanElement | null>(null);
-
-  // Close the version dropdown on any click outside its wrapper, plus on
-  // Escape for keyboard users. Only wired while the menu is open so the
-  // global listener doesn't run for free on every page click.
-  $effect(() => {
-    if (!versionMenuOpen) return;
-    const onPointerDown = (e: MouseEvent): void => {
-      if (versionMenuEl !== null && !versionMenuEl.contains(e.target as Node)) {
-        versionMenuOpen = false;
-      }
-    };
-    const onKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === "Escape") versionMenuOpen = false;
-    };
-    window.addEventListener("mousedown", onPointerDown);
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("mousedown", onPointerDown);
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  });
 </script>
 
 <svelte:window
@@ -681,11 +674,13 @@
   onblur={() => (modifierHeld = false)}
 />
 
-<DocoViewerNavbar {kindSegments} {atBottom} />
+<DocoViewerNavbar {kindSegments} {atBottom} hideMobileSearch={!preview} />
 
 <!-- pt-20 clears the fixed navbar (~50px) + reading breathing room.
      Sticky sidebars use top-20 to align below the navbar. -->
-<div class="flex gap-10 px-6 pt-24 pb-10">
+<!-- pb-24 below lg reserves room for the fixed mobile bottom bar so the last
+     content and the discussions CTA are never hidden behind it. -->
+<div class="flex gap-10 px-6 pt-24 pb-24 lg:pb-10">
   <!-- Sidebar column always rendered (empty when no sitemap) so the article
        column stays at the same horizontal position regardless of project
        config. Prevents layout shift between docos with and without sitemaps.
@@ -702,7 +697,7 @@
           <ul class="flex flex-col gap-1 text-sm">
             {#each sitemap as node, i (`${String(i)}-${node.title}`)}
               <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -->
-              {@render sitemapNode(node, 0)}
+              {@render sitemapNode(node, 0, true, undefined)}
             {/each}
           </ul>
         </nav>
@@ -725,13 +720,15 @@
              since reader engagement is a first-class goal for a docs platform.
              Copy markdown shrinks to icon-only with a tooltip so the title row
              doesn't get crowded; the action is still discoverable via hover. -->
-        <div class="flex items-start justify-between gap-4">
+        <!-- Stacks on mobile so a long title owns the full width instead of
+             being squeezed by the shrink-0 action cluster. -->
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <h1
             class="text-foreground text-3xl font-semibold tracking-tight text-balance sm:text-4xl"
           >
             {doco.title}
           </h1>
-          <div class="mt-1 flex shrink-0 items-center gap-2">
+          <div class="flex shrink-0 items-center gap-2 sm:mt-1">
             <!-- Per-doco actions menu, public (it now carries a public source
                  utility, not only moderation). Groups, frequency first and
                  destructive last: source utilities, then flag & moderate
@@ -742,7 +739,7 @@
                 {#snippet child({ props })}
                   <button
                     {...props}
-                    class="text-muted-foreground hover:text-foreground inline-flex cursor-pointer items-center justify-center p-1.5 transition-colors"
+                    class="text-muted-foreground hover:text-foreground inline-flex cursor-pointer items-center justify-center p-1.5 transition-colors max-sm:order-last max-sm:min-h-11 max-sm:min-w-11"
                     aria-label={m.doco_actions_more()}
                     title={m.doco_actions_more()}
                   >
@@ -759,6 +756,24 @@
                 class="w-auto min-w-48 whitespace-nowrap"
                 preventScroll={false}
               >
+                <!-- On mobile the separate Copy and Edit icon buttons are hidden
+                     to keep the header to Discussions + this menu, so surface
+                     those two actions here instead (sm:hidden = mobile only). -->
+                <DropdownMenu.Item onSelect={() => void copyMarkdown()} class="sm:hidden">
+                  <Copy class="size-4" />
+                  {m.doco_copy_markdown()}
+                </DropdownMenu.Item>
+                {#if editHref}
+                  <DropdownMenu.Item class="sm:hidden">
+                    {#snippet child({ props })}
+                      <a {...props} href={editHref} target="_blank" rel="noopener">
+                        <Pencil class="size-4" />
+                        {m.doco_edit_on_github()}
+                      </a>
+                    {/snippet}
+                  </DropdownMenu.Item>
+                {/if}
+                <DropdownMenu.Separator class="sm:hidden" />
                 <!-- The canonicalized markdown this page renders from; pinned
                      to the version when the URL carries an @ref. -->
                 <DropdownMenu.Item>
@@ -799,7 +814,7 @@
                 <button
                   type="button"
                   disabled
-                  class="border-primary/40 bg-primary/5 text-muted-foreground inline-flex cursor-not-allowed items-center gap-1.5 border px-3 py-1.5 text-xs font-medium opacity-60"
+                  class="border-primary/40 bg-primary/5 text-muted-foreground inline-flex cursor-not-allowed items-center gap-1.5 border px-3 py-1.5 text-xs font-medium opacity-60 max-sm:min-h-11"
                 >
                   <MessagesSquare class="size-3.5" />
                   {m.doco_discussions_button()}
@@ -808,7 +823,7 @@
             {:else}
               <a
                 href={discussionsHref}
-                class="border-primary/40 bg-primary/5 text-foreground hover:border-primary hover:bg-primary/10 inline-flex items-center gap-1.5 border px-3 py-1.5 text-xs font-medium transition-colors"
+                class="border-primary/40 bg-primary/5 text-foreground hover:border-primary hover:bg-primary/10 inline-flex items-center gap-1.5 border px-3 py-1.5 text-xs font-medium transition-colors max-sm:min-h-11"
               >
                 <MessagesSquare class="size-3.5" />
                 {m.doco_discussions_button()}
@@ -833,7 +848,7 @@
               }}
               onpointerenter={prefetchRawMarkdown}
               onfocus={prefetchRawMarkdown}
-              class="border-foreground/15 hover:border-foreground/40 text-muted-foreground hover:text-foreground inline-flex cursor-pointer items-center justify-center border p-1.5 transition-colors"
+              class="border-foreground/15 hover:border-foreground/40 text-muted-foreground hover:text-foreground inline-flex cursor-pointer items-center justify-center border p-1.5 transition-colors max-sm:hidden"
               aria-label={modifierHeld ? m.doco_view_raw() : m.doco_copy_markdown_aria()}
               title={modifierHeld
                 ? m.doco_view_raw()
@@ -868,7 +883,7 @@
                 onauxclick={(event) => {
                   if (event.button === 1) window.open(sourceHref ?? editHref, "_blank", "noopener");
                 }}
-                class="border-foreground/15 hover:border-foreground/40 text-muted-foreground hover:text-foreground inline-flex cursor-pointer items-center justify-center border p-1.5 transition-colors"
+                class="border-foreground/15 hover:border-foreground/40 text-muted-foreground hover:text-foreground inline-flex cursor-pointer items-center justify-center border p-1.5 transition-colors max-sm:hidden"
                 aria-label={modifierHeld
                   ? m.doco_view_source({ forge: sourceForgeName })
                   : m.doco_edit_on_github()}
@@ -952,66 +967,70 @@
             <span class="text-muted-foreground/40">·</span>
           {/if}
 
-          <span class="relative inline-block" bind:this={versionMenuEl}>
-            <button
-              type="button"
-              onclick={() => (versionMenuOpen = !versionMenuOpen)}
-              class="text-muted-foreground hover:text-foreground inline-flex cursor-pointer items-center gap-1 transition-colors"
-              aria-haspopup="listbox"
-              aria-expanded={versionMenuOpen}
-              title={dateFormatter.format(new Date(doco.publishedAt))}
+          <Popover.Root bind:open={versionMenuOpen}>
+            <Popover.Trigger>
+              {#snippet child({ props })}
+                <button
+                  {...props}
+                  type="button"
+                  class="text-muted-foreground hover:text-foreground inline-flex cursor-pointer items-center gap-1 transition-colors"
+                  title={dateFormatter.format(new Date(doco.publishedAt))}
+                >
+                  <span class="text-foreground font-mono">
+                    {doco.versionTag ??
+                      (doco.commitSha === null
+                        ? `v${String(doco.versionNumber)}`
+                        : doco.commitSha.slice(0, 7))}
+                  </span>
+                  <span class="text-muted-foreground/40">·</span>
+                  <span>{relativeTime(doco.publishedAt)}</span>
+                  <ChevronDown class="size-3" />
+                </button>
+              {/snippet}
+            </Popover.Trigger>
+            <!-- Portaled + collision-positioned so it never overflows the viewport
+                 on mobile; width capped to the screen. -->
+            <Popover.Content
+              align="start"
+              class="border-foreground/15 bg-background w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-none border p-0 text-xs shadow-md ring-0"
             >
-              <span class="text-foreground font-mono">
-                {doco.versionTag ??
-                  (doco.commitSha === null
-                    ? `v${String(doco.versionNumber)}`
-                    : doco.commitSha.slice(0, 7))}
-              </span>
-              <span class="text-muted-foreground/40">·</span>
-              <span>{relativeTime(doco.publishedAt)}</span>
-              <ChevronDown class="size-3" />
-            </button>
-            {#if versionMenuOpen}
-              <!-- The panel div owns the overlay positioning; ScrollArea can't
-                   (bits-ui pins position: relative inline on its root for the
-                   scrollbar, which would beat an absolute class). -->
-              <div
-                class="border-foreground/15 bg-background absolute top-full left-0 z-10 mt-1 w-72 border text-xs shadow-md"
-              >
-                <ScrollArea class="max-h-64">
-                  <ul class="flex flex-col" role="listbox">
-                    {#each doco.versions as v (v.versionNumber)}
-                      {@const href = localizeHref(
-                        `/${data.org.slug}/${data.project.slug}/${doco.pathFromProjectRoot}@${v.commitSha ?? String(v.versionNumber)}`,
-                      )}
-                      <li>
-                        <a
-                          {href}
-                          onclick={() => (versionMenuOpen = false)}
-                          class="hover:bg-muted/50 grid grid-cols-[auto_1fr_auto] items-center gap-3 px-3 py-2 transition-colors"
-                          class:bg-muted={v.versionNumber === doco.versionNumber}
+              <ScrollArea class="max-h-64">
+                <!-- A plain list of links, not selectable options, so no explicit
+                     role (the <ul> is implicitly role="list"). A listbox would
+                     promise arrow-key navigation and role="option" children that
+                     do not exist here. -->
+                <ul class="flex flex-col">
+                  {#each doco.versions as v (v.versionNumber)}
+                    {@const href = localizeHref(
+                      `/${data.org.slug}/${data.project.slug}/${doco.pathFromProjectRoot}@${v.commitSha ?? String(v.versionNumber)}`,
+                    )}
+                    <li>
+                      <a
+                        {href}
+                        onclick={() => (versionMenuOpen = false)}
+                        class="hover:bg-muted/50 grid grid-cols-[auto_1fr_auto] items-center gap-3 px-3 py-2 transition-colors"
+                        class:bg-muted={v.versionNumber === doco.versionNumber}
+                      >
+                        <span class="text-foreground font-mono">
+                          {v.versionTag ??
+                            (v.commitSha === null
+                              ? `v${String(v.versionNumber)}`
+                              : v.commitSha.slice(0, 7))}
+                        </span>
+                        <span class="text-muted-foreground">{relativeTime(v.publishedAt)}</span>
+                        <span
+                          class="text-muted-foreground inline-flex items-center gap-1 font-mono"
                         >
-                          <span class="text-foreground font-mono">
-                            {v.versionTag ??
-                              (v.commitSha === null
-                                ? `v${String(v.versionNumber)}`
-                                : v.commitSha.slice(0, 7))}
-                          </span>
-                          <span class="text-muted-foreground">{relativeTime(v.publishedAt)}</span>
-                          <span
-                            class="text-muted-foreground inline-flex items-center gap-1 font-mono"
-                          >
-                            <PawPrint class="size-3" />
-                            {v.pangoScore ?? "-"}
-                          </span>
-                        </a>
-                      </li>
-                    {/each}
-                  </ul>
-                </ScrollArea>
-              </div>
-            {/if}
-          </span>
+                          <PawPrint class="size-3" />
+                          {v.pangoScore ?? "-"}
+                        </span>
+                      </a>
+                    </li>
+                  {/each}
+                </ul>
+              </ScrollArea>
+            </Popover.Content>
+          </Popover.Root>
 
           {#if doco.status !== "stable"}
             <span class="text-muted-foreground/40">·</span>
@@ -1097,7 +1116,7 @@
               <ArrowLeft
                 class="text-muted-foreground group-hover:text-primary size-4 shrink-0 transition-colors"
               />
-              <span class="flex min-w-0 flex-col">
+              <span class="flex min-w-0 flex-1 flex-col">
                 {#if doco.prevNav.kind === "resolved"}
                   <span class="text-foreground truncate font-medium">{doco.prevNav.title}</span>
                   <span class="text-muted-foreground truncate font-mono text-xs">
@@ -1118,9 +1137,9 @@
               href={doco.nextNav.kind === "resolved"
                 ? localizeHref(doco.nextNav.href)
                 : doco.nextNav.href}
-              class="group border-foreground/15 hover:border-primary hover:text-foreground flex items-center gap-3 border p-4 text-right transition-all hover:translate-x-1 md:justify-end"
+              class="group border-foreground/15 hover:border-primary hover:text-foreground flex items-center justify-between gap-3 border p-4 transition-all hover:translate-x-1 md:justify-end md:text-right"
             >
-              <span class="flex min-w-0 flex-col items-end">
+              <span class="flex min-w-0 flex-1 flex-col items-start md:items-end">
                 {#if doco.nextNav.kind === "resolved"}
                   <span class="text-foreground truncate font-medium">{doco.nextNav.title}</span>
                   <span class="text-muted-foreground truncate font-mono text-xs">
@@ -1237,19 +1256,131 @@
 
 <!-- Subtle fade-to-background at viewport bottom. Hints "there's more below"
      without being visually loud. Fixed positioning so it stays as the reader
-     scrolls; pointer-events-none so it doesn't intercept clicks. -->
+     scrolls; pointer-events-none so it doesn't intercept clicks. Hidden below
+     lg where the opaque mobile bottom bar occupies this zone instead. -->
 <div
   aria-hidden="true"
-  class="from-background pointer-events-none fixed inset-x-0 bottom-0 z-10 h-16 bg-gradient-to-t to-transparent"
+  class="from-background pointer-events-none fixed inset-x-0 bottom-0 z-10 hidden h-16 bg-gradient-to-t to-transparent lg:block"
 ></div>
 
-{#snippet sitemapNode(node: SitemapNode, depth: number)}
+<!-- Thumb-reachable navigation for narrow screens; lg:hidden inside. Surfaces
+     the sitemap, TOC, search, and Pango score that the side rails carry on
+     desktop. Suppressed in preview, where PreviewBar owns the bottom-left. -->
+{#if !preview}
+  <MobileDocoBar
+    pangoScore={liveScore}
+    progress={readingProgress}
+    showPango={!data.playground}
+    hasSitemap={sitemap.length > 0}
+    hasToc={tocTree.length > 0}
+    onSearch={() => (commandPalette.open = true)}
+  >
+    {#snippet contents(close: () => void)}
+      <nav class="pb-2">
+        <p class="text-muted-foreground mb-3 font-mono text-xs tracking-[0.18em] uppercase">
+          {data.project.displayName ?? data.project.slug}
+        </p>
+        <ul class="flex flex-col gap-1 text-base">
+          {#each sitemap as node, i (`${String(i)}-${node.title}`)}
+            <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -->
+            {@render sitemapNode(node, 0, false, close)}
+          {/each}
+        </ul>
+      </nav>
+    {/snippet}
+
+    {#snippet onThisPage(close: () => void)}
+      <!-- Full outline in the sheet (every H3 shown, unlike the desktop rail's
+         progressive expansion): in a modal the reader wants to see and jump to
+         anything at once. Tapping scrolls and closes. -->
+      <nav class="pb-2">
+        <ul class="flex flex-col text-base">
+          <li>
+            <button
+              type="button"
+              onclick={() => {
+                scrollToTop();
+                close();
+              }}
+              class="text-muted-foreground hover:text-foreground block w-full cursor-pointer py-2.5 text-left transition-colors"
+            >
+              ↑ {m.doco_toc_back_to_top()}
+            </button>
+          </li>
+          {#each tocTree as section, i (section.h2.id)}
+            <li>
+              <a
+                href={"#" + section.h2.id}
+                onclick={() => {
+                  pinSectionForId(section.h2.id);
+                  close();
+                }}
+                class="block py-2.5 transition-colors"
+                class:text-foreground={i === activeSectionIndex}
+                class:text-muted-foreground={i !== activeSectionIndex}
+                class:hover:text-foreground={i !== activeSectionIndex}
+              >
+                {section.h2.text}
+              </a>
+              {#if section.h3s.length > 0}
+                <ul class="flex flex-col">
+                  {#each section.h3s as h3 (h3.id)}
+                    <li>
+                      <a
+                        href={"#" + h3.id}
+                        onclick={() => {
+                          pinSectionForId(h3.id);
+                          close();
+                        }}
+                        class="block py-2.5 pl-4 transition-colors"
+                        class:text-foreground={activeId === h3.id}
+                        class:text-muted-foreground={activeId !== h3.id}
+                        class:hover:text-foreground={activeId !== h3.id}
+                      >
+                        {h3.text}
+                      </a>
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      </nav>
+    {/snippet}
+
+    {#snippet pango(close: () => void)}
+      <PangoScoreRail
+        score={liveScore}
+        verifiedCount={liveCount}
+        lastConfirmedAt={liveConfirmed}
+        onStampIt={() => {
+          close();
+          scrollToStampPrompt();
+        }}
+      />
+    {/snippet}
+  </MobileDocoBar>
+{/if}
+
+<!-- `dense` packs rows tight for the desktop rail; the mobile Contents sheet
+     passes false so its links are comfortable touch targets. -->
+<!-- onNavigate: the mobile Contents sheet passes closeAll so a tap closes the
+     sheet (including a tap on the current page's own entry, which does not
+     navigate and so is missed by afterNavigate). Desktop passes undefined. -->
+{#snippet sitemapNode(
+  node: SitemapNode,
+  depth: number,
+  dense: boolean,
+  onNavigate: (() => void) | undefined,
+)}
   {@const isActive = node.url !== undefined && node.url === currentPageUrl}
   <li>
     {#if node.url}
       <a
         href={localizeHref(node.url)}
-        class="block py-0.5 transition-colors"
+        onclick={onNavigate}
+        class="block transition-colors {dense ? 'py-0.5' : 'py-2'}"
         class:text-foreground={isActive}
         class:font-medium={isActive}
         class:text-muted-foreground={!isActive}
@@ -1260,7 +1391,10 @@
         {node.title}
       </a>
     {:else}
-      <div class="text-foreground py-1 font-medium" style:padding-left="{depth * 12}px">
+      <div
+        class="text-foreground font-medium {dense ? 'py-1' : 'py-2.5'}"
+        style:padding-left="{depth * 12}px"
+      >
         {node.title}
       </div>
     {/if}
@@ -1268,7 +1402,7 @@
       <ul class="flex flex-col gap-1">
         {#each node.children as child, i (`${String(i)}-${child.title}`)}
           <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -->
-          {@render sitemapNode(child, depth + 1)}
+          {@render sitemapNode(child, depth + 1, dense, onNavigate)}
         {/each}
       </ul>
     {/if}

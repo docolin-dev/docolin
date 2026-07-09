@@ -611,6 +611,23 @@ html:not(.dark) .dark-only {
   background: var(--muted);
 }
 
+/* Long unbroken tokens (a 60-char identifier, a giant URL, a base64 blob) have to
+   wrap instead of overflowing the column. Left alone one of them widens the whole
+   document; the navbar is position: fixed, so it is sized to the viewport rather
+   than the document, and its right-hand controls end up outside the visible area
+   while the page gains a horizontal scrollbar. `anywhere` rather than
+   `break-word`: both only break a word when the line would otherwise overflow,
+   but `anywhere` also shrinks the block's min-content width, which is what stops
+   the container from being widened in the first place. Inherited, so it reaches
+   links, list items, headings, and table cells. The code paths set their own
+   (see `.code-block pre` and inline `code` below). Scoped to text-bearing blocks
+   rather than the whole `.prose` subtree: `anywhere` also lowers min-content
+   width, which would let flex/grid children (the inputs card, tabs, admonition
+   bodies) squash harder than intended. `:where()` keeps specificity at 0. */
+.prose :where(p, li, dd, dt, blockquote, figcaption, h1, h2, h3, h4, h5, h6, td, th) {
+  overflow-wrap: anywhere;
+}
+
 /* Inline code (prose) + docomd inline enhancements. The typography plugin wraps
    inline code in literal backticks and bolds it to 600; we drop both for a clean,
    subtle tag on the theme's muted fill, then layer the color-swatch chip and

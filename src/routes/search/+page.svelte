@@ -10,6 +10,7 @@
   import LoaderCircle from "@lucide/svelte/icons/loader-circle";
   import DocoViewerNavbar from "$lib/components/DocoViewerNavbar.svelte";
   import * as Sheet from "$lib/components/ui/sheet";
+  import * as Select from "$lib/components/ui/select";
   import FacetRail from "$lib/components/search/FacetRail.svelte";
   import SearchResultCard from "$lib/components/search/SearchResultCard.svelte";
   import SetupBanner from "$lib/components/search/SetupBanner.svelte";
@@ -165,6 +166,13 @@
     navigate({ ...filters, sort: value }, false);
   }
 
+  // The Select emits a plain string (and "" when cleared); narrow it back to the
+  // union rather than casting, so an unknown value is ignored instead of routed.
+  function onSortChange(value: string): void {
+    const next = SORT_OPTIONS.find((option) => option === value);
+    if (next !== undefined) changeSort(next);
+  }
+
   function toggleTuned(): void {
     tuned = !tuned;
     setTuned(tuned);
@@ -310,7 +318,7 @@
             onclick={() => {
               sheetOpen = true;
             }}
-            class="border-input text-foreground hover:bg-accent inline-flex h-9 items-center gap-2 border px-3 text-sm transition-colors lg:hidden"
+            class="border-input text-foreground hover:bg-accent inline-flex h-11 items-center gap-2 border px-3 text-sm transition-colors sm:h-9 lg:hidden"
           >
             <SlidersHorizontal class="size-4" />
             {m.search_filters_heading()}
@@ -322,21 +330,26 @@
             {/if}
           </button>
 
-          <label class="flex items-center gap-2 text-sm">
+          <!-- A native <select> hands its dropdown to the OS, which ignores the
+               theme entirely (and on a phone renders it outside the page). Use
+               the portaled, themed Select, as the language switcher does. -->
+          <div class="flex items-center gap-2 text-sm">
             <span class="text-muted-foreground hidden sm:inline">{m.search_sort_label()}</span>
-            <select
-              value={filters.sort}
-              onchange={(event) => {
-                changeSort(event.currentTarget.value as SearchSort);
-              }}
-              aria-label={m.search_sort_label()}
-              class="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-9 border px-2 text-sm outline-none focus-visible:ring-2"
-            >
-              {#each SORT_OPTIONS as option (option)}
-                <option value={option}>{sortLabel(option)}</option>
-              {/each}
-            </select>
-          </label>
+            <Select.Root type="single" value={filters.sort} onValueChange={onSortChange}>
+              <!-- 44px on phones (CLAUDE.md 9.2), 36px from sm up so it keeps the
+                   same height as the Filters button beside it at every width. -->
+              <Select.Trigger class="h-11! w-auto sm:h-9!" aria-label={m.search_sort_label()}>
+                {sortLabel(filters.sort)}
+              </Select.Trigger>
+              <Select.Content align="end" preventScroll={false}>
+                {#each SORT_OPTIONS as option (option)}
+                  <Select.Item value={option} label={sortLabel(option)}>
+                    {sortLabel(option)}
+                  </Select.Item>
+                {/each}
+              </Select.Content>
+            </Select.Root>
+          </div>
         </div>
       </div>
 
